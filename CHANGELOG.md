@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/montanetech/codeix/compare/v0.1.4...v0.1.5) (2026-02-05)
+
+
+### Bug Fixes
+
+* use trusted publishers (OIDC) for npm, PyPI, and crates.io ([ee579bc](https://github.com/montanetech/codeix/commit/ee579bc74c4e142c2ba07988aec9ed215fc9cc42))
+* use valid PyPI classifier ([341db80](https://github.com/montanetech/codeix/commit/341db8072ea5dfd6025af71c7074a0016e724a36))
+
 ## [0.1.4](https://github.com/montanetech/codeix/compare/v0.1.3...v0.1.4) (2026-02-05)
 
 
