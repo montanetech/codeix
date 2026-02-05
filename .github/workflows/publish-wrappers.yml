@@ -21,8 +21,9 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Patch version
+      - name: Prepare package
         run: |
+          cp README.md npm/README.md
           cd npm
           node -e "
             const pkg = require('./package.json');
@@ -46,8 +47,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Patch version
+      - name: Prepare package
         run: |
+          cp README.md python/README.md
           cd python
           sed -i "s/^version = .*/version = \"${{ inputs.version }}\"/" pyproject.toml
           sed -i "s/^__version__ = .*/__version__ = \"${{ inputs.version }}\"/" codeix/__init__.py

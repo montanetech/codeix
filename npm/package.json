@@ -29,6 +29,7 @@
   "files": [
     "install.js",
     "run.js",
-    "bin/"
+    "bin/",
+    "README.md"
   ]
 }
