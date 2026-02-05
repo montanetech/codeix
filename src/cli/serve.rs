@@ -24,7 +24,9 @@ pub fn run(path: &Path, watch: bool) -> Result<()> {
         flush_index_to_disk(&root, &db).context("failed to flush initial index")?;
 
         // Log stats
-        let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+        let db_guard = db
+            .lock()
+            .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
         let (files, symbols, texts) = db_guard.export_all()?;
         drop(db_guard);
         tracing::info!(

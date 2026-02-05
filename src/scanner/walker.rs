@@ -17,7 +17,7 @@ pub fn walk_directory(root: &Path) -> Result<Vec<PathBuf>> {
     {
         let entry = entry?;
         // Only collect files, not directories
-        if entry.file_type().map_or(false, |ft| ft.is_file()) {
+        if entry.file_type().is_some_and(|ft| ft.is_file()) {
             files.push(entry.into_path());
         }
     }

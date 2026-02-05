@@ -68,12 +68,7 @@ fn walk_node(
     }
 }
 
-fn extract_function(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
         None => return,
@@ -84,17 +79,19 @@ fn extract_function(
     let sig = extract_signature_to_brace(node, source);
 
     push_symbol(
-        symbols, file_path, name, "function", line, None,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        name,
+        "function",
+        line,
+        None,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
-fn extract_method(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_method(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
         None => return,
@@ -133,8 +130,15 @@ fn extract_method(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "method", line, parent,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        "method",
+        line,
+        parent,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
@@ -181,19 +185,26 @@ fn extract_type_spec(
         .unwrap_or("type_alias");
 
     push_symbol(
-        symbols, file_path, name.clone(), kind, line, parent_ctx,
-        None, None, Some(visibility),
+        symbols,
+        file_path,
+        name.clone(),
+        kind,
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some(visibility),
     );
 
     // For structs, extract fields
     if let Some(type_n) = type_node {
         if type_n.kind() == "struct_type" {
-            if let Some(field_list) = find_child_by_field(type_n, "fields")
-                .or_else(|| {
-                    let mut c = type_n.walk();
-                    type_n.children(&mut c).find(|n| n.kind() == "field_declaration_list")
-                })
-            {
+            if let Some(field_list) = find_child_by_field(type_n, "fields").or_else(|| {
+                let mut c = type_n.walk();
+                type_n
+                    .children(&mut c)
+                    .find(|n| n.kind() == "field_declaration_list")
+            }) {
                 let mut cursor = field_list.walk();
                 for child in field_list.children(&mut cursor) {
                     if child.kind() == "field_declaration" {
@@ -202,10 +213,15 @@ fn extract_type_spec(
                             let field_line = node_line_range(child);
                             let field_vis = go_visibility(&field_name);
                             push_symbol(
-                                symbols, file_path,
+                                symbols,
+                                file_path,
                                 format!("{name}.{field_name}"),
-                                "property", field_line, Some(&name),
-                                None, None, Some(field_vis),
+                                "property",
+                                field_line,
+                                Some(&name),
+                                None,
+                                None,
+                                Some(field_vis),
                             );
                         }
                     }
@@ -227,10 +243,15 @@ fn extract_type_spec(
                         let method_vis = go_visibility(&method_name);
                         let method_sig = collapse_whitespace(node_text(child, source).trim());
                         push_symbol(
-                            symbols, file_path,
+                            symbols,
+                            file_path,
                             format!("{name}.{method_name}"),
-                            "method", method_line, Some(&name),
-                            Some(method_sig), None, Some(method_vis),
+                            "method",
+                            method_line,
+                            Some(&name),
+                            Some(method_sig),
+                            None,
+                            Some(method_vis),
                         );
                     }
                 }
@@ -258,8 +279,15 @@ fn extract_var_const(
                 let visibility = go_visibility(&name);
 
                 push_symbol(
-                    symbols, file_path, name, kind, line, parent_ctx,
-                    None, None, Some(visibility),
+                    symbols,
+                    file_path,
+                    name,
+                    kind,
+                    line,
+                    parent_ctx,
+                    None,
+                    None,
+                    Some(visibility),
                 );
             }
             // Handle multiple names in one spec: `var a, b, c int`
@@ -277,8 +305,15 @@ fn extract_var_const(
                     let extra_line = node_line_range(spec_child);
                     let extra_vis = go_visibility(&extra_name);
                     push_symbol(
-                        symbols, file_path, extra_name, kind, extra_line, parent_ctx,
-                        None, None, Some(extra_vis),
+                        symbols,
+                        file_path,
+                        extra_name,
+                        kind,
+                        extra_line,
+                        parent_ctx,
+                        None,
+                        None,
+                        Some(extra_vis),
                     );
                 }
             }
@@ -286,12 +321,7 @@ fn extract_var_const(
     }
 }
 
-fn extract_imports(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_imports(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
 
     let mut cursor = node.walk();
@@ -305,8 +335,15 @@ fn extract_imports(
                 let alias = name_node.map(|n| node_text(n, source));
 
                 push_symbol(
-                    symbols, file_path, path, "import", line, None,
-                    None, alias, Some("private".to_string()),
+                    symbols,
+                    file_path,
+                    path,
+                    "import",
+                    line,
+                    None,
+                    None,
+                    alias,
+                    Some("private".to_string()),
                 );
             }
         }
@@ -324,8 +361,15 @@ fn extract_imports(
                         let spec_line = node_line_range(spec);
 
                         push_symbol(
-                            symbols, file_path, path, "import", spec_line, None,
-                            None, alias, Some("private".to_string()),
+                            symbols,
+                            file_path,
+                            path,
+                            "import",
+                            spec_line,
+                            None,
+                            None,
+                            alias,
+                            Some("private".to_string()),
                         );
                     }
                 }
@@ -334,20 +378,22 @@ fn extract_imports(
     }
 }
 
-fn extract_package(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_package(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "package_identifier" {
             let name = node_text(child, source);
             let line = node_line_range(node);
             push_symbol(
-                symbols, file_path, name, "module", line, None,
-                None, None, Some("public".to_string()),
+                symbols,
+                file_path,
+                name,
+                "module",
+                line,
+                None,
+                None,
+                None,
+                Some("public".to_string()),
             );
         }
     }

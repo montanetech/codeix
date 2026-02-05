@@ -38,16 +38,24 @@ pub fn parse_file(
 
     match language {
         #[cfg(feature = "lang-rust")]
-        "rust" => crate::parser::rust_lang::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "rust" => {
+            crate::parser::rust_lang::extract(&tree, source, file_path, &mut symbols, &mut texts)
+        }
 
         #[cfg(feature = "lang-python")]
-        "python" => crate::parser::python::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "python" => {
+            crate::parser::python::extract(&tree, source, file_path, &mut symbols, &mut texts)
+        }
 
         #[cfg(feature = "lang-javascript")]
-        "javascript" => crate::parser::javascript::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "javascript" => {
+            crate::parser::javascript::extract(&tree, source, file_path, &mut symbols, &mut texts)
+        }
 
         #[cfg(feature = "lang-typescript")]
-        "typescript" | "tsx" => crate::parser::typescript::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "typescript" | "tsx" => {
+            crate::parser::typescript::extract(&tree, source, file_path, &mut symbols, &mut texts)
+        }
 
         #[cfg(feature = "lang-go")]
         "go" => crate::parser::go::extract(&tree, source, file_path, &mut symbols, &mut texts),
@@ -65,7 +73,9 @@ pub fn parse_file(
         "ruby" => crate::parser::ruby::extract(&tree, source, file_path, &mut symbols, &mut texts),
 
         #[cfg(feature = "lang-csharp")]
-        "csharp" => crate::parser::csharp::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "csharp" => {
+            crate::parser::csharp::extract(&tree, source, file_path, &mut symbols, &mut texts)
+        }
 
         _ => {
             // For unsupported languages, just extract comments and strings
@@ -83,21 +93,11 @@ pub fn parse_file(
 // Generic text extraction (for unsupported languages)
 // ---------------------------------------------------------------------------
 
-fn extract_texts_generic(
-    tree: &Tree,
-    source: &[u8],
-    file_path: &str,
-    texts: &mut Vec<TextEntry>,
-) {
+fn extract_texts_generic(tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>) {
     walk_texts_generic(tree.root_node(), source, file_path, texts);
 }
 
-fn walk_texts_generic(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    texts: &mut Vec<TextEntry>,
-) {
+fn walk_texts_generic(node: Node, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>) {
     let kind = node.kind();
 
     if kind.contains("comment") {
@@ -195,7 +195,9 @@ fn parse_sfc(
             Err(e) => {
                 tracing::warn!(
                     "failed to parse {} script block in {}: {}",
-                    block.lang, file_path, e
+                    block.lang,
+                    file_path,
+                    e
                 );
                 continue;
             }

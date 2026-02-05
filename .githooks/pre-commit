@@ -1,0 +1,16 @@
+#!/bin/sh
+# Pre-commit hook: check Rust formatting and lints
+
+if command -v cargo >/dev/null 2>&1; then
+    cargo fmt --check
+    if [ $? -ne 0 ]; then
+        echo "error: cargo fmt check failed. Run 'cargo fmt' to fix."
+        exit 1
+    fi
+
+    cargo clippy --all-features -- -D warnings
+    if [ $? -ne 0 ]; then
+        echo "error: cargo clippy found warnings. Fix them before committing."
+        exit 1
+    fi
+fi

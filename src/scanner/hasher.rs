@@ -15,5 +15,11 @@ pub fn hash_bytes(content: &[u8]) -> String {
     let hash = blake3::hash(content);
     let bytes = hash.as_bytes();
     // Truncate to first 8 bytes (64 bits), hex-encode to 16 chars
-    bytes[..8].iter().map(|b| format!("{b:02x}")).collect()
+    bytes[..8]
+        .iter()
+        .fold(String::with_capacity(16), |mut s, b| {
+            use std::fmt::Write;
+            let _ = write!(s, "{b:02x}");
+            s
+        })
 }

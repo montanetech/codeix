@@ -118,7 +118,11 @@ fn extract_function_decl(
         .unwrap_or(false);
     let visibility = if is_exported { "public" } else { "private" };
 
-    let kind = if parent_ctx.is_some() { "method" } else { "function" };
+    let kind = if parent_ctx.is_some() {
+        "method"
+    } else {
+        "function"
+    };
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
@@ -127,8 +131,15 @@ fn extract_function_decl(
     };
 
     push_symbol(
-        symbols, file_path, full_name, kind, line, parent_ctx,
-        Some(sig), None, Some(visibility.to_string()),
+        symbols,
+        file_path,
+        full_name,
+        kind,
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility.to_string()),
     );
 }
 
@@ -162,8 +173,15 @@ fn extract_class(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "class", line, parent_ctx,
-        Some(sig), None, Some(visibility.to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "class",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility.to_string()),
     );
 
     if let Some(body) = find_child_by_field(node, "body") {
@@ -208,7 +226,11 @@ fn extract_method(
         }
     }
 
-    let kind = if is_getter || is_setter { "property" } else { "method" };
+    let kind = if is_getter || is_setter {
+        "property"
+    } else {
+        "method"
+    };
 
     let params = find_child_by_field(node, "parameters")
         .map(|n| node_text(n, source))
@@ -219,10 +241,18 @@ fn extract_method(
         .unwrap_or_default();
 
     let mut sig_parts = Vec::new();
-    if is_async { sig_parts.push("async".to_string()); }
-    if is_static { sig_parts.push("static".to_string()); }
-    if is_getter { sig_parts.push("get".to_string()); }
-    if is_setter { sig_parts.push("set".to_string()); }
+    if is_async {
+        sig_parts.push("async".to_string());
+    }
+    if is_static {
+        sig_parts.push("static".to_string());
+    }
+    if is_getter {
+        sig_parts.push("get".to_string());
+    }
+    if is_setter {
+        sig_parts.push("set".to_string());
+    }
     let prefix = if sig_parts.is_empty() {
         String::new()
     } else {
@@ -244,8 +274,15 @@ fn extract_method(
     };
 
     push_symbol(
-        symbols, file_path, full_name, kind, line, parent_ctx,
-        Some(sig), None, Some(visibility.to_string()),
+        symbols,
+        file_path,
+        full_name,
+        kind,
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility.to_string()),
     );
 }
 
@@ -286,7 +323,10 @@ fn extract_variable_decl(
                     .map(|v| {
                         matches!(
                             v.kind(),
-                            "arrow_function" | "function" | "function_expression" | "generator_function"
+                            "arrow_function"
+                                | "function"
+                                | "function_expression"
+                                | "generator_function"
                         )
                     })
                     .unwrap_or(false);
@@ -310,20 +350,22 @@ fn extract_variable_decl(
                 };
 
                 push_symbol(
-                    symbols, file_path, full_name, kind, line, parent_ctx,
-                    sig, None, Some(visibility.to_string()),
+                    symbols,
+                    file_path,
+                    full_name,
+                    kind,
+                    line,
+                    parent_ctx,
+                    sig,
+                    None,
+                    Some(visibility.to_string()),
                 );
             }
         }
     }
 }
 
-fn extract_import(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
 
     let source_module = find_child_by_field(node, "source")
@@ -342,23 +384,37 @@ fn extract_import(
                     "identifier" => {
                         let name = node_text(clause_child, source);
                         push_symbol(
-                            symbols, file_path, source_module.clone(), "import", line,
-                            None, None, Some(name), Some("private".to_string()),
+                            symbols,
+                            file_path,
+                            source_module.clone(),
+                            "import",
+                            line,
+                            None,
+                            None,
+                            Some(name),
+                            Some("private".to_string()),
                         );
                     }
                     "named_imports" => {
                         let mut named_cursor = clause_child.walk();
                         for spec in clause_child.children(&mut named_cursor) {
                             if spec.kind() == "import_specifier" {
-                                let imp_name = find_child_by_field(spec, "name")
-                                    .map(|n| node_text(n, source));
+                                let imp_name =
+                                    find_child_by_field(spec, "name").map(|n| node_text(n, source));
                                 let alias = find_child_by_field(spec, "alias")
                                     .map(|n| node_text(n, source));
                                 if let Some(name) = imp_name {
                                     let full = format!("{source_module}.{name}");
                                     push_symbol(
-                                        symbols, file_path, full, "import", line,
-                                        None, None, alias, Some("private".to_string()),
+                                        symbols,
+                                        file_path,
+                                        full,
+                                        "import",
+                                        line,
+                                        None,
+                                        None,
+                                        alias,
+                                        Some("private".to_string()),
                                     );
                                 }
                             }
@@ -368,13 +424,22 @@ fn extract_import(
                         let alias = find_child_by_field(clause_child, "alias")
                             .or_else(|| {
                                 let mut c = clause_child.walk();
-                                clause_child.children(&mut c).find(|n| n.kind() == "identifier")
+                                clause_child
+                                    .children(&mut c)
+                                    .find(|n| n.kind() == "identifier")
                             })
                             .map(|n| node_text(n, source));
                         let full = format!("{source_module}.*");
                         push_symbol(
-                            symbols, file_path, full, "import", line,
-                            None, None, alias, Some("private".to_string()),
+                            symbols,
+                            file_path,
+                            full,
+                            "import",
+                            line,
+                            None,
+                            None,
+                            alias,
+                            Some("private".to_string()),
                         );
                     }
                     _ => {}
@@ -429,8 +494,15 @@ fn extract_interface(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "interface", line, parent_ctx,
-        Some(sig), None, Some(visibility.to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "interface",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility.to_string()),
     );
 
     // Walk interface body for method signatures
@@ -449,10 +521,15 @@ fn extract_interface(
                         };
                         let member_sig = collapse_whitespace(node_text(child, source).trim());
                         push_symbol(
-                            symbols, file_path,
+                            symbols,
+                            file_path,
                             format!("{full_name}.{member_name}"),
-                            member_kind, member_line, Some(&full_name),
-                            Some(member_sig), None, Some("public".to_string()),
+                            member_kind,
+                            member_line,
+                            Some(&full_name),
+                            Some(member_sig),
+                            None,
+                            Some("public".to_string()),
                         );
                     }
                 }
@@ -497,8 +574,15 @@ fn extract_type_alias(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "type_alias", line, parent_ctx,
-        Some(sig), None, Some(visibility.to_string()),
+        symbols,
+        file_path,
+        full_name,
+        "type_alias",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility.to_string()),
     );
 }
 
@@ -528,8 +612,15 @@ fn extract_enum(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "enum", line, parent_ctx,
-        None, None, Some(visibility.to_string()),
+        symbols,
+        file_path,
+        full_name,
+        "enum",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some(visibility.to_string()),
     );
 }
 
@@ -560,8 +651,15 @@ fn extract_namespace(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "module", line, parent_ctx,
-        None, None, Some(visibility.to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "module",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some(visibility.to_string()),
     );
 
     // Recurse into namespace body
@@ -624,12 +722,13 @@ fn build_function_signature(node: Node, source: &[u8], name: &str) -> String {
         .map(|n| node_text(n, source))
         .unwrap_or_default();
 
-    let is_async = node
-        .child(0)
-        .map(|c| c.kind() == "async")
-        .unwrap_or(false);
+    let is_async = node.child(0).map(|c| c.kind() == "async").unwrap_or(false);
 
-    let prefix = if is_async { "async function" } else { "function" };
+    let prefix = if is_async {
+        "async function"
+    } else {
+        "function"
+    };
 
     format!("{prefix} {name}{type_params}{params}{return_type}")
 }
@@ -677,7 +776,11 @@ fn build_class_signature(node: Node, source: &[u8], name: &str, is_abstract: boo
         .map(|n| format!(" {}", node_text(n, source)))
         .unwrap_or_default();
 
-    let prefix = if is_abstract { "abstract class" } else { "class" };
+    let prefix = if is_abstract {
+        "abstract class"
+    } else {
+        "class"
+    };
 
     format!("{prefix} {name}{type_params}{extends}")
 }

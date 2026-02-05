@@ -208,9 +208,7 @@ fn extract_method(
         }
     }
 
-    let kind = if is_getter {
-        "property"
-    } else if is_setter {
+    let kind = if is_getter || is_setter {
         "property"
     } else {
         "method"
@@ -312,7 +310,10 @@ fn extract_variable_decl(
                     .map(|v| {
                         matches!(
                             v.kind(),
-                            "arrow_function" | "function" | "function_expression" | "generator_function"
+                            "arrow_function"
+                                | "function"
+                                | "function_expression"
+                                | "generator_function"
                         )
                     })
                     .unwrap_or(false);
@@ -351,12 +352,7 @@ fn extract_variable_decl(
     }
 }
 
-fn extract_import(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
 
     // Get the source module
@@ -369,84 +365,80 @@ fn extract_import(
 
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        match child.kind() {
-            "import_clause" => {
-                let mut clause_cursor = child.walk();
-                for clause_child in child.children(&mut clause_cursor) {
-                    match clause_child.kind() {
-                        "identifier" => {
-                            // Default import: `import foo from "..."`
-                            let name = node_text(clause_child, source);
-                            let full_name = format!("{source_module}");
-                            push_symbol(
-                                symbols,
-                                file_path,
-                                full_name,
-                                "import",
-                                line,
-                                None,
-                                None,
-                                Some(name),
-                                Some("private".to_string()),
-                            );
-                        }
-                        "named_imports" => {
-                            // `import { foo, bar as baz } from "..."`
-                            let mut named_cursor = clause_child.walk();
-                            for spec in clause_child.children(&mut named_cursor) {
-                                if spec.kind() == "import_specifier" {
-                                    let imported_name =
-                                        find_child_by_field(spec, "name").map(|n| node_text(n, source));
-                                    let alias =
-                                        find_child_by_field(spec, "alias").map(|n| node_text(n, source));
+        if child.kind() == "import_clause" {
+            let mut clause_cursor = child.walk();
+            for clause_child in child.children(&mut clause_cursor) {
+                match clause_child.kind() {
+                    "identifier" => {
+                        // Default import: `import foo from "..."`
+                        let name = node_text(clause_child, source);
+                        let full_name = source_module.clone();
+                        push_symbol(
+                            symbols,
+                            file_path,
+                            full_name,
+                            "import",
+                            line,
+                            None,
+                            None,
+                            Some(name),
+                            Some("private".to_string()),
+                        );
+                    }
+                    "named_imports" => {
+                        // `import { foo, bar as baz } from "..."`
+                        let mut named_cursor = clause_child.walk();
+                        for spec in clause_child.children(&mut named_cursor) {
+                            if spec.kind() == "import_specifier" {
+                                let imported_name =
+                                    find_child_by_field(spec, "name").map(|n| node_text(n, source));
+                                let alias = find_child_by_field(spec, "alias")
+                                    .map(|n| node_text(n, source));
 
-                                    if let Some(imp_name) = imported_name {
-                                        let full_name = format!("{source_module}.{imp_name}");
-                                        push_symbol(
-                                            symbols,
-                                            file_path,
-                                            full_name,
-                                            "import",
-                                            line,
-                                            None,
-                                            None,
-                                            alias,
-                                            Some("private".to_string()),
-                                        );
-                                    }
+                                if let Some(imp_name) = imported_name {
+                                    let full_name = format!("{source_module}.{imp_name}");
+                                    push_symbol(
+                                        symbols,
+                                        file_path,
+                                        full_name,
+                                        "import",
+                                        line,
+                                        None,
+                                        None,
+                                        alias,
+                                        Some("private".to_string()),
+                                    );
                                 }
                             }
                         }
-                        "namespace_import" => {
-                            // `import * as foo from "..."`
-                            let alias =
-                                find_child_by_field(clause_child, "alias")
-                                    .or_else(|| {
-                                        // In some grammars, the identifier is a direct child
-                                        let mut c = clause_child.walk();
-                                        clause_child
-                                            .children(&mut c)
-                                            .find(|n| n.kind() == "identifier")
-                                    })
-                                    .map(|n| node_text(n, source));
-                            let full_name = format!("{source_module}.*");
-                            push_symbol(
-                                symbols,
-                                file_path,
-                                full_name,
-                                "import",
-                                line,
-                                None,
-                                None,
-                                alias,
-                                Some("private".to_string()),
-                            );
-                        }
-                        _ => {}
                     }
+                    "namespace_import" => {
+                        // `import * as foo from "..."`
+                        let alias = find_child_by_field(clause_child, "alias")
+                            .or_else(|| {
+                                // In some grammars, the identifier is a direct child
+                                let mut c = clause_child.walk();
+                                clause_child
+                                    .children(&mut c)
+                                    .find(|n| n.kind() == "identifier")
+                            })
+                            .map(|n| node_text(n, source));
+                        let full_name = format!("{source_module}.*");
+                        push_symbol(
+                            symbols,
+                            file_path,
+                            full_name,
+                            "import",
+                            line,
+                            None,
+                            None,
+                            alias,
+                            Some("private".to_string()),
+                        );
+                    }
+                    _ => {}
                 }
             }
-            _ => {}
         }
     }
 }
@@ -493,10 +485,7 @@ fn build_function_signature(node: Node, source: &[u8], name: &str) -> String {
         .map(|n| node_text(n, source))
         .unwrap_or_else(|| "()".to_string());
 
-    let is_async = node
-        .child(0)
-        .map(|c| c.kind() == "async")
-        .unwrap_or(false);
+    let is_async = node.child(0).map(|c| c.kind() == "async").unwrap_or(false);
 
     let is_generator = node.kind() == "generator_function_declaration";
 
@@ -670,10 +659,7 @@ import { render as renderDOM } from 'react-dom';";
         assert_eq!(react.kind, "import");
         assert_eq!(react.alias.as_deref(), Some("React"));
 
-        let use_state = symbols
-            .iter()
-            .find(|s| s.name == "react.useState")
-            .unwrap();
+        let use_state = symbols.iter().find(|s| s.name == "react.useState").unwrap();
         assert_eq!(use_state.kind, "import");
 
         let utils = symbols.iter().find(|s| s.name == "./utils.*").unwrap();

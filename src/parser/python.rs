@@ -224,12 +224,7 @@ fn extract_class(
     }
 }
 
-fn extract_import(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
 
     // `import foo, bar` or `import foo as bar`
@@ -274,12 +269,7 @@ fn extract_import(
     }
 }
 
-fn extract_import_from(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
 
     // Get module name: `from X import ...`
@@ -466,10 +456,7 @@ fn build_function_signature(node: Node, source: &[u8], name: &str) -> String {
         .unwrap_or_default();
 
     // Check for async
-    let is_async = node
-        .child(0)
-        .map(|c| c.kind() == "async")
-        .unwrap_or(false);
+    let is_async = node.child(0).map(|c| c.kind() == "async").unwrap_or(false);
 
     let prefix = if is_async { "async def" } else { "def" };
 

@@ -103,12 +103,8 @@ fn extract_html_script_tags(source: &[u8], default_lang: &str) -> Vec<ScriptBloc
 
     let mut search_from = 0;
 
-    loop {
-        // Find next <script
-        let tag_start = match text_lower[search_from..].find("<script") {
-            Some(pos) => search_from + pos,
-            None => break,
-        };
+    while let Some(pos) = text_lower[search_from..].find("<script") {
+        let tag_start = search_from + pos;
 
         // Make sure it's actually a tag (next char after "script" should be whitespace or >)
         let after_script = tag_start + 7; // len("<script")
@@ -116,8 +112,11 @@ fn extract_html_script_tags(source: &[u8], default_lang: &str) -> Vec<ScriptBloc
             break;
         }
         let next_char = text.as_bytes()[after_script];
-        if next_char != b' ' && next_char != b'\t' && next_char != b'\n'
-            && next_char != b'\r' && next_char != b'>'
+        if next_char != b' '
+            && next_char != b'\t'
+            && next_char != b'\n'
+            && next_char != b'\r'
+            && next_char != b'>'
         {
             search_from = after_script;
             continue;
@@ -189,7 +188,7 @@ fn detect_script_lang(open_tag: &str, default_lang: &str) -> &'static str {
     if let Some(pos) = lower.find("lang=") {
         let after_eq = pos + 5;
         let rest = &lower[after_eq..];
-        let rest = rest.trim_start_matches(|c| c == '"' || c == '\'');
+        let rest = rest.trim_start_matches(['"', '\'']);
 
         if rest.starts_with("ts") || rest.starts_with("typescript") {
             return "typescript";
@@ -294,15 +293,27 @@ mod tests {
 
     #[test]
     fn test_detect_lang_ts() {
-        assert_eq!(detect_script_lang("<script lang=\"ts\">", "javascript"), "typescript");
-        assert_eq!(detect_script_lang("<script lang='typescript'>", "javascript"), "typescript");
-        assert_eq!(detect_script_lang("<script setup lang=\"ts\">", "javascript"), "typescript");
+        assert_eq!(
+            detect_script_lang("<script lang=\"ts\">", "javascript"),
+            "typescript"
+        );
+        assert_eq!(
+            detect_script_lang("<script lang='typescript'>", "javascript"),
+            "typescript"
+        );
+        assert_eq!(
+            detect_script_lang("<script setup lang=\"ts\">", "javascript"),
+            "typescript"
+        );
     }
 
     #[test]
     fn test_detect_lang_default() {
         assert_eq!(detect_script_lang("<script>", "javascript"), "javascript");
-        assert_eq!(detect_script_lang("<script setup>", "javascript"), "javascript");
+        assert_eq!(
+            detect_script_lang("<script setup>", "javascript"),
+            "javascript"
+        );
         assert_eq!(detect_script_lang("<script>", "typescript"), "typescript");
     }
 }

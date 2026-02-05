@@ -6,25 +6,29 @@ use anyhow::{Context, Result};
 
 use super::format::{FileEntry, IndexManifest, SymbolEntry, TextEntry};
 
+/// Convenience alias for the tuple returned by `read_index`.
+pub type IndexData = (
+    IndexManifest,
+    Vec<FileEntry>,
+    Vec<SymbolEntry>,
+    Vec<TextEntry>,
+);
+
 /// Read an existing `.codeindex/` directory from disk.
 /// Returns the manifest, files, symbols, and texts.
-pub fn read_index(
-    path: &Path,
-) -> Result<(IndexManifest, Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)> {
+pub fn read_index(path: &Path) -> Result<IndexData> {
     let manifest: IndexManifest = {
-        let data = fs::read_to_string(path.join("index.json"))
-            .context("failed to read index.json")?;
+        let data =
+            fs::read_to_string(path.join("index.json")).context("failed to read index.json")?;
         serde_json::from_str(&data).context("failed to parse index.json")?
     };
 
-    let files = read_jsonl(&path.join("files.jsonl"))
-        .context("failed to read files.jsonl")?;
+    let files = read_jsonl(&path.join("files.jsonl")).context("failed to read files.jsonl")?;
 
-    let symbols = read_jsonl(&path.join("symbols.jsonl"))
-        .context("failed to read symbols.jsonl")?;
+    let symbols =
+        read_jsonl(&path.join("symbols.jsonl")).context("failed to read symbols.jsonl")?;
 
-    let texts = read_jsonl(&path.join("texts.jsonl"))
-        .context("failed to read texts.jsonl")?;
+    let texts = read_jsonl(&path.join("texts.jsonl")).context("failed to read texts.jsonl")?;
 
     Ok((manifest, files, symbols, texts))
 }

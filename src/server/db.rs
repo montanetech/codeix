@@ -92,9 +92,8 @@ impl SearchDb {
 
         // Insert files
         {
-            let mut stmt = tx.prepare(
-                "INSERT INTO files (path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4)",
-            )?;
+            let mut stmt =
+                tx.prepare("INSERT INTO files (path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4)")?;
             for f in files {
                 stmt.execute(rusqlite::params![f.path, f.lang, f.hash, f.lines])?;
             }
@@ -129,12 +128,7 @@ impl SearchDb {
             )?;
             for t in texts {
                 stmt.execute(rusqlite::params![
-                    t.file,
-                    t.kind,
-                    t.line[0],
-                    t.line[1],
-                    t.text,
-                    t.parent,
+                    t.file, t.kind, t.line[0], t.line[1], t.text, t.parent,
                 ])?;
             }
         }
@@ -242,11 +236,7 @@ impl SearchDb {
     }
 
     /// FTS5 search on file paths, with optional language filter.
-    pub fn search_files(
-        &self,
-        query: &str,
-        lang: Option<&str>,
-    ) -> Result<Vec<FileEntry>> {
+    pub fn search_files(&self, query: &str, lang: Option<&str>) -> Result<Vec<FileEntry>> {
         let mut fts_parts = vec![format!("path : {}", fts5_quote(query))];
         if let Some(l) = lang {
             fts_parts.push(format!("lang : {}", fts5_quote(l)));

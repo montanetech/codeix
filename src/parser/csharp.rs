@@ -32,18 +32,30 @@ fn walk_node(
             return;
         }
         "struct_declaration" => {
-            extract_type_decl(node, source, file_path, "struct", parent_ctx, symbols, texts);
+            extract_type_decl(
+                node, source, file_path, "struct", parent_ctx, symbols, texts,
+            );
             return;
         }
         "interface_declaration" => {
-            extract_type_decl(node, source, file_path, "interface", parent_ctx, symbols, texts);
+            extract_type_decl(
+                node,
+                source,
+                file_path,
+                "interface",
+                parent_ctx,
+                symbols,
+                texts,
+            );
             return;
         }
         "enum_declaration" => {
             extract_enum(node, source, file_path, parent_ctx, symbols);
         }
         "record_declaration" => {
-            extract_type_decl(node, source, file_path, "struct", parent_ctx, symbols, texts);
+            extract_type_decl(
+                node, source, file_path, "struct", parent_ctx, symbols, texts,
+            );
             return;
         }
         "namespace_declaration" | "file_scoped_namespace_declaration" => {
@@ -72,7 +84,9 @@ fn walk_node(
             extract_csharp_comment(node, source, file_path, parent_ctx, texts);
             return;
         }
-        "string_literal" | "verbatim_string_literal" | "interpolated_string_expression"
+        "string_literal"
+        | "verbatim_string_literal"
+        | "interpolated_string_expression"
         | "raw_string_literal" => {
             extract_string(node, source, file_path, parent_ctx, texts);
             return;
@@ -111,8 +125,7 @@ fn extract_type_decl(
     let bases = find_child_by_field(node, "bases")
         .or_else(|| {
             let mut cursor = node.walk();
-            node.children(&mut cursor)
-                .find(|c| c.kind() == "base_list")
+            node.children(&mut cursor).find(|c| c.kind() == "base_list")
         })
         .map(|n| format!(" : {}", node_text(n, source)))
         .unwrap_or_default();
@@ -126,8 +139,15 @@ fn extract_type_decl(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), kind, line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name.clone(),
+        kind,
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 
     // Walk body
@@ -161,8 +181,15 @@ fn extract_enum(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "enum", line, parent_ctx,
-        None, None, Some(visibility),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "enum",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some(visibility),
     );
 
     // Extract enum members
@@ -174,10 +201,15 @@ fn extract_enum(
                     let member_name = node_text(name_node, source);
                     let member_line = node_line_range(child);
                     push_symbol(
-                        symbols, file_path,
+                        symbols,
+                        file_path,
                         format!("{full_name}.{member_name}"),
-                        "constant", member_line, Some(&full_name),
-                        None, None, Some("public".to_string()),
+                        "constant",
+                        member_line,
+                        Some(&full_name),
+                        None,
+                        None,
+                        Some("public".to_string()),
                     );
                 }
             }
@@ -207,8 +239,15 @@ fn extract_namespace(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "module", line, parent_ctx,
-        None, None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "module",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some("public".to_string()),
     );
 
     // Walk namespace body
@@ -261,8 +300,15 @@ fn extract_method(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "method", line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        "method",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
@@ -289,8 +335,15 @@ fn extract_constructor(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "constructor", line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        "constructor",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
@@ -316,8 +369,15 @@ fn extract_property(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "property", line, parent_ctx,
-        None, None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        "property",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some(visibility),
     );
 }
 
@@ -348,12 +408,12 @@ fn extract_field(
             let mut decl_cursor = child.walk();
             for decl_child in child.children(&mut decl_cursor) {
                 if decl_child.kind() == "variable_declarator" {
-                    if let Some(name_node) = find_child_by_field(decl_child, "name")
-                        .or_else(|| {
-                            let mut c = decl_child.walk();
-                            decl_child.children(&mut c).find(|n| n.kind() == "identifier")
-                        })
-                    {
+                    if let Some(name_node) = find_child_by_field(decl_child, "name").or_else(|| {
+                        let mut c = decl_child.walk();
+                        decl_child
+                            .children(&mut c)
+                            .find(|n| n.kind() == "identifier")
+                    }) {
                         let name = node_text(name_node, source);
                         let full_name = if let Some(parent) = parent_ctx {
                             format!("{parent}.{name}")
@@ -361,8 +421,15 @@ fn extract_field(
                             name
                         };
                         push_symbol(
-                            symbols, file_path, full_name, kind, line, parent_ctx,
-                            None, None, Some(visibility.clone()),
+                            symbols,
+                            file_path,
+                            full_name,
+                            kind,
+                            line,
+                            parent_ctx,
+                            None,
+                            None,
+                            Some(visibility.clone()),
                         );
                     }
                 }
@@ -394,17 +461,19 @@ fn extract_delegate(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "type_alias", line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        "type_alias",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
-fn extract_using(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
 
     // `using System.Linq;` or `using Foo = System.Bar;`
@@ -414,14 +483,20 @@ fn extract_using(
             "qualified_name" | "identifier" | "identifier_name" => {
                 let name = node_text(child, source);
                 push_symbol(
-                    symbols, file_path, name, "import", line, None,
-                    None, None, Some("private".to_string()),
+                    symbols,
+                    file_path,
+                    name,
+                    "import",
+                    line,
+                    None,
+                    None,
+                    None,
+                    Some("private".to_string()),
                 );
             }
             "name_equals" => {
                 // `using Alias = Namespace.Type;`
-                let alias = find_child_by_field(child, "name")
-                    .map(|n| node_text(n, source));
+                let alias = find_child_by_field(child, "name").map(|n| node_text(n, source));
                 if let Some(a) = alias {
                     // The actual type is the next sibling
                     let type_name = child
@@ -430,8 +505,15 @@ fn extract_using(
                         .unwrap_or_default();
                     if !type_name.is_empty() {
                         push_symbol(
-                            symbols, file_path, type_name, "import", line, None,
-                            None, Some(a), Some("private".to_string()),
+                            symbols,
+                            file_path,
+                            type_name,
+                            "import",
+                            line,
+                            None,
+                            None,
+                            Some(a),
+                            Some("private".to_string()),
                         );
                     }
                 }
@@ -704,10 +786,7 @@ using System.Linq;";
             .unwrap();
         assert_eq!(generic.kind, "import");
 
-        let linq = symbols
-            .iter()
-            .find(|s| s.name == "System.Linq")
-            .unwrap();
+        let linq = symbols.iter().find(|s| s.name == "System.Linq").unwrap();
         assert_eq!(linq.kind, "import");
     }
 
@@ -755,6 +834,10 @@ public class Documented {}
 // Single line
 /* Block comment */";
         let (_symbols, texts) = parse_file(source, "csharp", "test.cs").unwrap();
-        assert!(texts.iter().any(|t| t.kind == "docstring" || t.kind == "comment"));
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.kind == "docstring" || t.kind == "comment")
+        );
     }
 }

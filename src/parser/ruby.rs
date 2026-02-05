@@ -92,7 +92,11 @@ fn extract_method(
 
     let sig = format!("def {name}{params}");
 
-    let kind = if parent_ctx.is_some() { "method" } else { "function" };
+    let kind = if parent_ctx.is_some() {
+        "method"
+    } else {
+        "function"
+    };
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
@@ -101,8 +105,15 @@ fn extract_method(
     };
 
     push_symbol(
-        symbols, file_path, full_name, kind, line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        kind,
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 
     // Recurse for nested definitions
@@ -152,8 +163,15 @@ fn extract_singleton_method(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "method", line, parent_ctx,
-        Some(sig), None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name,
+        "method",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some("public".to_string()),
     );
 
     // Recurse for nested definitions
@@ -204,8 +222,15 @@ fn extract_class(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "class", line, parent_ctx,
-        Some(sig), None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "class",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some("public".to_string()),
     );
 
     // Walk class body
@@ -239,8 +264,15 @@ fn extract_module(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "module", line, parent_ctx,
-        None, None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "module",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some("public".to_string()),
     );
 
     if let Some(body) = find_child_by_field(node, "body") {
@@ -275,8 +307,15 @@ fn extract_assignment(
                 name
             };
             push_symbol(
-                symbols, file_path, full_name, "constant", line, parent_ctx,
-                None, None, Some("public".to_string()),
+                symbols,
+                file_path,
+                full_name,
+                "constant",
+                line,
+                parent_ctx,
+                None,
+                None,
+                Some("public".to_string()),
             );
         }
         "identifier" => {
@@ -285,8 +324,15 @@ fn extract_assignment(
                 // Only capture top-level assignments
                 let visibility = ruby_visibility(&name);
                 push_symbol(
-                    symbols, file_path, name, "variable", line, parent_ctx,
-                    None, None, Some(visibility),
+                    symbols,
+                    file_path,
+                    name,
+                    "variable",
+                    line,
+                    parent_ctx,
+                    None,
+                    None,
+                    Some(visibility),
                 );
             }
         }
@@ -303,8 +349,15 @@ fn extract_assignment(
                 name
             };
             push_symbol(
-                symbols, file_path, full_name, "property", line, parent_ctx,
-                None, None, Some(visibility),
+                symbols,
+                file_path,
+                full_name,
+                "property",
+                line,
+                parent_ctx,
+                None,
+                None,
+                Some(visibility),
             );
         }
         _ => {}
@@ -335,8 +388,15 @@ fn extract_call(
                         let path = strip_string_quotes(&node_text(child, source));
                         if !path.is_empty() {
                             push_symbol(
-                                symbols, file_path, path, "import", line, None,
-                                None, None, Some("private".to_string()),
+                                symbols,
+                                file_path,
+                                path,
+                                "import",
+                                line,
+                                None,
+                                None,
+                                None,
+                                Some("private".to_string()),
                             );
                         }
                     }

@@ -233,12 +233,7 @@ fn extract_impl_type_name(node: Node, source: &[u8]) -> String {
     "Unknown".to_string()
 }
 
-fn extract_use(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_use(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
     let visibility = extract_visibility(node, source);
 
@@ -321,9 +316,7 @@ fn extract_visibility(node: Node, source: &[u8]) -> String {
     for child in node.children(&mut cursor) {
         if child.kind() == "visibility_modifier" {
             let text = node_text(child, source);
-            if text.contains("pub(crate)")
-                || text.contains("pub(super)")
-                || text.contains("pub(in")
+            if text.contains("pub(crate)") || text.contains("pub(super)") || text.contains("pub(in")
             {
                 return "internal".to_string();
             }
@@ -451,7 +444,13 @@ impl Display for Foo {
         assert_eq!(trait_sym.visibility.as_deref(), Some("public"));
 
         let trait_impl = symbols.iter().find(|s| s.kind == "trait_impl").unwrap();
-        assert!(trait_impl.sig.as_ref().unwrap().contains("impl Display for"));
+        assert!(
+            trait_impl
+                .sig
+                .as_ref()
+                .unwrap()
+                .contains("impl Display for")
+        );
     }
 
     #[test]

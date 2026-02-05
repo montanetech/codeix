@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode, DebounceEventResult};
+use notify_debouncer_mini::{DebounceEventResult, new_debouncer, notify::RecursiveMode};
 
 use crate::index::format::{FileEntry, IndexManifest};
 use crate::index::writer::write_index;
@@ -28,8 +28,8 @@ pub fn start_watcher(root: PathBuf, db: Arc<Mutex<SearchDb>>) -> Result<()> {
 
     // Create debouncer with 500ms delay
     let (tx, rx) = std::sync::mpsc::channel();
-    let mut debouncer = new_debouncer(Duration::from_millis(500), tx)
-        .context("failed to create file watcher")?;
+    let mut debouncer =
+        new_debouncer(Duration::from_millis(500), tx).context("failed to create file watcher")?;
 
     // Watch the root directory recursively
     debouncer
@@ -121,7 +121,9 @@ fn handle_events(
         if !path.exists() {
             // File was deleted
             tracing::debug!("file deleted: {}", rel_path);
-            let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+            let db_guard = db
+                .lock()
+                .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
             if let Err(e) = db_guard.remove_file(&rel_path) {
                 tracing::warn!("failed to remove file {}: {}", rel_path, e);
             }
@@ -140,23 +142,31 @@ fn handle_events(
     }
 
     // Rebuild FTS indexes once after all changes
-    let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+    let db_guard = db
+        .lock()
+        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
     db_guard.rebuild_fts()?;
 
     Ok(())
 }
 
 /// Process a single file change (create or modify).
-pub fn process_file_change(abs_path: &Path, rel_path: &str, db: &Arc<Mutex<SearchDb>>) -> Result<()> {
+pub fn process_file_change(
+    abs_path: &Path,
+    rel_path: &str,
+    db: &Arc<Mutex<SearchDb>>,
+) -> Result<()> {
     // Read file content once
-    let content = std::fs::read(abs_path)
-        .with_context(|| format!("failed to read {}", rel_path))?;
+    let content =
+        std::fs::read(abs_path).with_context(|| format!("failed to read {}", rel_path))?;
 
     // Hash the content
     let new_hash = hash_bytes(&content);
 
     // Check if hash changed
-    let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+    let db_guard = db
+        .lock()
+        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
     if let Some(old_hash) = db_guard.get_file_hash(rel_path)? {
         if old_hash == new_hash {
             // No change, skip
@@ -201,7 +211,9 @@ pub fn process_file_change(abs_path: &Path, rel_path: &str, db: &Arc<Mutex<Searc
     };
 
     // Upsert into database
-    let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+    let db_guard = db
+        .lock()
+        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
     db_guard.upsert_file(&file_entry, &symbols, &texts)?;
 
     Ok(())
@@ -209,7 +221,9 @@ pub fn process_file_change(abs_path: &Path, rel_path: &str, db: &Arc<Mutex<Searc
 
 /// Flush the entire index from memory to disk.
 pub fn flush_index_to_disk(root: &Path, db: &Arc<Mutex<SearchDb>>) -> Result<()> {
-    let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+    let db_guard = db
+        .lock()
+        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
     let (files, symbols, texts) = db_guard.export_all()?;
     drop(db_guard);
 

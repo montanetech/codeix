@@ -168,11 +168,7 @@ pub fn extract_comment(
         let cleaned = strip_doc_comment_prefix(&raw);
         ("docstring", cleaned)
     } else if raw.starts_with("//") {
-        let cleaned = raw
-            .strip_prefix("//")
-            .unwrap_or(&raw)
-            .trim()
-            .to_string();
+        let cleaned = raw.strip_prefix("//").unwrap_or(&raw).trim().to_string();
         ("comment", cleaned)
     } else if raw.starts_with("/*") {
         let cleaned = strip_block_comment(&raw);
@@ -184,11 +180,7 @@ pub fn extract_comment(
         (kind, cleaned)
     } else if raw.starts_with('#') {
         // Hash-style comments (Python, Ruby, etc.)
-        let cleaned = raw
-            .strip_prefix('#')
-            .unwrap_or(&raw)
-            .trim()
-            .to_string();
+        let cleaned = raw.strip_prefix('#').unwrap_or(&raw).trim().to_string();
         ("comment", cleaned)
     } else {
         ("comment", raw)
@@ -233,6 +225,7 @@ pub fn extract_string(
 }
 
 /// Push a symbol entry (convenience builder).
+#[allow(clippy::too_many_arguments)]
 pub fn push_symbol(
     symbols: &mut Vec<SymbolEntry>,
     file_path: &str,

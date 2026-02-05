@@ -2,9 +2,10 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use rmcp::{
-    Error as McpError, ServerHandler,
-    ServiceExt,
-    model::{CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},
+    Error as McpError, ServerHandler, ServiceExt,
+    model::{
+        CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo,
+    },
     schemars, tool,
     transport::stdio,
 };
@@ -36,9 +37,10 @@ impl CodeIndexServer {
         #[schemars(description = "Filter by file path")]
         file: Option<String>,
     ) -> Result<CallToolResult, McpError> {
-        let db = self.db.lock().map_err(|e| {
-            McpError::internal_error(format!("db lock poisoned: {e}"), None)
-        })?;
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
             .search_symbols(&query, kind.as_deref(), file.as_deref())
             .map_err(|e| McpError::internal_error(format!("search_symbols failed: {e}"), None))?;
@@ -60,9 +62,10 @@ impl CodeIndexServer {
         #[schemars(description = "Filter by language (e.g. python, rust, javascript)")]
         lang: Option<String>,
     ) -> Result<CallToolResult, McpError> {
-        let db = self.db.lock().map_err(|e| {
-            McpError::internal_error(format!("db lock poisoned: {e}"), None)
-        })?;
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
             .search_files(&query, lang.as_deref())
             .map_err(|e| McpError::internal_error(format!("search_files failed: {e}"), None))?;
@@ -74,7 +77,9 @@ impl CodeIndexServer {
     }
 
     /// Search text entries (docstrings, comments) using FTS5 full-text search (BM25-ranked).
-    #[tool(description = "Search text entries (docstrings, comments) with optional kind/file filters")]
+    #[tool(
+        description = "Search text entries (docstrings, comments) with optional kind/file filters"
+    )]
     fn search_texts(
         &self,
         #[tool(param)]
@@ -87,9 +92,10 @@ impl CodeIndexServer {
         #[schemars(description = "Filter by file path")]
         file: Option<String>,
     ) -> Result<CallToolResult, McpError> {
-        let db = self.db.lock().map_err(|e| {
-            McpError::internal_error(format!("db lock poisoned: {e}"), None)
-        })?;
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
             .search_text(&query, kind.as_deref(), file.as_deref())
             .map_err(|e| McpError::internal_error(format!("search_texts failed: {e}"), None))?;
@@ -108,9 +114,10 @@ impl CodeIndexServer {
         #[schemars(description = "File path to get symbols for")]
         file: String,
     ) -> Result<CallToolResult, McpError> {
-        let db = self.db.lock().map_err(|e| {
-            McpError::internal_error(format!("db lock poisoned: {e}"), None)
-        })?;
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
             .get_file_symbols(&file)
             .map_err(|e| McpError::internal_error(format!("get_file_symbols failed: {e}"), None))?;
@@ -132,14 +139,13 @@ impl CodeIndexServer {
         #[schemars(description = "Name of the parent symbol")]
         parent: String,
     ) -> Result<CallToolResult, McpError> {
-        let db = self.db.lock().map_err(|e| {
-            McpError::internal_error(format!("db lock poisoned: {e}"), None)
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+        let results = db.get_symbol_children(&file, &parent).map_err(|e| {
+            McpError::internal_error(format!("get_symbol_children failed: {e}"), None)
         })?;
-        let results = db
-            .get_symbol_children(&file, &parent)
-            .map_err(|e| {
-                McpError::internal_error(format!("get_symbol_children failed: {e}"), None)
-            })?;
 
         let json = serde_json::to_string_pretty(&results)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
@@ -155,9 +161,10 @@ impl CodeIndexServer {
         #[schemars(description = "File path to get imports for")]
         file: String,
     ) -> Result<CallToolResult, McpError> {
-        let db = self.db.lock().map_err(|e| {
-            McpError::internal_error(format!("db lock poisoned: {e}"), None)
-        })?;
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
             .get_imports(&file)
             .map_err(|e| McpError::internal_error(format!("get_imports failed: {e}"), None))?;

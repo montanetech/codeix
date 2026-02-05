@@ -32,7 +32,15 @@ fn walk_node(
             return;
         }
         "interface_declaration" => {
-            extract_class(node, source, file_path, parent_ctx, "interface", symbols, texts);
+            extract_class(
+                node,
+                source,
+                file_path,
+                parent_ctx,
+                "interface",
+                symbols,
+                texts,
+            );
             return;
         }
         "enum_declaration" => {
@@ -40,11 +48,21 @@ fn walk_node(
             return;
         }
         "annotation_type_declaration" => {
-            extract_class(node, source, file_path, parent_ctx, "annotation", symbols, texts);
+            extract_class(
+                node,
+                source,
+                file_path,
+                parent_ctx,
+                "annotation",
+                symbols,
+                texts,
+            );
             return;
         }
         "record_declaration" => {
-            extract_class(node, source, file_path, parent_ctx, "struct", symbols, texts);
+            extract_class(
+                node, source, file_path, parent_ctx, "struct", symbols, texts,
+            );
             return;
         }
         "method_declaration" => {
@@ -107,8 +125,15 @@ fn extract_class(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), kind, line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name.clone(),
+        kind,
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 
     // Walk class body
@@ -143,8 +168,15 @@ fn extract_method(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "method", line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        "method",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
@@ -171,8 +203,15 @@ fn extract_constructor(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "constructor", line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        "constructor",
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
@@ -210,20 +249,22 @@ fn extract_field(
                 };
 
                 push_symbol(
-                    symbols, file_path, full_name, kind, line, parent_ctx,
-                    None, None, Some(visibility.clone()),
+                    symbols,
+                    file_path,
+                    full_name,
+                    kind,
+                    line,
+                    parent_ctx,
+                    None,
+                    None,
+                    Some(visibility.clone()),
                 );
             }
         }
     }
 }
 
-fn extract_import(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
 
     // Get the import path
@@ -232,27 +273,36 @@ fn extract_import(
         if child.kind() == "scoped_identifier" || child.kind() == "identifier" {
             let name = node_text(child, source);
             push_symbol(
-                symbols, file_path, name, "import", line, None,
-                None, None, Some("private".to_string()),
+                symbols,
+                file_path,
+                name,
+                "import",
+                line,
+                None,
+                None,
+                None,
+                Some("private".to_string()),
             );
         }
     }
 }
 
-fn extract_package(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_package(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "scoped_identifier" || child.kind() == "identifier" {
             let name = node_text(child, source);
             let line = node_line_range(node);
             push_symbol(
-                symbols, file_path, name, "module", line, None,
-                None, None, Some("public".to_string()),
+                symbols,
+                file_path,
+                name,
+                "module",
+                line,
+                None,
+                None,
+                None,
+                Some("public".to_string()),
             );
         }
     }
@@ -452,7 +502,9 @@ import java.io.File;";
         assert!(imports.len() >= 1);
 
         // Check if we have any java.util imports
-        let has_util = symbols.iter().any(|s| s.name.contains("util") && s.kind == "import");
+        let has_util = symbols
+            .iter()
+            .any(|s| s.name.contains("util") && s.kind == "import");
         assert!(has_util);
     }
 

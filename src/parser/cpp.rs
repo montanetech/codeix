@@ -41,7 +41,15 @@ fn walk_node(
             return;
         }
         "union_specifier" => {
-            extract_class(node, source, file_path, "struct_specifier", parent_ctx, symbols, texts);
+            extract_class(
+                node,
+                source,
+                file_path,
+                "struct_specifier",
+                parent_ctx,
+                symbols,
+                texts,
+            );
             return;
         }
         "enum_specifier" => {
@@ -114,7 +122,11 @@ fn extract_function(
     let line = node_line_range(node);
     let sig = extract_signature_to_brace(node, source);
 
-    let kind = if parent_ctx.is_some() { "method" } else { "function" };
+    let kind = if parent_ctx.is_some() {
+        "method"
+    } else {
+        "function"
+    };
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
@@ -126,12 +138,23 @@ fn extract_function(
         access.to_string()
     } else {
         let is_static = has_storage_class(node, source, "static");
-        if is_static { "private".to_string() } else { "public".to_string() }
+        if is_static {
+            "private".to_string()
+        } else {
+            "public".to_string()
+        }
     };
 
     push_symbol(
-        symbols, file_path, full_name, kind, line, parent_ctx,
-        Some(sig), None, Some(visibility),
+        symbols,
+        file_path,
+        full_name,
+        kind,
+        line,
+        parent_ctx,
+        Some(sig),
+        None,
+        Some(visibility),
     );
 }
 
@@ -156,7 +179,11 @@ fn extract_declaration(
         access.to_string()
     } else {
         let is_static = has_storage_class(node, source, "static");
-        if is_static { "private".to_string() } else { "public".to_string() }
+        if is_static {
+            "private".to_string()
+        } else {
+            "public".to_string()
+        }
     };
 
     let mut cursor = node.walk();
@@ -171,10 +198,21 @@ fn extract_declaration(
                     } else {
                         name
                     };
-                    let kind = if parent_ctx.is_some() { "method" } else { "function" };
+                    let kind = if parent_ctx.is_some() {
+                        "method"
+                    } else {
+                        "function"
+                    };
                     push_symbol(
-                        symbols, file_path, full_name, kind, line, parent_ctx,
-                        Some(sig), None, Some(visibility.clone()),
+                        symbols,
+                        file_path,
+                        full_name,
+                        kind,
+                        line,
+                        parent_ctx,
+                        Some(sig),
+                        None,
+                        Some(visibility.clone()),
                     );
                 }
             }
@@ -182,15 +220,26 @@ fn extract_declaration(
                 if let Some(decl) = find_child_by_field(child, "declarator") {
                     let name = extract_declarator_name(decl, source);
                     if !name.is_empty() {
-                        let kind = if parent_ctx.is_some() { "property" } else { "variable" };
+                        let kind = if parent_ctx.is_some() {
+                            "property"
+                        } else {
+                            "variable"
+                        };
                         let full_name = if let Some(parent) = parent_ctx {
                             format!("{parent}.{name}")
                         } else {
                             name
                         };
                         push_symbol(
-                            symbols, file_path, full_name, kind, line, parent_ctx,
-                            None, None, Some(visibility.clone()),
+                            symbols,
+                            file_path,
+                            full_name,
+                            kind,
+                            line,
+                            parent_ctx,
+                            None,
+                            None,
+                            Some(visibility.clone()),
                         );
                     }
                 }
@@ -198,15 +247,26 @@ fn extract_declaration(
             "identifier" | "pointer_declarator" | "reference_declarator" => {
                 let name = extract_declarator_name(child, source);
                 if !name.is_empty() {
-                    let kind = if parent_ctx.is_some() { "property" } else { "variable" };
+                    let kind = if parent_ctx.is_some() {
+                        "property"
+                    } else {
+                        "variable"
+                    };
                     let full_name = if let Some(parent) = parent_ctx {
                         format!("{parent}.{name}")
                     } else {
                         name
                     };
                     push_symbol(
-                        symbols, file_path, full_name, kind, line, parent_ctx,
-                        None, None, Some(visibility.clone()),
+                        symbols,
+                        file_path,
+                        full_name,
+                        kind,
+                        line,
+                        parent_ctx,
+                        None,
+                        None,
+                        Some(visibility.clone()),
                     );
                 }
             }
@@ -246,8 +306,15 @@ fn extract_class(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), kind, line, parent_ctx,
-        None, None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        kind,
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some("public".to_string()),
     );
 
     // Walk class body with access tracking
@@ -263,7 +330,10 @@ fn extract_class(
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
             if child.kind() == "access_specifier" {
-                let text = node_text(child, source).trim_end_matches(':').trim().to_string();
+                let text = node_text(child, source)
+                    .trim_end_matches(':')
+                    .trim()
+                    .to_string();
                 current_access = match text.as_str() {
                     "public" => "public".to_string(),
                     "protected" => "internal".to_string(),
@@ -273,8 +343,13 @@ fn extract_class(
                 continue;
             }
             walk_node(
-                child, source, file_path, Some(&full_name),
-                &current_access, symbols, texts,
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                &current_access,
+                symbols,
+                texts,
             );
         }
     }
@@ -304,8 +379,15 @@ fn extract_enum(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "enum", line, parent_ctx,
-        None, None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "enum",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some("public".to_string()),
     );
 
     // Extract enum values
@@ -317,10 +399,15 @@ fn extract_enum(
                     let const_name = node_text(name_node, source);
                     let const_line = node_line_range(child);
                     push_symbol(
-                        symbols, file_path,
+                        symbols,
+                        file_path,
                         format!("{full_name}.{const_name}"),
-                        "constant", const_line, Some(&full_name),
-                        None, None, Some("public".to_string()),
+                        "constant",
+                        const_line,
+                        Some(&full_name),
+                        None,
+                        None,
+                        Some("public".to_string()),
                     );
                 }
             }
@@ -345,7 +432,9 @@ fn extract_namespace(
         if let Some(body) = find_child_by_field(node, "body") {
             let mut cursor = body.walk();
             for child in body.children(&mut cursor) {
-                walk_node(child, source, file_path, parent_ctx, "private", symbols, texts);
+                walk_node(
+                    child, source, file_path, parent_ctx, "private", symbols, texts,
+                );
             }
         }
         return;
@@ -359,14 +448,29 @@ fn extract_namespace(
     };
 
     push_symbol(
-        symbols, file_path, full_name.clone(), "module", line, parent_ctx,
-        None, None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name.clone(),
+        "module",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some("public".to_string()),
     );
 
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            walk_node(child, source, file_path, Some(&full_name), "public", symbols, texts);
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                "public",
+                symbols,
+                texts,
+            );
         }
     }
 }
@@ -389,8 +493,15 @@ fn extract_typedef(
                 name
             };
             push_symbol(
-                symbols, file_path, full_name, "type_alias", line, parent_ctx,
-                None, None, Some("public".to_string()),
+                symbols,
+                file_path,
+                full_name,
+                "type_alias",
+                line,
+                parent_ctx,
+                None,
+                None,
+                Some("public".to_string()),
             );
         }
     }
@@ -416,17 +527,19 @@ fn extract_using_alias(
     };
 
     push_symbol(
-        symbols, file_path, full_name, "type_alias", line, parent_ctx,
-        None, None, Some("public".to_string()),
+        symbols,
+        file_path,
+        full_name,
+        "type_alias",
+        line,
+        parent_ctx,
+        None,
+        None,
+        Some("public".to_string()),
     );
 }
 
-fn extract_using(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
     let text = node_text(node, source);
     // `using namespace std;` or `using std::string;`
@@ -441,38 +554,42 @@ fn extract_using(
 
     if !name.is_empty() {
         push_symbol(
-            symbols, file_path, name, "import", line, None,
-            None, None, Some("private".to_string()),
+            symbols,
+            file_path,
+            name,
+            "import",
+            line,
+            None,
+            None,
+            None,
+            Some("private".to_string()),
         );
     }
 }
 
-fn extract_include(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let line = node_line_range(node);
     if let Some(path_node) = find_child_by_field(node, "path") {
         let path = node_text(path_node, source);
         let path = path
-            .trim_start_matches(|c| c == '<' || c == '"')
-            .trim_end_matches(|c| c == '>' || c == '"')
+            .trim_start_matches(['<', '"'])
+            .trim_end_matches(['>', '"'])
             .to_string();
         push_symbol(
-            symbols, file_path, path, "import", line, None,
-            None, None, Some("private".to_string()),
+            symbols,
+            file_path,
+            path,
+            "import",
+            line,
+            None,
+            None,
+            None,
+            Some("private".to_string()),
         );
     }
 }
 
-fn extract_macro(
-    node: Node,
-    source: &[u8],
-    file_path: &str,
-    symbols: &mut Vec<SymbolEntry>,
-) {
+fn extract_macro(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
         None => return,
@@ -486,8 +603,15 @@ fn extract_macro(
     };
 
     push_symbol(
-        symbols, file_path, name, kind, line, None,
-        None, None, Some("public".to_string()),
+        symbols,
+        file_path,
+        name,
+        kind,
+        line,
+        None,
+        None,
+        None,
+        Some("public".to_string()),
     );
 }
 
@@ -498,21 +622,15 @@ fn extract_declarator_name(node: Node, source: &[u8]) -> String {
             // namespace::name — use the full qualified name
             node_text(node, source)
         }
-        "pointer_declarator" | "reference_declarator" => {
-            find_child_by_field(node, "declarator")
-                .map(|d| extract_declarator_name(d, source))
-                .unwrap_or_default()
-        }
-        "function_declarator" => {
-            find_child_by_field(node, "declarator")
-                .map(|d| extract_declarator_name(d, source))
-                .unwrap_or_default()
-        }
-        "array_declarator" => {
-            find_child_by_field(node, "declarator")
-                .map(|d| extract_declarator_name(d, source))
-                .unwrap_or_default()
-        }
+        "pointer_declarator" | "reference_declarator" => find_child_by_field(node, "declarator")
+            .map(|d| extract_declarator_name(d, source))
+            .unwrap_or_default(),
+        "function_declarator" => find_child_by_field(node, "declarator")
+            .map(|d| extract_declarator_name(d, source))
+            .unwrap_or_default(),
+        "array_declarator" => find_child_by_field(node, "declarator")
+            .map(|d| extract_declarator_name(d, source))
+            .unwrap_or_default(),
         "parenthesized_declarator" => {
             let mut cursor = node.walk();
             for child in node.children(&mut cursor) {
@@ -731,10 +849,7 @@ using MyInt = int;";
         let iostream = symbols.iter().find(|s| s.name == "iostream").unwrap();
         assert_eq!(iostream.kind, "import");
 
-        let myheader = symbols
-            .iter()
-            .find(|s| s.name == "myheader.h")
-            .unwrap();
+        let myheader = symbols.iter().find(|s| s.name == "myheader.h").unwrap();
         assert_eq!(myheader.kind, "import");
     }
 

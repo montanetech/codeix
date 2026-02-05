@@ -71,7 +71,9 @@ pub fn build_index_to_db(path: &Path) -> Result<Arc<Mutex<SearchDb>>> {
     }
 
     // Single FTS rebuild after all files
-    let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+    let db_guard = db
+        .lock()
+        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
     db_guard.rebuild_fts()?;
     drop(db_guard);
 
@@ -91,7 +93,9 @@ pub fn build_index(path: &Path) -> Result<()> {
     flush_index_to_disk(&root, &db).context("failed to flush index to disk")?;
 
     // Log final stats
-    let db_guard = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+    let db_guard = db
+        .lock()
+        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
     let (files, symbols, texts) = db_guard.export_all()?;
     drop(db_guard);
 
