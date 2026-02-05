@@ -396,56 +396,60 @@
 {"file":"src/parser/sfc.rs","kind":"docstring","line":[14,14],"text":"1-based line number where the content starts in the original file."}
 {"file":"src/parser/sfc.rs","kind":"docstring","line":[18,18],"text":"Extract script blocks from an SFC file based on its extension."}
 {"file":"src/parser/sfc.rs","kind":"docstring","line":[20,20],"text":"Returns an empty vec if no script blocks are found (e.g. template-only"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[31,33],"text":"---------------------------------------------------------------------------\nVue: <script> and <script setup>, with optional lang=\"ts\"\n---------------------------------------------------------------------------"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[39,41],"text":"---------------------------------------------------------------------------\nSvelte: <script> with optional lang=\"ts\"\n---------------------------------------------------------------------------"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[47,49],"text":"---------------------------------------------------------------------------\nAstro: --- frontmatter --- (always TS) + optional <script> blocks\n---------------------------------------------------------------------------"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[55,55],"text":"Extract frontmatter: content between first `---` and second `---`"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[59,59],"text":"Skip leading newline after opening ---"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[72,72],"text":"Count lines before the frontmatter content starts"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[85,85],"text":"Also extract any <script> tags in the body"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[91,93],"text":"---------------------------------------------------------------------------\nShared: extract <script> ... </script> blocks from HTML-like content\n---------------------------------------------------------------------------"}
-{"file":"src/parser/sfc.rs","kind":"docstring","line":[95,95],"text":"Extract all `<script ...>...</script>` blocks from HTML-like source."}
-{"file":"src/parser/sfc.rs","kind":"docstring","line":[97,97],"text":"`default_lang` is used when no `lang=\"...\"` attribute is present."}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[106,106],"text":"Find next <script"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[112,112],"text":"Make sure it's actually a tag (next char after \"script\" should be whitespace or >)"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[125,125],"text":"Find the closing > of the opening tag"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[131,131],"text":"Extract the opening tag attributes"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[134,134],"text":"Detect language from lang=\"...\" attribute"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[137,137],"text":"Content starts after the > (skip leading newline if present)"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[148,148],"text":"Find the matching </script> — content ends where the close tag begins"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[156,156],"text":"Calculate the 1-based start line of the content"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[167,167],"text":"Move past the closing tag"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[169,169],"text":"Skip past </script>"}
-{"file":"src/parser/sfc.rs","kind":"docstring","line":[180,180],"text":"Detect the script language from an opening `<script ...>` tag."}
-{"file":"src/parser/sfc.rs","kind":"docstring","line":[182,183],"text":"Looks for `lang=\"ts\"`, `lang=\"typescript\"`, `lang='ts'`, etc.\nReturns `\"typescript\"` or `\"javascript\"`."}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[187,187],"text":"Match lang=\"ts\" or lang=\"typescript\" (with either quote style)"}
-{"file":"src/parser/sfc.rs","kind":"comment","line":[201,201],"text":"No lang attribute — use the default"}
-{"file":"src/parser/sfc.rs","kind":"docstring","line":[209,209],"text":"Count the number of newline characters in a string slice."}
-{"file":"src/parser/sfc.rs","kind":"string","line":[220,220],"text":"<template>\\n  <div>hello</div>\\n</template>\\n\\n<script setup lang=\\\"ts\\\">\\nimport { ref } from 'vue'\\nconst msg = ref('hi')\\n</script>\\n"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[226,226],"text":"import { ref }"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[227,227],"text":"const msg"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[232,232],"text":"<script>\\nexport default { name: 'Foo' }\\n</script>\\n\\n<script setup lang=\\\"ts\\\">\\nconst x = 1\\n</script>\\n"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[243,243],"text":"<template>\\n  <div>hello</div>\\n</template>\\n"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[250,250],"text":"---\\nimport Layout from './Layout.astro'\\nconst title = 'Hello'\\n---\\n\\n<Layout title={title}>\\n  <h1>Hello</h1>\\n</Layout>\\n"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[256,256],"text":"import Layout"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[261,261],"text":"<script lang=\\\"ts\\\">\\n  let count = 0\\n  function inc() { count++ }\\n</script>\\n\\n<button on:click={inc}>{count}</button>\\n"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[270,270],"text":"<script lang=\\\"ts\\\">"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[271,271],"text":"<script lang='typescript'>"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[272,272],"text":"<script setup lang=\\\"ts\\\">"}
-{"file":"src/parser/sfc.rs","kind":"string","line":[278,278],"text":"<script setup>"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[32,34],"text":"---------------------------------------------------------------------------\nVue: <script> and <script setup>, with optional lang=\"ts\"\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[40,42],"text":"---------------------------------------------------------------------------\nSvelte: <script> with optional lang=\"ts\"\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[48,50],"text":"---------------------------------------------------------------------------\nAstro: --- frontmatter --- (always TS) + optional <script> blocks\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[56,56],"text":"Extract frontmatter: content between first `---` and second `---`"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[60,60],"text":"Skip leading newline after opening ---"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[73,73],"text":"Count lines before the frontmatter content starts"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[86,86],"text":"Also extract any <script> tags in the body"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[92,94],"text":"---------------------------------------------------------------------------\nShared: extract <script> ... </script> blocks from HTML-like content\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[96,96],"text":"Extract all `<script ...>...</script>` blocks from HTML-like source."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[98,98],"text":"`default_lang` is used when no `lang=\"...\"` attribute is present."}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[107,107],"text":"Find next <script"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[113,113],"text":"Make sure it's actually a tag (next char after \"script\" should be whitespace or >)"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[126,126],"text":"Find the closing > of the opening tag"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[132,132],"text":"Extract the opening tag attributes"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[135,135],"text":"Detect language from lang=\"...\" attribute"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[138,138],"text":"Content starts after the > (skip leading newline if present)"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[149,149],"text":"Find the matching </script> — content ends where the close tag begins"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[157,157],"text":"Calculate the 1-based start line of the content"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[168,168],"text":"Move past the closing tag"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[170,170],"text":"Skip past </script>"}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[181,181],"text":"Detect the script language from an opening `<script ...>` tag."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[183,184],"text":"Looks for `lang=\"ts\"`, `lang=\"typescript\"`, `lang='ts'`, etc.\nReturns `\"typescript\"` or `\"javascript\"`."}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[188,188],"text":"Match lang=\"ts\" or lang=\"typescript\" (with either quote style)"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[202,202],"text":"No lang attribute — use the default"}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[210,210],"text":"Count the number of newline characters in a string slice."}
+{"file":"src/parser/sfc.rs","kind":"string","line":[221,221],"text":"<template>\\n  <div>hello</div>\\n</template>\\n\\n<script setup lang=\\\"ts\\\">\\nimport { ref } from 'vue'\\nconst msg = ref('hi')\\n</script>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[227,227],"text":"import { ref }"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[228,228],"text":"const msg"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[233,233],"text":"<script>\\nexport default { name: 'Foo' }\\n</script>\\n\\n<script setup lang=\\\"ts\\\">\\nconst x = 1\\n</script>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[244,244],"text":"<template>\\n  <div>hello</div>\\n</template>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[251,251],"text":"---\\nimport Layout from './Layout.astro'\\nconst title = 'Hello'\\n---\\n\\n<Layout title={title}>\\n  <h1>Hello</h1>\\n</Layout>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[257,257],"text":"import Layout"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[262,262],"text":"<script lang=\\\"ts\\\">\\n  let count = 0\\n  function inc() { count++ }\\n</script>\\n\\n<button on:click={inc}>{count}</button>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[271,271],"text":"<!DOCTYPE html>\\n<html>\\n<head>\\n<script>\\nfunction greet(name) {\\n  return 'Hello ' + name;\\n}\\n</script>\\n</head>\\n<body></body>\\n</html>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[277,277],"text":"function greet"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[282,282],"text":"<!DOCTYPE html>\\n<html><body><p>Hello</p></body></html>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[289,289],"text":"<html>\\n<body>\\n<script lang=\\\"ts\\\">\\nconst x: number = 42;\\n</script>\\n</body>\\n</html>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[297,297],"text":"<script lang=\\\"ts\\\">"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[298,298],"text":"<script lang='typescript'>"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[299,299],"text":"<script setup lang=\\\"ts\\\">"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[305,305],"text":"<script setup>"}
 {"file":"src/parser/treesitter.rs","kind":"docstring","line":[9,9],"text":"Parse a single file using tree-sitter and extract symbols and text blocks."}
 {"file":"src/parser/treesitter.rs","kind":"comment","line":[15,15],"text":"SFC preprocessing: extract script blocks from Vue/Svelte/Astro files"}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[33,33],"text":"failed to parse {file_path}"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[70,70],"text":"For unsupported languages, just extract comments and strings"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[75,75],"text":"Merge consecutive doc comments (/// lines) into single entries"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[81,83],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[138,140],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[142,142],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[170,172],"text":"---------------------------------------------------------------------------\nSFC (Single File Component) handling\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[174,175],"text":"Parse an SFC file by extracting script blocks and running them through the\nappropriate JS/TS parser, adjusting line numbers back to the original file."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[191,191],"text":"Parse each script block with the detected language"}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[196,196],"text":"failed to parse {} script block in {}: {}"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[203,204],"text":"Adjust line numbers: add the block's start_line offset (minus 1 because\nthe parser already counts from line 1)"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[34,34],"text":"failed to parse {file_path}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[71,71],"text":"For unsupported languages, just extract comments and strings"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[76,76],"text":"Merge consecutive doc comments (/// lines) into single entries"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[82,84],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[139,141],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[143,143],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[171,173],"text":"---------------------------------------------------------------------------\nSFC (Single File Component) handling\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[175,176],"text":"Parse an SFC file by extracting script blocks and running them through the\nappropriate JS/TS parser, adjusting line numbers back to the original file."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[192,192],"text":"Parse each script block with the detected language"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[197,197],"text":"failed to parse {} script block in {}: {}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[204,205],"text":"Adjust line numbers: add the block's start_line offset (minus 1 because\nthe parser already counts from line 1)"}
 {"file":"src/parser/typescript.rs","kind":"docstring","line":[1,1],"text":"TypeScript symbol and text extraction."}
 {"file":"src/parser/typescript.rs","kind":"docstring","line":[3,5],"text":"TypeScript extends JavaScript with type annotations, interfaces,\nenums, type aliases, and namespaces. We reuse the JS extraction\nfor most constructs and add TS-specific ones."}
 {"file":"src/parser/typescript.rs","kind":"comment","line":[34,34],"text":"--- JS constructs ---"}

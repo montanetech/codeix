@@ -95,17 +95,18 @@ Tree-sitter grammars, feature-gated at compile time:
 | Ruby | `lang-ruby` | yes | `.rb` `.rake` `.gemspec` |
 | C# | `lang-csharp` | yes | `.cs` |
 
-### Single File Components (SFC)
+### Embedded scripts
 
-Vue, Svelte, and Astro files are preprocessed to extract embedded script blocks, which are then parsed with the JavaScript or TypeScript grammar:
+HTML, Vue, Svelte, and Astro files are preprocessed to extract embedded `<script>` blocks, which are then parsed with the JavaScript or TypeScript grammar:
 
 | Format | Extensions | Script detection |
 |---|---|---|
+| HTML | `.html` `.htm` | `<script>` tags, with optional `lang="ts"` |
 | Vue | `.vue` | `<script>` and `<script setup>`, with optional `lang="ts"` |
 | Svelte | `.svelte` | `<script>`, with optional `lang="ts"` |
 | Astro | `.astro` | `---` frontmatter (always TypeScript) + optional `<script>` tags |
 
-Line numbers in the index point to the original `.vue`/`.svelte`/`.astro` file, not the extracted script block.
+Line numbers in the index point to the original file, not the extracted script block.
 
 ## Install
 

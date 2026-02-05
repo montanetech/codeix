@@ -243,7 +243,7 @@
 {"file":"src/parser/languages.rs","name":"anyhow::Result","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/parser/languages.rs","name":"tree_sitter::Language","kind":"import","line":[2,2],"visibility":"private"}
 {"file":"src/parser/languages.rs","name":"get_language","kind":"function","line":[8,45],"sig":"pub fn get_language(name: &str) -> Result<Language>","visibility":"public"}
-{"file":"src/parser/languages.rs","name":"detect_language","kind":"function","line":[48,66],"sig":"pub fn detect_language(extension: &str) -> Option<&'static str>","visibility":"public"}
+{"file":"src/parser/languages.rs","name":"detect_language","kind":"function","line":[48,67],"sig":"pub fn detect_language(extension: &str) -> Option<&'static str>","visibility":"public"}
 {"file":"src/parser/mod.rs","name":"helpers","kind":"module","line":[1,1],"visibility":"public"}
 {"file":"src/parser/mod.rs","name":"languages","kind":"module","line":[2,2],"visibility":"public"}
 {"file":"src/parser/mod.rs","name":"sfc","kind":"module","line":[3,3],"visibility":"public"}
@@ -338,33 +338,36 @@
 {"file":"src/parser/rust_lang.rs","name":"test_rust_const","kind":"function","line":[503,515],"sig":"fn test_rust_const()","visibility":"private"}
 {"file":"src/parser/rust_lang.rs","name":"test_rust_comments","kind":"function","line":[518,527],"sig":"fn test_rust_comments()","visibility":"private"}
 {"file":"src/parser/sfc.rs","name":"ScriptBlock","kind":"struct","line":[9,16],"visibility":"public"}
-{"file":"src/parser/sfc.rs","name":"extract_script_blocks","kind":"function","line":[22,29],"sig":"pub fn extract_script_blocks(source: &[u8], extension: &str) -> Vec<ScriptBlock>","visibility":"public"}
-{"file":"src/parser/sfc.rs","name":"extract_vue_scripts","kind":"function","line":[35,37],"sig":"fn extract_vue_scripts(source: &[u8]) -> Vec<ScriptBlock>","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"extract_svelte_scripts","kind":"function","line":[43,45],"sig":"fn extract_svelte_scripts(source: &[u8]) -> Vec<ScriptBlock>","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"extract_astro_scripts","kind":"function","line":[51,89],"sig":"fn extract_astro_scripts(source: &[u8]) -> Vec<ScriptBlock>","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"extract_html_script_tags","kind":"function","line":[98,178],"sig":"fn extract_html_script_tags(source: &[u8], default_lang: &str) -> Vec<ScriptBlock>","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"detect_script_lang","kind":"function","line":[184,207],"sig":"fn detect_script_lang(open_tag: &str, default_lang: &str) -> &'static str","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"count_newlines_in","kind":"function","line":[210,212],"sig":"fn count_newlines_in(s: &str) -> usize","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"tests","kind":"module","line":[215,281],"visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"super::*","kind":"import","line":[216,216],"visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"test_vue_basic","kind":"function","line":[219,228],"sig":"fn test_vue_basic()","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"test_vue_two_scripts","kind":"function","line":[231,239],"sig":"fn test_vue_two_scripts()","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"test_vue_no_script","kind":"function","line":[242,246],"sig":"fn test_vue_no_script()","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"test_astro_frontmatter","kind":"function","line":[249,257],"sig":"fn test_astro_frontmatter()","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"test_svelte_basic","kind":"function","line":[260,266],"sig":"fn test_svelte_basic()","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"test_detect_lang_ts","kind":"function","line":[269,273],"sig":"fn test_detect_lang_ts()","visibility":"private"}
-{"file":"src/parser/sfc.rs","name":"test_detect_lang_default","kind":"function","line":[276,280],"sig":"fn test_detect_lang_default()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"extract_script_blocks","kind":"function","line":[22,30],"sig":"pub fn extract_script_blocks(source: &[u8], extension: &str) -> Vec<ScriptBlock>","visibility":"public"}
+{"file":"src/parser/sfc.rs","name":"extract_vue_scripts","kind":"function","line":[36,38],"sig":"fn extract_vue_scripts(source: &[u8]) -> Vec<ScriptBlock>","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"extract_svelte_scripts","kind":"function","line":[44,46],"sig":"fn extract_svelte_scripts(source: &[u8]) -> Vec<ScriptBlock>","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"extract_astro_scripts","kind":"function","line":[52,90],"sig":"fn extract_astro_scripts(source: &[u8]) -> Vec<ScriptBlock>","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"extract_html_script_tags","kind":"function","line":[99,179],"sig":"fn extract_html_script_tags(source: &[u8], default_lang: &str) -> Vec<ScriptBlock>","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"detect_script_lang","kind":"function","line":[185,208],"sig":"fn detect_script_lang(open_tag: &str, default_lang: &str) -> &'static str","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"count_newlines_in","kind":"function","line":[211,213],"sig":"fn count_newlines_in(s: &str) -> usize","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"tests","kind":"module","line":[216,308],"visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"super::*","kind":"import","line":[217,217],"visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_vue_basic","kind":"function","line":[220,229],"sig":"fn test_vue_basic()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_vue_two_scripts","kind":"function","line":[232,240],"sig":"fn test_vue_two_scripts()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_vue_no_script","kind":"function","line":[243,247],"sig":"fn test_vue_no_script()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_astro_frontmatter","kind":"function","line":[250,258],"sig":"fn test_astro_frontmatter()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_svelte_basic","kind":"function","line":[261,267],"sig":"fn test_svelte_basic()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_html_script_extraction","kind":"function","line":[270,278],"sig":"fn test_html_script_extraction()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_html_no_script","kind":"function","line":[281,285],"sig":"fn test_html_no_script()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_html_typescript_script","kind":"function","line":[288,293],"sig":"fn test_html_typescript_script()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_detect_lang_ts","kind":"function","line":[296,300],"sig":"fn test_detect_lang_ts()","visibility":"private"}
+{"file":"src/parser/sfc.rs","name":"test_detect_lang_default","kind":"function","line":[303,307],"sig":"fn test_detect_lang_default()","visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"anyhow::Result","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"tree_sitter::{Node, Parser, Tree}","kind":"import","line":[2,2],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[4,4],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"crate::parser::helpers::*","kind":"import","line":[5,5],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"crate::parser::languages::get_language","kind":"import","line":[6,6],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"crate::parser::sfc","kind":"import","line":[7,7],"visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"parse_file","kind":"function","line":[10,79],"sig":"pub fn parse_file( source: &[u8], language: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
-{"file":"src/parser/treesitter.rs","name":"extract_texts_generic","kind":"function","line":[85,92],"sig":"fn extract_texts_generic( tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"walk_texts_generic","kind":"function","line":[94,136],"sig":"fn walk_texts_generic( node: Node, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"merge_consecutive_texts","kind":"function","line":[143,168],"sig":"fn merge_consecutive_texts(texts: Vec<TextEntry>) -> Vec<TextEntry>","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"parse_sfc","kind":"function","line":[176,222],"sig":"fn parse_sfc( source: &[u8], extension: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"parse_file","kind":"function","line":[10,80],"sig":"pub fn parse_file( source: &[u8], language: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/parser/treesitter.rs","name":"extract_texts_generic","kind":"function","line":[86,93],"sig":"fn extract_texts_generic( tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"walk_texts_generic","kind":"function","line":[95,137],"sig":"fn walk_texts_generic( node: Node, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"merge_consecutive_texts","kind":"function","line":[144,169],"sig":"fn merge_consecutive_texts(texts: Vec<TextEntry>) -> Vec<TextEntry>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"parse_sfc","kind":"function","line":[177,223],"sig":"fn parse_sfc( source: &[u8], extension: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[7,7],"visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[9,9],"visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"crate::parser::helpers::*","kind":"import","line":[10,10],"visibility":"private"}

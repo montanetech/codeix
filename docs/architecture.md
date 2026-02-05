@@ -188,7 +188,7 @@ server reads pyproject.toml → dependencies
 | Ruby | `tree-sitter-ruby` | `lang-ruby` |
 | C# | `tree-sitter-c-sharp` | `lang-csharp` |
 
-Single File Components (Vue `.vue`, Svelte `.svelte`, Astro `.astro`) are preprocessed to extract `<script>` blocks (and Astro `---` frontmatter), which are then parsed with the JS/TS grammar. Line numbers are adjusted back to the original file.
+HTML files (`.html`, `.htm`) and Single File Components (Vue `.vue`, Svelte `.svelte`, Astro `.astro`) are preprocessed to extract `<script>` blocks (and Astro `---` frontmatter), which are then parsed with the JS/TS grammar. Line numbers are adjusted back to the original file.
 
 **Consequences:**
 - Consistent parsing across all supported languages
