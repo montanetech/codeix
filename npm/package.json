@@ -1,6 +1,6 @@
 {
   "name": "codeix",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Portable, composable code index — build with tree-sitter, query via MCP",
   "license": "MIT OR Apache-2.0",
   "repository": {
@@ -14,8 +14,15 @@
   "scripts": {
     "postinstall": "node install.js"
   },
-  "os": ["darwin", "linux", "win32"],
-  "cpu": ["x64", "arm64"],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "engines": {
     "node": ">=16"
   },
