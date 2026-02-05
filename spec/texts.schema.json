@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeix.dev/spec/texts.schema.json",
+  "title": ".codeindex texts.jsonl line",
+  "description": "One line in texts.jsonl — a comment, docstring, or string literal.",
+  "type": "object",
+  "required": ["file", "kind", "line", "text"],
+  "additionalProperties": true,
+  "properties": {
+    "file": {
+      "type": "string",
+      "description": "Relative path to the source file.",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "description": "Text kind.",
+      "enum": ["comment", "docstring", "string"]
+    },
+    "line": {
+      "type": "array",
+      "description": "Start and end line numbers (1-based, inclusive).",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "text": {
+      "type": "string",
+      "description": "Extracted text content, trimmed."
+    },
+    "parent": {
+      "type": "string",
+      "description": "Name of the enclosing symbol, if any.",
+      "minLength": 1
+    }
+  }
+}

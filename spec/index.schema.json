@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeix.dev/spec/index.schema.json",
+  "title": ".codeindex index.json",
+  "description": "Manifest file for a .codeindex/ directory.",
+  "type": "object",
+  "required": ["version", "name", "root", "languages"],
+  "additionalProperties": true,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Format version (MAJOR.MINOR).",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "examples": ["1.0"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Project name.",
+      "minLength": 1
+    },
+    "root": {
+      "type": "string",
+      "description": "Relative path from .codeindex/ to the project root.",
+      "examples": ["."]
+    },
+    "languages": {
+      "type": "array",
+      "description": "Languages found in the project (lowercase).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  }
+}

@@ -1,0 +1,455 @@
+# Codeindex — Architecture Decisions
+
+## Problem Statement
+
+Existing code indexing tools (e.g. code-index-mcp) have three key limitations:
+
+1. **Performance** — Python-based indexers are slow for large codebases
+2. **No sharing** — indexes are local caches, not shareable artifacts
+3. **No composition** — no way to aggregate indexes across monorepo packages or dependencies
+
+## Vision
+
+A **portable, composable code index format** with a CLI to build it and an MCP server to query it.
+
+A developer builds the index, commits it to the repo. Consumers (humans or AI agents) use it instantly — no re-indexing.
+
+---
+
+## ADR-001: Index format is text-based JSONL
+
+**Context:** The index must be cross-platform, git-friendly (diffable, mergeable), and easy to inspect.
+
+**Decision:** The index is a set of text files using JSONL (JSON Lines) format.
+
+**Consequences:**
+- Diffs are clean — one line per entry, changes cluster by file path
+- No binary portability issues (endianness, platform-specific)
+- Slightly larger than binary formats, but manageable at scale
+- Human-readable, inspectable with standard tools (grep, jq)
+
+**Rejected alternatives:**
+- SQLite: binary, opaque diffs, merge conflicts in git
+- FlatBuffers/MessagePack: binary, not git-friendly
+- One JSON file per source file: too many files, noisy in git
+
+---
+
+## ADR-002: Index structure — 4 files
+
+**Decision:** A `.codeindex/` directory at the project root with:
+
+```
+.codeindex/
+  index.json        # manifest: version, name, metadata
+  files.jsonl       # one line per source file
+  symbols.jsonl     # one line per symbol, sorted by file then line
+  texts.jsonl       # one line per comment/string/docstring
+```
+
+### `index.json` — manifest
+```json
+{
+  "version": "1.0",
+  "name": "my-project",
+  "root": ".",
+  "languages": ["python", "typescript"]
+}
+```
+
+Self-description only. No dependency wiring.
+
+### `files.jsonl` — file registry
+```jsonl
+{"path":"src/main.py","lang":"python","hash":"a1b2c3","lines":142}
+{"path":"src/utils/helpers.py","lang":"python","hash":"d4e5f6","lines":87}
+```
+
+Sorted by path. One line per source file.
+
+### `symbols.jsonl` — symbol index (definitions + imports)
+```jsonl
+{"file":"src/main.py","name":"os","kind":"import","line":[1,1]}
+{"file":"src/main.py","name":"utils.parse","kind":"import","line":[2,2],"alias":"parse"}
+{"file":"src/main.py","name":"Config","kind":"class","line":[22,45]}
+{"file":"src/main.py","name":"Config.__init__","kind":"method","line":[23,30],"parent":"Config","sig":"def __init__(self, path: str, debug: bool = False)"}
+{"file":"src/main.py","name":"main","kind":"function","line":[48,60],"sig":"def main(args: list[str]) -> int"}
+```
+
+Sorted by file path, then line number. Flat structure with `parent` field for nesting.
+
+Optional `sig` field on function/method/class symbols: the raw declaration text extracted from the AST (parameters + return type), as it appears in source. No normalization across languages — the LLM already understands each language's syntax. Omitted when not available (e.g. symbol kinds where signatures don't apply).
+
+Imports are included as symbols with `kind: "import"`. This enables dependency graph queries ("what does this file use?", "who imports this module?") without a separate file. References (usage sites) are **not** included — they require semantic/type resolution that tree-sitter can't provide reliably.
+
+### `texts.jsonl` — comments, docstrings, string literals
+```jsonl
+{"file":"src/main.py","kind":"docstring","line":[15,18],"text":"Validates user credentials against the database.","parent":"authenticate"}
+{"file":"src/main.py","kind":"comment","line":[45,45],"text":"TODO: add rate limiting"}
+{"file":"src/main.py","kind":"string","line":[22,22],"text":"Invalid credentials for user: %s"}
+```
+
+Sorted by file path, then line number. Extracted by tree-sitter (comment/string AST node types).
+
+**What's included:** comments, docstrings, string literals above a minimum length.
+**What's excluded:** trivial strings (`""`, `"\n"`), auto-generated boilerplate.
+**Why:** enables FTS on human-written prose — find TODOs, error messages, documentation — which `rg` can't selectively target (it can't distinguish comments from code).
+
+At serve time, all JSONL files are loaded into an in-memory SQLite database with FTS5 indexes. This provides a single query engine for all search: symbol lookup, file discovery, and full-text search on prose — with fuzzy matching and BM25 ranking for free.
+
+**Scale estimate** (10k-file project):
+- `files.jsonl`: ~10k lines, ~500KB
+- `symbols.jsonl`: ~100k lines, ~5MB
+- `texts.jsonl`: ~50k lines, ~3MB
+
+---
+
+## ADR-003: Index is self-contained, no dependency declarations
+
+**Context:** We need composition for monorepos and dependencies. The question is where the wiring lives.
+
+**Decision:** The `.codeindex/` directory describes only its own code. It never references other indexes.
+
+Dependency resolution happens at **query time** by the CLI/MCP server, which:
+
+1. Reads the project's package manifest (`package.json`, `Cargo.toml`, `pyproject.toml`, `go.mod`, `composer.json`, etc.)
+2. Resolves dependency locations on disk using standard package manager conventions
+3. Looks for `.codeindex/` in each resolved dependency
+4. Mounts found indexes automatically
+
+**Consequences:**
+- Index format stays simple and universal
+- No coupling to any package manager in the index itself
+- Package manager support is a pluggable concern in the CLI/server
+- A library author can ship `.codeindex/` in their published package (npm, PyPI, crates.io)
+
+**Examples:**
+
+Monorepo with npm workspaces:
+```
+server reads package.json → workspaces: ["packages/*"]
+  → finds packages/core/.codeindex/
+  → finds packages/ui/.codeindex/
+  → mounts both automatically
+```
+
+Python project:
+```
+server reads pyproject.toml → dependencies
+  → checks .venv/lib/.../requests/.codeindex/
+  → if present, loads it
+```
+
+---
+
+## ADR-004: Parsing via tree-sitter
+
+**Status:** Strong candidate — best available option as of 2025.
+
+**Context:** We need reliable, fast, multi-language parsing to extract symbols (names, kinds, line ranges, parent relationships). This is shallow extraction, not full semantic analysis.
+
+**Decision:** Use tree-sitter for AST parsing with language-specific `tags.scm` query files.
+
+**Why tree-sitter:**
+- Industry standard — used by GitHub, Aider, Zed, Neovim, Helix, ast-grep, Sourcegraph
+- One unified C library + query API for all languages
+- 100+ language grammars available, community-maintained
+- Built-in error recovery (handles incomplete/broken code)
+- `tags.scm` query files already exist for major languages (maintained by editor/tool communities)
+- Adding a language = adding one `.scm` query file, no new binary
+
+**Alternatives considered:**
+
+| Tool | Verdict | Why not |
+|---|---|---|
+| Universal Ctags | Declining | Regex-based, less accurate, external binary |
+| ANTLR | Overkill | No pre-built grammars ecosystem, heavier |
+| LSP servers | Too heavy | Need N servers installed, slow startup |
+| SCIP (Sourcegraph) | Too heavy | Per-language indexers, not incremental |
+| Stack Graphs (GitHub) | Dead | Archived Sept 2025 — too complex to maintain |
+| Per-language native parsers | Fragmented | N install requirements, N output formats |
+
+**Limitations to accept:**
+- Syntax only, no semantic understanding (no type resolution, no cross-file reference resolution)
+- Grammar quality varies for niche languages — fallback to file-level indexing only
+- Each language grammar is a C library — packaging/distribution concern (not architectural)
+
+**Consequences:**
+- Consistent parsing across all supported languages
+- Language support is additive — add a grammar + query file per language
+- Tree-sitter is C-based — fast regardless of host language
+- We rely on community-maintained grammars — risk of stale/buggy grammars for rare languages
+
+---
+
+## ADR-005: Three commands — build, serve, watch
+
+**Decision:** The tool has three commands:
+
+### `codeindex build`
+- Scans source files, parses with tree-sitter, writes `.codeindex/`
+- Incremental: only re-indexes files whose hash changed
+- Deterministic output: same source → same index (for clean diffs)
+- Can be run manually, in CI, or from a git pre-commit hook
+
+### `codeindex serve`
+- Loads `.codeindex/` into memory (or in-memory SQLite for complex queries)
+- Auto-discovers and mounts dependency indexes
+- Exposes search/query tools via MCP protocol
+
+### `codeindex serve --watch`
+- Combines serve + file watching
+- On source file change (debounced): re-indexes changed files, updates in-memory state, flushes `.codeindex/` to disk
+- The index stays in sync with the code at all times
+- `.codeindex/` shows up in `git status` like any other modified file — commit it when you commit your code
+
+**Consequences:**
+- Build and serve are decoupled — you can build on CI, serve locally
+- The index is the contract between the two
+- MCP server can use any in-memory representation for speed (not constrained by on-disk format)
+- Watch mode makes the index feel like a lockfile — always there, always current, no extra step
+
+---
+
+## ADR-006: Deterministic, sorted output
+
+**Context:** Since the index lives in git, diffs must be meaningful and minimal.
+
+**Decision:** All JSONL output is:
+- Sorted by a stable key (file path, then line number)
+- Deterministic: same input always produces the same output
+- No timestamps or random IDs in the index entries
+
+**Consequences:**
+- Rebuilding the index without source changes produces zero diff
+- PR reviews can meaningfully show what changed in the index
+- Merge conflicts are rare and resolvable (sorted order = locality)
+
+---
+
+## ADR-007: Index stays on disk via watch mode — committed like a lockfile
+
+**Context:** The index lives in git. When should it be written to disk?
+
+**Decision:** Multiple strategies, layered on top of one core primitive (`codeindex build`):
+
+| Strategy | How | When |
+|---|---|---|
+| Manual | `codeindex build` | Before committing, like `npm run build` |
+| Watch | `codeindex serve --watch` | Continuous — writes to disk on every source change (debounced) |
+| Pre-commit hook | `codeindex build` in git hook | Automatically on `git commit` |
+| CI | `codeindex build` in pipeline | On push/merge, commits the result |
+
+The **recommended workflow** is watch mode:
+
+```
+$ codeindex serve --watch     # start once, forget about it
+
+# ... edit code ...
+# .codeindex/ updates automatically
+
+$ git add -A                  # .codeindex/ is just another changed file
+$ git commit -m "feat: ..."
+```
+
+**Consequences:**
+- No extra step for developers — index is always current
+- `.codeindex/` behaves like a lockfile (package-lock.json, Cargo.lock)
+- All strategies produce the same output (deterministic build)
+- Teams can choose the strategy that fits their workflow
+
+**Rejected alternatives:**
+- Only manual build: too easy to forget, index drifts out of sync
+- Only CI: developers don't benefit locally during development
+- Auto-commit: too invasive, pollutes git history
+
+---
+
+## ADR-008: Core is local only — no external services
+
+**Context:** Many developer tools require API keys, cloud services, or network access. This creates friction, vendor lock-in, and breaks air-gapped environments.
+
+**Decision:** Codeindex core requires **zero external services**. Everything runs locally, offline, with no API keys.
+
+**Principles:**
+- **Local only** — no network calls, no API keys, works offline and air-gapped
+- **No mandatory heavy dependencies** — optional features can bring their own deps, but core stays lean
+- **Deterministic core** — the `.codeindex/` on-disk format is deterministic and text-based
+
+**Consequences:**
+- Core stays simple, fast, and portable
+- Works everywhere: CI, containers, air-gapped networks, developer laptops
+- No vendor lock-in
+
+---
+
+## ADR-009: MCP tool surface — 6 tools, zero plumbing
+
+**Context:** The MCP server exposes tools to AI agents. Competing servers (code-index-mcp: 13 tools, claude-context: 4 tools, Serena: 21 tools) mix search tools with management plumbing (init, refresh, configure watcher, temp directories). This forces agents to manage infrastructure before they can query.
+
+**Decision:** 6 tools, split into search (FTS, fuzzy, ranked) and lookup (exact, structural). Zero management tools — the index is pre-built, the server loads it automatically.
+
+### Search tools (FTS5, BM25-ranked)
+
+| Tool | Input | Returns |
+|---|---|---|
+| `search_symbols` | `query`, optional `kind`/`file` filters | Matching symbols with file, line, kind, parent |
+| `search_files` | `query`, optional `lang` filter | Matching files with path, lang, lines |
+| `search_texts` | `query`, optional `kind`/`file` filters | Matching text entries (comments, docstrings, strings) with file, line, context |
+
+### Lookup tools (exact, structural)
+
+| Tool | Input | Returns |
+|---|---|---|
+| `get_file_symbols` | `file` path | All symbols in that file, ordered by line |
+| `get_symbol_children` | `file`, `parent` name | Direct children of a symbol |
+| `get_imports` | `file` path | All imports for that file |
+
+**Design principles:**
+- Each tool maps to one query pattern on the SQLite FTS5 database
+- Search tools are fuzzy and ranked — for discovery ("find something related to auth")
+- Lookup tools are exact and structural — for navigation ("what's in this file?")
+- All return JSON arrays, paginated if needed
+- All can scope to a specific mounted index (for monorepo/dependency queries)
+
+**What's deliberately excluded:**
+- Raw code search — the agent already has grep/rg tools
+- File content reading — the agent already has file read tools
+- Index management (init, refresh, configure) — the index is pre-built and auto-loaded
+- Refactoring (rename, insert) — out of scope, that's an LSP concern
+
+**Consequences:**
+- Agents can query immediately — no setup calls needed
+- Tool descriptions are clear and non-overlapping — agents pick the right tool easily
+- Unique capabilities no competitor offers: `search_texts` (prose search), `get_imports` (dependency graph)
+- Tight surface = easier to implement, test, and document
+
+---
+
+## ADR-010: Host language — Rust
+
+**Context:** The project needs a language that delivers native performance (the original motivation — Python was too slow), has first-class tree-sitter support, and produces a single distributable binary with no runtime.
+
+**Decision:** Rust.
+
+**Key crates:**
+- `tree-sitter` — native C FFI bindings for parsing
+- `rusqlite` — SQLite with FTS5, static linking
+- `notify` — cross-platform file watching
+- `rmcp` — MCP protocol SDK
+- `serde` / `serde_json` — JSONL serialization
+- `clap` — CLI argument parsing
+- `grep` family (future) — embeddable ripgrep for raw code search
+
+**Why Rust over alternatives:**
+
+| | Rust | Go | TypeScript |
+|---|---|---|---|
+| Performance | Native, zero-cost | Fast, GC pauses | V8 overhead — the problem we're solving |
+| tree-sitter | First-class C FFI | CGo overhead, painful for static builds | WASM or native addon |
+| Single binary | Yes, no runtime | Yes, no runtime | Needs Node.js |
+| ripgrep (future) | Native crates | N/A | N/A |
+| SQLite + FTS5 | `rusqlite`, static | `go-sqlite3` or pure Go | `better-sqlite3`, native addon |
+
+**Risks accepted:**
+- Slower iteration speed than Go/TS — mitigated by focused scope (CLI + MCP server, not a sprawling app)
+- MCP SDK (`rmcp`) is newer than the TypeScript reference impl — protocol is simple JSON-RPC over stdio, can implement transport layer ourselves if needed
+- Steeper contributor learning curve — acceptable for a performance-focused tool
+
+**Consequences:**
+- Single static binary — `cargo build --release` produces one file, no runtime dependencies
+- All core dependencies (tree-sitter, SQLite, file watcher) link statically
+- Cross-compilation via `cross` for Linux/macOS/Windows
+- Consistent with the ecosystem: ripgrep, tree-sitter, bat, fd, delta — all Rust CLI tools
+
+**Distribution — multi-ecosystem, multi-platform:**
+
+Release tooling: `cargo-dist` (npm, Homebrew, GitHub Releases, shell installers) + `maturin` (PyPI wheels). Same pattern as ruff, biome, esbuild.
+
+| Channel | Install command | How |
+|---|---|---|
+| crates.io | `cargo install codeindex` | Native Rust |
+| npm | `npx codeindex` | `@codeindex/{platform}` packages via `optionalDependencies` |
+| PyPI | `pip install codeindex` | Platform-specific wheels via maturin |
+| Homebrew | `brew install codeindex` | Formula generated by cargo-dist |
+| GitHub Releases | Direct download | Prebuilt tarballs + checksums |
+| Shell | `curl -fsSL ... \| sh` | Installer script generated by cargo-dist |
+
+Platform targets (8 binaries):
+
+| OS | x86_64 | aarch64 |
+|---|---|---|
+| Linux (glibc) | ✓ | ✓ |
+| Linux (musl/static) | ✓ | ✓ |
+| macOS | ✓ | ✓ (Apple Silicon) |
+| Windows | ✓ | ✓ |
+
+CI builds on GitHub Actions with native runners for each target. The `.codeindex/` format itself is plain JSONL — any language can read it directly without the binary.
+
+---
+
+## ADR-011: Project discovery — `.git/` boundaries
+
+**Context:** Codeindex must handle diverse project layouts: single repos, monorepos, sibling repos cloned side by side, git submodules, and arbitrary nesting. The user launches `codeindex` once from any directory and expects everything below to be indexed.
+
+**Decision:** One rule — **every directory containing `.git/` gets its own `.codeindex/`**.
+
+The scanner walks the full tree downward from the launch directory. When it encounters a `.git/` (directory or file — submodules use a `.git` file), it treats that subtree as a self-contained project and places `.codeindex/` at that level.
+
+**What the scanner does:**
+
+| Action | Scope | Example |
+|---|---|---|
+| **Index** (build + watch) | Source files inside each git repo, respecting `.gitignore` | `frontend/src/**` → `frontend/.codeindex/` |
+| **Mount** (read-only) | Pre-existing `.codeindex/` in dependency directories | `node_modules/foo/.codeindex/` → mounted for queries |
+| **Skip** | Dependency directories themselves — not your code | `node_modules/`, `.venv/`, `target/` |
+
+**Layouts handled uniformly:**
+
+Single repo:
+```
+~/myproject/          # has .git/
+  src/
+  .codeindex/         ← built here
+```
+
+Sibling repos (launched from parent):
+```
+~/projects/           # no .git/
+  frontend/           # has .git/ → frontend/.codeindex/
+  backend/            # has .git/ → backend/.codeindex/
+  shared-lib/         # has .git/ → shared-lib/.codeindex/
+```
+
+Git submodules:
+```
+~/monorepo/           # has .git/  → monorepo/.codeindex/
+  vendor/libfoo/      # has .git  → vendor/libfoo/.codeindex/
+  vendor/libbar/      # has .git  → vendor/libbar/.codeindex/
+```
+
+**No modes, no config, no special-casing.** The `.git/` presence is the only signal. Submodules, sibling repos, and nested repos all follow the same rule.
+
+**Locking:** Before indexing a project, the process acquires a lockfile (`.codeindex/.lock`) using OS-level file locking (`flock`/`LockFileEx`). If the lock is already held — another process is indexing this project — skip it and mount its `.codeindex/` read-only instead. The lockfile is `.gitignore`d. This prevents conflicts when multiple `codeindex` processes overlap on the same subtree (e.g. one launched from `~/projects/` and another from `~/projects/frontend/`).
+
+**Dependency discovery** (per ADR-003) happens within each discovered project: the server reads that project's manifests and mounts any `.codeindex/` found in its resolved dependencies.
+
+**Consequences:**
+- One launch covers everything — no need to know the layout upfront
+- Each repo owns its own `.codeindex/` — committed independently
+- Submodules handled without submodule-specific logic
+- Sibling repos handled without workspace-specific logic
+- `.gitignore` is respected per-project — each repo's ignore rules apply to its own tree
+
+---
+
+## Resolved Questions
+
+- [x] **Host language**: Rust — native performance, first-class tree-sitter/SQLite/ripgrep support, single static binary
+- [x] **Symbol kinds**: follow LSP `SymbolKind` taxonomy (function, method, class, interface, enum, constant, variable, property, module, etc.) + `import`. Extensible — `kind` is a string, not a closed enum.
+- [x] **Imports**: included in `symbols.jsonl` as `kind: "import"`. References (usage sites) excluded — unreliable without type resolution.
+- [x] **Search strategy**: all JSONL loaded into in-memory SQLite + FTS5 at serve time — one query engine for symbols, files, and text search. Raw code search left to the consumer (agent's own grep tools). Embedding `rg` as a library is a future option if needed.
+- [x] **File watching**: `serve --watch` keeps index in sync on disk — commit it with your code
+- [x] **MCP tools**: 6 tools — 3 search (symbols, files, texts) + 3 lookup (file symbols, children, imports). Zero management plumbing.
+- [x] **Remote indexes**: deferred. Start local only. Future option: git-based references (`git+https://...#ref:.codeindex/`) with local caching. No dedicated registry — piggyback on git.
+- [x] **File hashing**: BLAKE3 truncated to 64-bit, hex-encoded (16 chars). Change detection only — collision worst case is a missed re-index, self-heals on next edit. Birthday bound at ~4B files — safe for any project. Hex over base64 for readability/tooling (grep, jq).

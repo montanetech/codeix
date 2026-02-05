@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeix.dev/spec/files.schema.json",
+  "title": ".codeindex files.jsonl line",
+  "description": "One line in files.jsonl — a single tracked file.",
+  "type": "object",
+  "required": ["path", "lang", "hash", "lines"],
+  "additionalProperties": true,
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Relative path from project root. Forward slashes, no leading './'.",
+      "minLength": 1,
+      "pattern": "^[^\\\\]"
+    },
+    "lang": {
+      "type": ["string", "null"],
+      "description": "Detected language (lowercase), or null for unrecognized files.",
+      "examples": ["python", "rust", "typescript", null]
+    },
+    "hash": {
+      "type": "string",
+      "description": "BLAKE3 content hash, truncated to 64 bits, hex-encoded.",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "lines": {
+      "type": "integer",
+      "description": "Total line count.",
+      "minimum": 0
+    }
+  }
+}

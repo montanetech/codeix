@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeix.dev/spec/symbols.schema.json",
+  "title": ".codeindex symbols.jsonl line",
+  "description": "One line in symbols.jsonl — a symbol definition or import.",
+  "type": "object",
+  "required": ["file", "name", "kind", "line"],
+  "additionalProperties": true,
+  "properties": {
+    "file": {
+      "type": "string",
+      "description": "Relative path to the source file.",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "description": "Symbol name. Dot-separated for nested symbols (e.g. 'Config.__init__').",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "description": "Symbol kind. Common values: function, method, class, interface, enum, struct, constant, variable, property, module, type_alias, import. Open set — unknown kinds are valid.",
+      "minLength": 1
+    },
+    "line": {
+      "type": "array",
+      "description": "Start and end line numbers (1-based, inclusive).",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "parent": {
+      "type": "string",
+      "description": "Name of the parent symbol, if nested. Omitted for top-level symbols.",
+      "minLength": 1
+    },
+    "sig": {
+      "type": "string",
+      "description": "Raw declaration text (parameters, return type) as it appears in source. Omitted when not applicable."
+    },
+    "alias": {
+      "type": "string",
+      "description": "Local alias for imports. Omitted when import has no alias.",
+      "minLength": 1
+    },
+    "visibility": {
+      "type": "string",
+      "description": "Symbol visibility: public (exported API), internal (package/crate visible), private (local scope). Omitted when not determinable.",
+      "enum": ["public", "internal", "private"]
+    }
+  }
+}
