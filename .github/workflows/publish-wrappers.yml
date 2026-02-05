@@ -10,6 +10,9 @@ on:
 jobs:
   publish-npm:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -28,13 +31,14 @@ jobs:
           "
 
       - name: Publish
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         working-directory: npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-pypi:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -48,15 +52,16 @@ jobs:
           sed -i "s/^version = .*/version = \"${{ inputs.version }}\"/" pyproject.toml
           sed -i "s/^__version__ = .*/__version__ = \"${{ inputs.version }}\"/" codeix/__init__.py
 
-      - name: Build and publish
+      - name: Build
         run: |
           cd python
-          pip install build twine
+          pip install build
           python -m build
-          twine upload dist/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/dist/
 
   update-homebrew:
     runs-on: ubuntu-latest

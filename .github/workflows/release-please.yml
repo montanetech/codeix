@@ -8,6 +8,7 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
+  id-token: write
 
 jobs:
   release-please:
@@ -30,5 +31,6 @@ jobs:
     permissions:
       contents: write
       actions: write
+      id-token: write
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
