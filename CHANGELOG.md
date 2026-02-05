@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/montanetech/codeix/compare/v0.1.2...v0.1.3) (2026-02-05)
+
+
+### Bug Fixes
+
+* chain release workflow from release-please via workflow_call ([1476c62](https://github.com/montanetech/codeix/commit/1476c62b36c02e912b19bfb80a0b28123f2653ef))
+
 ## [0.1.2](https://github.com/montanetech/codeix/compare/v0.1.1...v0.1.2) (2026-02-05)
 
 
