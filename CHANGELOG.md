@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/montanetech/codeix/compare/v0.1.1...v0.1.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* drop x86_64-apple-darwin target (macos-13 runner retired) ([60f383f](https://github.com/montanetech/codeix/commit/60f383fcd59928ad3bb90f4db2cd59d7de51ff97))
+* remove component prefix from release-please tags ([0ee659e](https://github.com/montanetech/codeix/commit/0ee659e723f7f7fbcd8ee09bf94e57b4df8f7f2c))
+
 ## [0.1.1](https://github.com/montanetech/codeix/compare/codeix-v0.1.0...codeix-v0.1.1) (2026-02-05)
 
 
