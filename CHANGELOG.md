@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/montanetech/codeix/compare/v0.1.3...v0.1.4) (2026-02-05)
+
+
+### Bug Fixes
+
+* add actions:write permission to release workflow for workflow_dispatch ([53c5f60](https://github.com/montanetech/codeix/commit/53c5f601b2c5c9c43c152fb8a57dd05db0b9d4e9))
+
 ## [0.1.3](https://github.com/montanetech/codeix/compare/v0.1.2...v0.1.3) (2026-02-05)
 
 

@@ -1,6 +1,6 @@
 [package]
 name = "codeix"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 description = "Portable, composable code index — build with tree-sitter, query via MCP"
 license = "MIT OR Apache-2.0"
