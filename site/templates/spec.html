@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ section.title }} &mdash; codeix</title>
+<meta name="description" content="The .codeindex format specification: an open, portable format for structured code indexing.">
+<style>
+/* ═══════════════════════════════════════════
+   SPEC PAGE — codeix.dev/spec/
+   ═══════════════════════════════════════════ */
+
+:root {
+  --bg-deep: #060a12;
+  --bg: #0b1120;
+  --bg-surface: #111a2e;
+  --bg-code: #0d1526;
+  --border: #1e2d4a;
+  --border-subtle: #152040;
+
+  --text: #cdd6e4;
+  --text-bright: #eaf0f6;
+  --text-muted: #5a6a84;
+  --text-dim: #3a4a64;
+
+  --accent: #00dfa2;
+  --accent-dim: #00dfa233;
+  --sky: #38bdf8;
+  --amber: #fbbf24;
+
+  --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg-deep);
+  color: var(--text);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ── */
+
+.spec-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Sidebar nav ── */
+
+.spec-nav {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  border-right: 1px solid var(--border);
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+}
+
+.spec-nav-home {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+  display: block;
+  margin-bottom: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.spec-nav-home:hover {
+  color: var(--text-bright);
+}
+
+.spec-nav-title {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.spec-nav a {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.3rem 0;
+  transition: color 0.15s;
+  line-height: 1.5;
+}
+
+.spec-nav a:hover,
+.spec-nav a.active {
+  color: var(--text-bright);
+}
+
+.spec-nav-group {
+  margin-bottom: 0.75rem;
+}
+
+.spec-nav-links {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* ── Main content ── */
+
+.spec-content {
+  padding: 3rem 4rem 6rem;
+  max-width: 800px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* ── Typography ── */
+
+.spec-content h1 {
+  font-family: var(--mono);
+  font-size: 2rem;
+  color: var(--text-bright);
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.spec-content h2 {
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  color: var(--text-bright);
+  letter-spacing: -0.02em;
+  margin: 3.5rem 0 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  line-height: 1.3;
+}
+
+.spec-content h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.spec-content h3 {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  color: var(--text-bright);
+  margin: 2.5rem 0 0.75rem;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.spec-content p {
+  margin-bottom: 1rem;
+}
+
+.spec-content strong {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+.spec-content a {
+  color: var(--sky);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.spec-content a:hover {
+  border-bottom-color: var(--sky);
+}
+
+.spec-content a[href$=".schema.json"] {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 0.3rem 0.75rem 0.3rem 0.55rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 1rem;
+  border: none;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.spec-content a[href$=".schema.json"]::before {
+  content: '{ }';
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.spec-content a[href$=".schema.json"]:hover {
+  background: #00dfa244;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Lists */
+.spec-content ul, .spec-content ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.spec-content li {
+  margin-bottom: 0.3rem;
+}
+
+/* Code */
+.spec-content code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: var(--bg-surface);
+  color: var(--accent);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.spec-content pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+  line-height: 1.7;
+  max-width: 100%;
+}
+
+.spec-content pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+  font-size: 0.825rem;
+}
+
+/* Tables */
+.spec-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem;
+  font-size: 0.875rem;
+}
+
+.spec-content th {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 0.6rem 1rem;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg);
+}
+
+.spec-content td {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+
+.spec-content td code {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.spec-content tr:hover td {
+  background: var(--bg);
+}
+
+/* Version badge */
+.spec-version {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 2rem;
+}
+
+/* ── Footer ── */
+
+.spec-footer {
+  border-top: 1px solid var(--border);
+  padding: 2rem 0;
+  margin-top: 4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.spec-footer a {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.spec-footer a:hover {
+  color: var(--text-bright);
+}
+
+.spec-footer-right {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 900px) {
+  .spec-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .spec-nav {
+    position: relative;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem;
+  }
+
+  .spec-content {
+    padding: 2rem 1.5rem 4rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .spec-content {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .spec-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .spec-content h2 {
+    font-size: 1.15rem;
+  }
+
+  .spec-content pre {
+    font-size: 0.72rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .spec-content code {
+    font-size: 0.8em;
+    word-break: break-all;
+  }
+
+  .spec-content table {
+    font-size: 0.75rem;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .spec-content th,
+  .spec-content td {
+    padding: 0.3rem 0.4rem;
+  }
+
+}
+</style>
+</head>
+<body>
+
+<div class="spec-layout">
+
+  <!-- ══ Sidebar ══ -->
+  <nav class="spec-nav">
+    <a href="/" class="spec-nav-home">&larr; codeix.dev</a>
+    <div class="spec-nav-title">Specification</div>
+
+    <div class="spec-nav-group">
+      <a href="#overview">Overview</a>
+      <a href="#directory-layout">Directory layout</a>
+      <a href="#file-format-conventions">Conventions</a>
+    </div>
+
+    <div class="spec-nav-group">
+      <a href="#index-json-manifest">index.json</a>
+      <a href="#files-jsonl-file-registry">files.jsonl</a>
+      <a href="#symbols-jsonl-symbol-index">symbols.jsonl</a>
+      <a href="#texts-jsonl-text-content-index">texts.jsonl</a>
+    </div>
+
+    <div class="spec-nav-group">
+      <a href="#hashing">Hashing</a>
+      <a href="#sorting-and-determinism">Sorting</a>
+      <a href="#line-numbers">Line numbers</a>
+      <a href="#path-conventions">Paths</a>
+      <a href="#versioning">Versioning</a>
+    </div>
+
+    <div class="spec-nav-group">
+      <a href="#distribution">Distribution</a>
+      <a href="#scope-and-visibility">Scope</a>
+    </div>
+
+    <div class="spec-nav-links">
+      <a href="/">Home</a>
+      <a href="{{ config.extra.github }}" rel="noopener"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" style="vertical-align: -2px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>
+    </div>
+  </nav>
+
+  <!-- ══ Main ══ -->
+  <main class="spec-content">
+    {{ section.content | safe }}
+
+    <div class="spec-footer">
+      <div>
+        <a href="/">Home</a>
+        &nbsp;&middot;&nbsp;
+        <a href="{{ config.extra.github }}">GitHub</a>
+      </div>
+      <div class="spec-footer-right">by <a href="https://github.com/montanetech">montane.tech</a></div>
+    </div>
+  </main>
+
+</div>
+
+<!-- ══ Scroll spy for nav ══ -->
+<script>
+(function() {
+  var links = document.querySelectorAll('.spec-nav a[href^="#"]');
+  var sections = [];
+  links.forEach(function(link) {
+    var id = link.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) sections.push({ el: el, link: link });
+  });
+
+  if (!sections.length) return;
+
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        links.forEach(function(l) { l.classList.remove('active'); });
+        var match = sections.find(function(s) { return s.el === entry.target; });
+        if (match) match.link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+
+  sections.forEach(function(s) { observer.observe(s.el); });
+})();
+</script>
+
+</body>
+</html>

@@ -1,16 +1,21 @@
++++
+title = ".codeindex Format Specification"
+template = "spec.html"
++++
+
 # `.codeindex` Format Specification
 
 **Version:** 1.0 (draft)
 
 ## Overview
 
-`.codeindex/` is an open, portable format for describing the structure of a source code project. It captures files, symbols (definitions + imports), and text content (comments, docstrings, string literals) in a set of plain-text files designed for git storage and tool interoperability.
+`.codeindex` is an open, portable format for describing the structure of a source code project. It captures files, symbols (definitions + imports), and text content (comments, docstrings, string literals) in a set of plain-text files designed for git storage and tool interoperability.
 
-The format is language-agnostic, tool-agnostic, and requires no runtime to read. Any tool that can parse JSON can consume a `.codeindex/`.
+The format is language-agnostic, tool-agnostic, and requires no runtime to read. Any tool that can parse JSON can consume a `.codeindex`.
 
 ## Directory layout
 
-A `.codeindex/` directory lives at the root of a project (typically alongside `.git/`):
+A `.codeindex` directory lives at the root of a project (typically alongside `.git/`):
 
 ```
 .codeindex/
@@ -47,10 +52,10 @@ A single JSON object describing the index.
 |---|---|---|---|
 | `version` | string | yes | Format version. Currently `"1.0"`. |
 | `name` | string | yes | Project name (typically from package manifest or directory name). |
-| `root` | string | yes | Relative path from `.codeindex/` to the project root. Always `"."` when `.codeindex/` is at the project root. |
+| `root` | string | yes | Relative path from `.codeindex` to the project root. Always `"."` when `.codeindex` is at the project root. |
 | `languages` | string[] | yes | List of languages found in the project. Lowercase, e.g. `"python"`, `"rust"`, `"typescript"`. Empty array if no recognized languages. |
 
-Schema: [`index.schema.json`](index.schema.json)
+[`index.schema.json`](index.schema.json)
 
 ## `files.jsonl` — file registry
 
@@ -71,7 +76,7 @@ One line per source file tracked by the index. Includes all files in the project
 | `hash` | string | yes | BLAKE3 content hash, truncated to 64 bits, hex-encoded (16 characters). Used for change detection only. |
 | `lines` | integer | yes | Total line count of the file. |
 
-Schema: [`files.schema.json`](files.schema.json)
+[`files.schema.json`](files.schema.json)
 
 ### Language identifiers
 
@@ -106,7 +111,7 @@ One line per symbol definition or import. Captures the structural skeleton of th
 | `alias` | string | no | Local alias for imports (e.g. `import utils.parse as parse` → `alias: "parse"`). Omitted when import has no alias. |
 | `visibility` | string | no | Symbol visibility. See [Visibility](#visibility) below. Omitted when not determinable. |
 
-Schema: [`symbols.schema.json`](symbols.schema.json)
+[`symbols.schema.json`](symbols.schema.json)
 
 ### Symbol kinds
 
@@ -162,7 +167,7 @@ Omitted when visibility cannot be determined — e.g. languages without explicit
 {"file":"src/lib.rs","name":"Client.retry_internal","kind":"method","line":[27,40],"parent":"Client","visibility":"private","sig":"fn retry_internal(&self, attempts: u32)"}
 ```
 
-This keeps published indexes complete rather than pre-filtered. A library ships its full `.codeindex/` — consumers browse the public API by default, but can dig into internals when debugging or exploring.
+This keeps published indexes complete rather than pre-filtered. A library ships its full `.codeindex` — consumers browse the public API by default, but can dig into internals when debugging or exploring.
 
 ## `texts.jsonl` — text content index
 
@@ -184,7 +189,7 @@ One line per comment, docstring, or string literal extracted from source files. 
 | `text` | string | yes | The extracted text content. Leading/trailing whitespace trimmed. Multi-line text joined with `\n`. |
 | `parent` | string | no | Name of the enclosing symbol, if any (e.g. a docstring's parent is the function it documents). Omitted for file-level comments or orphaned text. |
 
-Schema: [`texts.schema.json`](texts.schema.json)
+[`texts.schema.json`](texts.schema.json)
 
 ### Filtering
 
@@ -224,7 +229,7 @@ All line numbers are **1-based** and **inclusive**. A symbol spanning lines 22 t
 
 ## Path conventions
 
-All paths are **relative to the project root** (the directory containing `.codeindex/`). Forward slashes (`/`) are used on all platforms. No leading `./`.
+All paths are **relative to the project root** (the directory containing `.codeindex`). Forward slashes (`/`) are used on all platforms. No leading `./`.
 
 Examples:
 - `"src/main.py"` (correct)
@@ -242,7 +247,7 @@ Consumers should check `version` and reject indexes with an unsupported major ve
 
 ## Distribution
 
-`.codeindex/` is a portable artifact. It can be distributed through multiple channels:
+`.codeindex` is a portable artifact. It can be distributed through multiple channels:
 
 ### Git repository (primary)
 
@@ -251,7 +256,7 @@ Committed at the project root, alongside `.git/`. This is the default and recomm
 ```
 my-project/
   .git/
-  .codeindex/       # committed with the code
+  .codeindex/      # committed with the code
   src/
   package.json
 ```
@@ -260,7 +265,7 @@ Anyone who clones the repo gets the index. No build step, no re-indexing.
 
 ### Published packages
 
-Library authors can include `.codeindex/` in their published packages:
+Library authors can include `.codeindex` in their published packages:
 
 | Ecosystem | Where | How |
 |---|---|---|
@@ -302,7 +307,7 @@ Published packages ship the full index. The `visibility` field lets consumers fo
 
 ### Remote APIs (future)
 
-The open `kind` field naturally extends to non-source-code constructs. A REST, GraphQL, or gRPC service could publish a `.codeindex/` describing its API surface:
+The open `kind` field naturally extends to non-source-code constructs. A REST, GraphQL, or gRPC service could publish a `.codeindex` describing its API surface:
 
 ```jsonl
 {"file":"api/users.py","name":"GET /users","kind":"endpoint","line":[15,30],"sig":"GET /users?page=int&limit=int -> UserList"}

@@ -1,0 +1,14 @@
+base_url = "https://codeix.dev"
+title = "codeix — Portable, composable code index"
+description = "An open format for structured code indexing. Build once with tree-sitter, query anywhere via MCP."
+compile_sass = true
+minify_html = true
+generate_feeds = false
+
+[markdown.highlighting]
+style = "class"
+theme = "github-dark"
+
+[extra]
+github = "https://github.com/montanetech/codeix"
+version = "0.1.6"

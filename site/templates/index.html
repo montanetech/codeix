@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ config.title }}</title>
+<meta name="description" content="{{ config.description }}">
+<meta property="og:title" content="{{ config.title }}">
+<meta property="og:description" content="{{ config.description }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ config.base_url }}">
+<style>
+/* ═══════════════════════════════════════════
+   CODEIX.DEV — Terminal meets blueprint
+   ═══════════════════════════════════════════ */
+
+:root {
+  /* Surface */
+  --bg-deep: #060a12;
+  --bg: #0b1120;
+  --bg-surface: #111a2e;
+  --bg-surface-hover: #162038;
+  --bg-code: #0d1526;
+  --border: #1e2d4a;
+  --border-subtle: #152040;
+
+  /* Text */
+  --text: #cdd6e4;
+  --text-bright: #eaf0f6;
+  --text-muted: #5a6a84;
+  --text-dim: #3a4a64;
+
+  /* Accent */
+  --accent: #00dfa2;
+  --accent-dim: #00dfa233;
+  --accent-glow: #00dfa218;
+  --sky: #38bdf8;
+  --amber: #fbbf24;
+  --rose: #f472b6;
+
+  /* JSON syntax */
+  --json-key: #38bdf8;
+  --json-string: #a5f3c4;
+  --json-number: #fbbf24;
+  --json-punct: #3e5068;
+
+  /* Fonts */
+  --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  /* Spacing */
+  --section-gap: 7rem;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg-deep);
+  color: var(--text);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* Subtle grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ── */
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+section {
+  padding: var(--section-gap) 0;
+}
+
+/* ── Typography ── */
+
+h1, h2, h3 {
+  font-family: var(--mono);
+  color: var(--text-bright);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  margin-bottom: 1.5rem;
+}
+
+h2 .accent {
+  color: var(--accent);
+}
+
+.section-lead {
+  font-size: 1.125rem;
+  color: var(--text-muted);
+  max-width: 640px;
+  margin-bottom: 3rem;
+  line-height: 1.8;
+}
+
+/* ── Fade-in on scroll ── */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* ═══════════════════════════════════════════
+   HERO
+   ═══════════════════════════════════════════ */
+
+.hero {
+  padding: 8rem 0 6rem;
+  text-align: center;
+}
+
+.hero-label {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 2rem;
+  opacity: 0.8;
+}
+
+.hero h1 {
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  margin-bottom: 1.5rem;
+  position: relative;
+  display: inline-block;
+}
+
+.hero h1 .dot {
+  color: var(--accent);
+}
+
+.hero-sub {
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--text-muted);
+  max-width: 640px;
+  margin: 0 auto 3.5rem;
+  line-height: 1.8;
+}
+
+/* Directory tree in hero */
+.hero-tree {
+  font-family: var(--mono);
+  font-size: clamp(0.85rem, 2vw, 1rem);
+  display: inline-block;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem 2.5rem;
+  margin-bottom: 3.5rem;
+  position: relative;
+}
+
+.hero-tree::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent-dim), transparent 50%);
+  z-index: -1;
+}
+
+.tree-root {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tree-line {
+  color: var(--text-dim);
+}
+
+.tree-file {
+  color: var(--text);
+}
+
+.tree-entry {
+  opacity: 0;
+  animation: treeReveal 0.4s ease forwards;
+}
+
+.tree-entry:nth-child(1) { animation-delay: 0.3s; }
+.tree-entry:nth-child(2) { animation-delay: 0.45s; }
+.tree-entry:nth-child(3) { animation-delay: 0.6s; }
+.tree-entry:nth-child(4) { animation-delay: 0.75s; }
+.tree-entry:nth-child(5) { animation-delay: 0.9s; }
+
+@keyframes treeReveal {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* CTA buttons */
+.hero-ctas {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.75rem 1.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg-deep);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: transparent;
+  color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-dim);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-muted);
+  color: var(--text-bright);
+}
+
+/* ═══════════════════════════════════════════
+   PROBLEM
+   ═══════════════════════════════════════════ */
+
+.problem {
+  padding-bottom: 6rem;
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: stretch;
+}
+
+.problem-before,
+.problem-after {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.problem-label {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.problem-before .problem-label {
+  color: var(--rose);
+  background: #f472b60a;
+}
+
+.problem-after .problem-label {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.problem-content {
+  padding: 1.25rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 2;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.problem-content .cmd {
+  color: var(--text-dim);
+}
+
+.problem-content .cmd::before {
+  content: '$ ';
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.problem-content .result {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.problem-content .waste {
+  color: var(--rose);
+  opacity: 0.6;
+}
+
+.problem-content .ellipsis {
+  color: var(--text-dim);
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════════
+   FORMAT (centerpiece)
+   ═══════════════════════════════════════════ */
+
+.format-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 3rem;
+}
+
+.format-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.format-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  opacity: 0.4;
+}
+
+.format-dot:nth-child(1) { background: #ef4444; opacity: 0.7; }
+.format-dot:nth-child(2) { background: #eab308; opacity: 0.7; }
+.format-dot:nth-child(3) { background: #22c55e; opacity: 0.7; }
+
+.format-title {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+}
+
+.format-code {
+  padding: 1.5rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.825rem;
+  line-height: 1.9;
+}
+
+.format-code .line {
+  display: block;
+  white-space: nowrap;
+}
+
+.format-code .line:hover {
+  background: var(--bg-surface);
+  margin: 0 -1.5rem;
+  padding: 0 1.5rem;
+}
+
+.jk { color: var(--json-key); }       /* key */
+.js { color: var(--json-string); }     /* string value */
+.jn { color: var(--json-number); }     /* number */
+.jp { color: var(--json-punct); }      /* punctuation */
+
+/* File cards */
+.format-files {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.file-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.file-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+
+.file-card-name {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--text-bright);
+  margin-bottom: 0.4rem;
+}
+
+.file-card-desc {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Format properties */
+.format-props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 3rem;
+}
+
+.format-prop {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  letter-spacing: 0.02em;
+}
+
+/* ═══════════════════════════════════════════
+   ECOSYSTEM
+   ═══════════════════════════════════════════ */
+
+.eco-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 0;
+  align-items: center;
+  margin-bottom: 4rem;
+}
+
+.eco-step {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.eco-step-num {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.75rem;
+}
+
+.eco-step-title {
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--text-bright);
+  margin-bottom: 0.5rem;
+}
+
+.eco-step-desc {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.eco-step-code {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--accent-glow);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 0.75rem;
+}
+
+.eco-arrow {
+  font-family: var(--mono);
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.eco-channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.eco-channel {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════
+   TOOL
+   ═══════════════════════════════════════════ */
+
+.tool-terminal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 3rem;
+}
+
+.tool-terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.tool-terminal-body {
+  padding: 1.5rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 2.2;
+}
+
+.tool-terminal-body .prompt::before {
+  content: '$ ';
+  color: var(--accent);
+}
+
+.tool-terminal-body .prompt {
+  color: var(--text-bright);
+}
+
+.tool-terminal-body .comment {
+  color: var(--text-dim);
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.tool-card {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tool-card:hover {
+  border-color: var(--sky);
+  box-shadow: 0 0 24px #38bdf812;
+}
+
+.tool-card-name {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--sky);
+  margin-bottom: 0.4rem;
+}
+
+.tool-card-desc {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.tool-card-kind {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin-bottom: 0.6rem;
+}
+
+/* Languages */
+.lang-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lang-tag {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.lang-tag.sfc {
+  border-style: dashed;
+  color: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════
+   INSTALL
+   ═══════════════════════════════════════════ */
+
+.install-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.install-grid > * {
+  display: flex;
+  flex-direction: column;
+}
+
+.install-grid .install-code,
+.install-grid .format-code {
+  flex: 1;
+}
+
+.install-grid .format-block {
+  margin-bottom: 0;
+}
+
+.install-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.install-code {
+  padding: 1.5rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 2.4;
+}
+
+.install-code .cmd::before {
+  content: '$ ';
+  color: var(--accent);
+}
+
+.install-code .cmd {
+  color: var(--text-bright);
+}
+
+.install-code .comment {
+  color: var(--text-dim);
+}
+
+.install-note {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  margin-top: 1.5rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════ */
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 3rem 0;
+  margin-top: 4rem;
+}
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.footer-links a {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--text-bright);
+}
+
+.footer-right {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.footer-right a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-right a:hover {
+  color: var(--text-bright);
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  :root {
+    --section-gap: 4.5rem;
+  }
+
+  .hero {
+    padding: 5rem 0 4rem;
+  }
+
+  .problem-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .eco-flow {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .eco-arrow {
+    transform: rotate(90deg);
+    padding: 0.25rem 0;
+  }
+
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .install-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-links {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero-tree {
+    padding: 1rem 1.5rem;
+    font-size: 0.8rem;
+  }
+
+  .format-code {
+    font-size: 0.7rem;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   STICKY HEADER
+   ═══════════════════════════════════════════ */
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 0 2rem;
+  height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(6, 10, 18, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.site-header.visible {
+  transform: translateY(0);
+  border-bottom-color: var(--border);
+}
+
+.header-brand {
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.header-brand .dot {
+  color: var(--accent);
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header-nav a {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.header-nav a:hover {
+  color: var(--text-bright);
+}
+
+.header-nav .gh-link {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.header-nav .gh-link:hover {
+  color: var(--text-bright);
+}
+
+.header-nav .gh-link svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.header-cta {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 1rem;
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--bg-deep);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid var(--accent);
+}
+
+.header-cta:hover {
+  background: transparent;
+  color: var(--accent);
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════ HEADER ════════════════════════════════════════ -->
+
+<header class="site-header" id="site-header">
+  <a href="#" class="header-brand">codeix<span class="dot">.dev</span></a>
+  <nav class="header-nav">
+    <a href="/spec/">Spec</a>
+    <a href="#install">Install</a>
+    <a href="{{ config.extra.github }}" class="gh-link" rel="noopener" aria-label="GitHub">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+    <a href="#install" class="header-cta">Get started</a>
+  </nav>
+</header>
+
+<!-- ════════════════════════════════════════ HERO ════════════════════════════════════════ -->
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-label reveal">open format specification v1.0</div>
+    <h1 class="reveal reveal-delay-1"><span class="dot">.</span>codeindex</h1>
+    <p class="hero-sub reveal reveal-delay-2">
+      An open format for structured code documentation.<br>
+      Committed to git, shipped in packages, queried by AI agents.
+    </p>
+
+    <div class="hero-tree reveal reveal-delay-3">
+      <div class="tree-entry"><span class="tree-root">.codeindex</span></div>
+      <div class="tree-entry"><span class="tree-line">  &#x251C;&#x2500;&#x2500; </span><span class="tree-file">index.json</span></div>
+      <div class="tree-entry"><span class="tree-line">  &#x251C;&#x2500;&#x2500; </span><span class="tree-file">files.jsonl</span></div>
+      <div class="tree-entry"><span class="tree-line">  &#x251C;&#x2500;&#x2500; </span><span class="tree-file">symbols.jsonl</span></div>
+      <div class="tree-entry"><span class="tree-line">  &#x2514;&#x2500;&#x2500; </span><span class="tree-file">texts.jsonl</span></div>
+    </div>
+
+    <div class="hero-ctas reveal reveal-delay-4">
+      <a href="/spec/" class="btn btn-primary">Read the spec</a>
+      <a href="{{ config.extra.github }}" class="btn btn-secondary" rel="noopener">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════ PROBLEM ════════════════════════════════════════ -->
+
+<section class="problem">
+  <div class="container">
+    <h2 class="reveal">AI agents waste tokens <span class="accent">finding</span> code</h2>
+    <p class="section-lead reveal reveal-delay-1">
+      They grep, read files, grep again, backtrack. Thousands of tokens burned
+      locating a function &mdash; or worse, they miss it and hallucinate.
+    </p>
+
+    <div class="problem-grid">
+      <div class="problem-before reveal reveal-delay-2">
+        <div class="problem-label">Without .codeindex</div>
+        <div class="problem-content">
+          <div class="cmd waste">grep -r "class Config" src/</div>
+          <div class="cmd waste">cat src/main.py | head -50</div>
+          <div class="cmd waste">grep -r "def __init__" src/main.py</div>
+          <div class="cmd waste">cat src/main.py</div>
+          <div class="ellipsis">... 4 tool calls, ~3000 tokens</div>
+        </div>
+      </div>
+
+      <div class="problem-after reveal reveal-delay-3">
+        <div class="problem-label">With .codeindex</div>
+        <div class="problem-content">
+          <div class="cmd">search_symbols("Config")</div>
+          <div class="result" style="margin-top: 0.5rem;">
+            &rarr; Config &middot; class &middot; src/main.py:22-45<br>
+            &rarr; Config.__init__ &middot; method &middot; :23-30<br>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">&nbsp;&nbsp;sig: def __init__(self, path: str, debug: bool = False)</span>
+          </div>
+          <div class="ellipsis" style="margin-top: 0.75rem;">... 1 tool call, ~200 tokens</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════ TOOL ════════════════════════════════════════ -->
+
+<section id="tool">
+  <div class="container">
+    <h2 class="reveal">Build and query with <span class="accent">codeix</span></h2>
+    <p class="section-lead reveal reveal-delay-1">
+      Index your codebase in seconds. Your AI agent finds the right function
+      on the first try &mdash; no scanning, no guessing, no wasted tokens.
+    </p>
+
+    <div class="tool-terminal reveal reveal-delay-2">
+      <div class="tool-terminal-header">
+        <span class="format-dot"></span>
+        <span class="format-dot"></span>
+        <span class="format-dot"></span>
+        <span class="format-title">terminal</span>
+      </div>
+      <div class="tool-terminal-body">
+        <div><span class="prompt">codeix build</span> <span class="comment">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# parse source, write .codeindex</span></div>
+        <div><span class="prompt">codeix serve</span> <span class="comment">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# MCP server + file watcher</span></div>
+        <div><span class="prompt">codeix serve --no-watch</span> <span class="comment">&nbsp;# serve without watching</span></div>
+      </div>
+    </div>
+
+    <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1.5rem;" class="reveal reveal-delay-2">MCP Tools</h3>
+
+    <div class="tool-grid">
+      <div class="tool-card reveal reveal-delay-2">
+        <div class="tool-card-kind">search</div>
+        <div class="tool-card-name">search_symbols</div>
+        <div class="tool-card-desc">Fuzzy search across all symbol definitions. FTS5, BM25-ranked.</div>
+      </div>
+      <div class="tool-card reveal reveal-delay-2">
+        <div class="tool-card-kind">search</div>
+        <div class="tool-card-name">search_files</div>
+        <div class="tool-card-desc">Find files by name, path pattern, or language filter.</div>
+      </div>
+      <div class="tool-card reveal reveal-delay-3">
+        <div class="tool-card-kind">search</div>
+        <div class="tool-card-name">search_texts</div>
+        <div class="tool-card-desc">Full-text search on comments, docstrings, and string literals.</div>
+      </div>
+      <div class="tool-card reveal reveal-delay-3">
+        <div class="tool-card-kind">lookup</div>
+        <div class="tool-card-name">get_file_symbols</div>
+        <div class="tool-card-desc">List all symbols in a file, ordered by line number.</div>
+      </div>
+      <div class="tool-card reveal reveal-delay-4">
+        <div class="tool-card-kind">lookup</div>
+        <div class="tool-card-name">get_symbol_children</div>
+        <div class="tool-card-desc">Get direct children of a class, struct, or module.</div>
+      </div>
+      <div class="tool-card reveal reveal-delay-4">
+        <div class="tool-card-kind">lookup</div>
+        <div class="tool-card-name">get_imports</div>
+        <div class="tool-card-desc">List all import statements for a file.</div>
+      </div>
+    </div>
+
+    <h3 style="font-size: 1rem; color: var(--text-muted); margin: 3rem 0 1.25rem;" class="reveal">Languages</h3>
+
+    <div class="lang-list reveal reveal-delay-1">
+      <span class="lang-tag">Python</span>
+      <span class="lang-tag">Rust</span>
+      <span class="lang-tag">JavaScript</span>
+      <span class="lang-tag">TypeScript</span>
+      <span class="lang-tag">Go</span>
+      <span class="lang-tag">Java</span>
+      <span class="lang-tag">C</span>
+      <span class="lang-tag">C++</span>
+      <span class="lang-tag">Ruby</span>
+      <span class="lang-tag">C#</span>
+      <span class="lang-tag sfc">Vue</span>
+      <span class="lang-tag sfc">Svelte</span>
+      <span class="lang-tag sfc">Astro</span>
+      <span class="lang-tag sfc">HTML</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════ ECOSYSTEM ════════════════════════════════════════ -->
+
+<section id="ecosystem">
+  <div class="container">
+    <h2 class="reveal">Ship your index <span class="accent">with</span> your package</h2>
+    <p class="section-lead reveal reveal-delay-1">
+      Include .codeindex in your package and every developer who depends
+      on you gets instant navigation of your API &mdash; no setup, no re-indexing.
+    </p>
+
+    <div class="eco-flow reveal reveal-delay-2">
+      <div class="eco-step">
+        <div class="eco-step-num">Author</div>
+        <div class="eco-step-title">Build the index</div>
+        <div class="eco-step-desc">Run once on your source tree. Deterministic output, clean diffs.</div>
+        <div class="eco-step-code">codeix build</div>
+      </div>
+
+      <div class="eco-arrow">&rarr;</div>
+
+      <div class="eco-step">
+        <div class="eco-step-num">Publish</div>
+        <div class="eco-step-title">Ship with your code</div>
+        <div class="eco-step-desc">Commit .codeindex to your repo or include it in your published package.</div>
+        <div class="eco-step-code">.codeindex</div>
+      </div>
+
+      <div class="eco-arrow">&rarr;</div>
+
+      <div class="eco-step">
+        <div class="eco-step-num">Consumer</div>
+        <div class="eco-step-title">Query instantly</div>
+        <div class="eco-step-desc">AI agents navigate your API without parsing a single file.</div>
+        <div class="eco-step-code">search_symbols()</div>
+      </div>
+    </div>
+
+    <div class="eco-channels reveal reveal-delay-3">
+      <div class="eco-channel">Git repos</div>
+      <div class="eco-channel">npm</div>
+      <div class="eco-channel">PyPI</div>
+      <div class="eco-channel">crates.io</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════ FORMAT ════════════════════════════════════════ -->
+
+<section id="format">
+  <div class="container">
+    <h2 class="reveal">An open format <span class="accent">anyone</span> can read</h2>
+    <p class="section-lead reveal reveal-delay-1">
+      Plain JSONL. Git-friendly diffs. No binary blobs, no proprietary databases.
+      Any tool that can parse JSON can consume a .codeindex.
+    </p>
+
+    <div class="format-props reveal reveal-delay-2">
+      <span class="format-prop">language-agnostic</span>
+      <span class="format-prop">tool-agnostic</span>
+      <span class="format-prop">deterministic</span>
+      <span class="format-prop">git-friendly</span>
+      <span class="format-prop">human-readable</span>
+    </div>
+
+    <div class="format-block reveal reveal-delay-3">
+      <div class="format-header">
+        <span class="format-dot"></span>
+        <span class="format-dot"></span>
+        <span class="format-dot"></span>
+        <span class="format-title">symbols.jsonl</span>
+      </div>
+      <div class="format-code"><span class="line"><span class="jp">{</span><span class="jk">"file"</span><span class="jp">:</span><span class="js">"src/main.py"</span><span class="jp">,</span><span class="jk">"name"</span><span class="jp">:</span><span class="js">"os"</span><span class="jp">,</span><span class="jk">"kind"</span><span class="jp">:</span><span class="js">"import"</span><span class="jp">,</span><span class="jk">"line"</span><span class="jp">:[</span><span class="jn">1</span><span class="jp">,</span><span class="jn">1</span><span class="jp">]}</span></span>
+<span class="line"><span class="jp">{</span><span class="jk">"file"</span><span class="jp">:</span><span class="js">"src/main.py"</span><span class="jp">,</span><span class="jk">"name"</span><span class="jp">:</span><span class="js">"Config"</span><span class="jp">,</span><span class="jk">"kind"</span><span class="jp">:</span><span class="js">"class"</span><span class="jp">,</span><span class="jk">"line"</span><span class="jp">:[</span><span class="jn">22</span><span class="jp">,</span><span class="jn">45</span><span class="jp">]}</span></span>
+<span class="line"><span class="jp">{</span><span class="jk">"file"</span><span class="jp">:</span><span class="js">"src/main.py"</span><span class="jp">,</span><span class="jk">"name"</span><span class="jp">:</span><span class="js">"Config.__init__"</span><span class="jp">,</span><span class="jk">"kind"</span><span class="jp">:</span><span class="js">"method"</span><span class="jp">,</span><span class="jk">"line"</span><span class="jp">:[</span><span class="jn">23</span><span class="jp">,</span><span class="jn">30</span><span class="jp">],</span><span class="jk">"parent"</span><span class="jp">:</span><span class="js">"Config"</span><span class="jp">,</span><span class="jk">"sig"</span><span class="jp">:</span><span class="js">"def __init__(self, path: str, debug: bool = False)"</span><span class="jp">}</span></span>
+<span class="line"><span class="jp">{</span><span class="jk">"file"</span><span class="jp">:</span><span class="js">"src/main.py"</span><span class="jp">,</span><span class="jk">"name"</span><span class="jp">:</span><span class="js">"main"</span><span class="jp">,</span><span class="jk">"kind"</span><span class="jp">:</span><span class="js">"function"</span><span class="jp">,</span><span class="jk">"line"</span><span class="jp">:[</span><span class="jn">48</span><span class="jp">,</span><span class="jn">60</span><span class="jp">],</span><span class="jk">"sig"</span><span class="jp">:</span><span class="js">"def main(args: list[str]) -> int"</span><span class="jp">}</span></span></div>
+    </div>
+
+    <div class="format-files reveal reveal-delay-4">
+      <div class="file-card">
+        <div class="file-card-name">index.json</div>
+        <div class="file-card-desc">Manifest: version, project name, detected languages</div>
+      </div>
+      <div class="file-card">
+        <div class="file-card-name">files.jsonl</div>
+        <div class="file-card-desc">One line per source file: path, language, hash, line count</div>
+      </div>
+      <div class="file-card">
+        <div class="file-card-name">symbols.jsonl</div>
+        <div class="file-card-desc">Functions, classes, imports &mdash; with signatures and parent relationships</div>
+      </div>
+      <div class="file-card">
+        <div class="file-card-name">texts.jsonl</div>
+        <div class="file-card-desc">Comments, docstrings, string literals &mdash; searchable prose</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════ INSTALL ════════════════════════════════════════ -->
+
+<section id="install">
+  <div class="container">
+    <h2 class="reveal">Install</h2>
+    <p class="section-lead reveal reveal-delay-1">
+      All channels install the same single binary. No runtime dependencies.
+    </p>
+
+    <div class="install-grid reveal reveal-delay-2">
+      <div class="install-block">
+        <div class="format-header">
+          <span class="format-dot"></span>
+          <span class="format-dot"></span>
+          <span class="format-dot"></span>
+          <span class="format-title">install</span>
+        </div>
+        <div class="install-code">
+          <div><span class="cmd">npx codeix</span> <span class="comment">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# npm</span></div>
+          <div><span class="cmd">uvx codeix</span> <span class="comment">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Python</span></div>
+          <div><span class="cmd">cargo install codeix</span> <span class="comment">&nbsp;&nbsp;# Rust</span></div>
+          <div><span class="cmd">brew install codeix</span> <span class="comment">&nbsp;&nbsp;&nbsp;# Homebrew</span></div>
+        </div>
+      </div>
+
+      <div class="format-block">
+        <div class="format-header">
+          <span class="format-dot"></span>
+          <span class="format-dot"></span>
+          <span class="format-dot"></span>
+          <span class="format-title">.mcp.json</span>
+        </div>
+        <div class="format-code"><span class="line"><span class="jp">{</span></span>
+<span class="line">&nbsp;&nbsp;<span class="jk">"mcpServers"</span><span class="jp">: {</span></span>
+<span class="line">&nbsp;&nbsp;&nbsp;&nbsp;<span class="jk">"codeindex"</span><span class="jp">: {</span></span>
+<span class="line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="jk">"command"</span><span class="jp">:</span> <span class="js">"npx"</span><span class="jp">,</span></span>
+<span class="line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="jk">"args"</span><span class="jp">: [</span><span class="js">"codeix"</span><span class="jp">]</span></span>
+<span class="line">&nbsp;&nbsp;&nbsp;&nbsp;<span class="jp">}</span></span>
+<span class="line">&nbsp;&nbsp;<span class="jp">}</span></span>
+<span class="line"><span class="jp">}</span></span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════ FOOTER ════════════════════════════════════════ -->
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="{{ config.extra.github }}">GitHub</a>
+        <a href="/spec/">Spec</a>
+        <a href="{{ config.extra.github }}/blob/main/LICENSE-MIT">MIT</a>
+        <a href="{{ config.extra.github }}/blob/main/LICENSE-APACHE">Apache-2.0</a>
+      </div>
+      <div class="footer-right">
+        by <a href="https://github.com/montanetech">montane.tech</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ════════════════════════════════════════ SCROLL REVEAL ════════════════════════════════════════ -->
+
+<script>
+(function() {
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(function(el) {
+    observer.observe(el);
+  });
+
+  // Sticky header: show after scrolling past the hero
+  var header = document.getElementById('site-header');
+  var hero = document.querySelector('.hero');
+  var heroObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        header.classList.remove('visible');
+      } else {
+        header.classList.add('visible');
+      }
+    });
+  }, { threshold: 0 });
+  heroObserver.observe(hero);
+})();
+</script>
+
+</body>
+</html>

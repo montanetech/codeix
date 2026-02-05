@@ -7,7 +7,7 @@
     "type": "git",
     "url": "git+https://github.com/montanetech/codeix.git"
   },
-  "homepage": "https://github.com/montanetech/codeix",
+  "homepage": "https://codeix.dev",
   "bin": {
     "codeix": "run.js"
   },

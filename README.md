@@ -1,10 +1,10 @@
 # codeix
 
-Portable, composable code index. Build once with tree-sitter, query anywhere via MCP.
+**[codeix.dev](https://codeix.dev)** · Portable, composable code index. Your AI agent finds the right function on the first try — no scanning, no guessing, no wasted tokens.
 
 ```
 codeix                 # start MCP server, watch for changes
-codeix build           # parse source files, write .codeindex/
+codeix build           # parse source files, write .codeindex
 codeix serve --no-watch  # serve without file watching
 ```
 
@@ -26,20 +26,16 @@ AI coding agents spend most of their token budget *finding* code before they can
 
 ### What codeix does differently
 
-- **Committed to git** — the index is a `.codeindex/` directory you commit with your code. Clone the repo, the index is already there. No re-indexing.
-- **Shareable** — library authors can ship `.codeindex/` in their npm/PyPI/crates.io package. Consumers get instant navigation of dependencies.
+- **Committed to git** — the index is a `.codeindex` directory you commit with your code. Clone the repo, the index is already there. No re-indexing.
+- **Shareable** — library authors can ship `.codeindex` in their npm/PyPI/crates.io package. Consumers get instant navigation of dependencies.
 - **Composable** — the MCP server auto-discovers dependency indexes and mounts them. Query your code and your dependencies in one place.
 - **Structured for LLMs** — symbols have kinds, signatures, parent relationships, and line ranges. The agent gets exactly what it needs in one tool call instead of piecing it together from raw text.
 - **Prose search** — `search_texts` targets comments, docstrings, and string literals specifically. Find TODOs, find the error message a user reported, find what a function's docstring says — without noise from code.
-- **Fast** — Rust + tree-sitter + in-memory SQLite FTS5. Builds in seconds, queries in milliseconds.
+- **Fast** — builds in seconds, queries in milliseconds. Rust + tree-sitter + in-memory SQLite FTS5 under the hood.
 
-## What it does
+## The `.codeindex` format
 
-Codeix scans your source code with [tree-sitter](https://tree-sitter.github.io/), extracts symbols, imports, comments, and docstrings, then writes a `.codeindex/` directory you commit alongside your code.
-
-AI agents query it through [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) to navigate codebases without re-parsing anything.
-
-## The index format
+An open, portable format for structured code indexing. Plain JSONL files you commit alongside your code — git-friendly diffs, human-readable with `grep` and `jq`, no binary blobs.
 
 ```
 .codeindex/
@@ -49,7 +45,7 @@ AI agents query it through [MCP](https://modelcontextprotocol.io/) (Model Contex
   texts.jsonl       # one line per comment, docstring, string literal
 ```
 
-Plain JSONL. Git-friendly diffs. Human-readable with `grep` and `jq`. No binary blobs.
+Any tool that can parse JSON can consume a `.codeindex`. Codeix builds it using [tree-sitter](https://tree-sitter.github.io/), and AI agents query it through [MCP](https://modelcontextprotocol.io/) (Model Context Protocol).
 
 **Example** — `symbols.jsonl`:
 ```jsonl
@@ -58,6 +54,12 @@ Plain JSONL. Git-friendly diffs. Human-readable with `grep` and `jq`. No binary 
 {"file":"src/main.py","name":"Config.__init__","kind":"method","line":[23,30],"parent":"Config","sig":"def __init__(self, path: str, debug: bool = False)"}
 {"file":"src/main.py","name":"main","kind":"function","line":[48,60],"sig":"def main(args: list[str]) -> int"}
 ```
+
+## Ship your index with your package
+
+Include `.codeindex` in your package and every developer who depends on you gets instant navigation of your API — no setup, no re-indexing.
+
+Works with Git repos, npm, PyPI, and crates.io.
 
 ## MCP tools
 
@@ -74,7 +76,7 @@ Six tools, zero setup. The agent queries immediately — no init, no config, no 
 
 ## Project discovery
 
-Launch `codeix` from any directory. It walks downward and treats every directory containing `.git/` as a separate project — each gets its own `.codeindex/`.
+Launch `codeix` from any directory. It walks downward and treats every directory containing `.git/` as a separate project — each gets its own `.codeindex`.
 
 Works uniformly for single repos, monorepos, sibling repos, and git submodules. No config needed.
 

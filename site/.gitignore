@@ -1,0 +1,7 @@
+# Build output
+public/
+
+# Generated at build time from spec/
+static/schemas/
+static/spec/
+content/spec/_index.md

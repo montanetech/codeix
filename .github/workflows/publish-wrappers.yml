@@ -99,7 +99,7 @@ jobs:
 
             const formula = `class Codeix < Formula
               desc "Portable, composable code index — build with tree-sitter, query via MCP"
-              homepage "https://github.com/montanetech/codeix"
+              homepage "https://codeix.dev"
               version "${version}"
               license "MIT OR Apache-2.0"
 

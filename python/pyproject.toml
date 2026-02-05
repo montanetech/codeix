@@ -22,7 +22,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/montanetech/codeix"
+Homepage = "https://codeix.dev"
+Documentation = "https://codeix.dev/spec/"
 Repository = "https://github.com/montanetech/codeix"
 Issues = "https://github.com/montanetech/codeix/issues"
 
