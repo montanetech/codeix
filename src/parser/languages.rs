@@ -22,6 +22,24 @@ pub fn get_language(name: &str) -> Result<Language> {
         #[cfg(feature = "lang-typescript")]
         "tsx" => Ok(tree_sitter_typescript::LANGUAGE_TSX.into()),
 
+        #[cfg(feature = "lang-go")]
+        "go" => Ok(tree_sitter_go::LANGUAGE.into()),
+
+        #[cfg(feature = "lang-java")]
+        "java" => Ok(tree_sitter_java::LANGUAGE.into()),
+
+        #[cfg(feature = "lang-c")]
+        "c" => Ok(tree_sitter_c::LANGUAGE.into()),
+
+        #[cfg(feature = "lang-cpp")]
+        "cpp" => Ok(tree_sitter_cpp::LANGUAGE.into()),
+
+        #[cfg(feature = "lang-ruby")]
+        "ruby" => Ok(tree_sitter_ruby::LANGUAGE.into()),
+
+        #[cfg(feature = "lang-csharp")]
+        "csharp" => Ok(tree_sitter_c_sharp::LANGUAGE.into()),
+
         _ => anyhow::bail!("unsupported language: {name}"),
     }
 }
@@ -29,11 +47,21 @@ pub fn get_language(name: &str) -> Result<Language> {
 /// Detect the language from a file extension.
 pub fn detect_language(extension: &str) -> Option<&'static str> {
     match extension {
-        "py" => Some("python"),
+        "py" | "pyi" | "pyw" => Some("python"),
         "rs" => Some("rust"),
-        "js" | "mjs" | "cjs" => Some("javascript"),
+        "js" | "mjs" | "cjs" | "jsx" => Some("javascript"),
         "ts" | "mts" | "cts" => Some("typescript"),
         "tsx" => Some("tsx"),
+        "go" => Some("go"),
+        "java" => Some("java"),
+        "c" | "h" => Some("c"),
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" | "h++" => Some("cpp"),
+        "rb" | "rake" | "gemspec" => Some("ruby"),
+        "cs" => Some("csharp"),
+        "html" | "htm" => Some("html"),
+        "vue" => Some("vue"),
+        "svelte" => Some("svelte"),
+        "astro" => Some("astro"),
         _ => None,
     }
 }

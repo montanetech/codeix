@@ -46,11 +46,20 @@ ignore = "0.4"
 
 # Tree-sitter grammars — feature-gated
 [features]
-default = ["lang-python", "lang-rust", "lang-javascript", "lang-typescript"]
+default = [
+    "lang-python", "lang-rust", "lang-javascript", "lang-typescript",
+    "lang-go", "lang-java", "lang-c", "lang-cpp", "lang-ruby", "lang-csharp",
+]
 lang-python = ["dep:tree-sitter-python"]
 lang-rust = ["dep:tree-sitter-rust"]
 lang-javascript = ["dep:tree-sitter-javascript"]
 lang-typescript = ["dep:tree-sitter-typescript"]
+lang-go = ["dep:tree-sitter-go"]
+lang-java = ["dep:tree-sitter-java"]
+lang-c = ["dep:tree-sitter-c"]
+lang-cpp = ["dep:tree-sitter-cpp"]
+lang-ruby = ["dep:tree-sitter-ruby"]
+lang-csharp = ["dep:tree-sitter-c-sharp"]
 
 [dependencies.tree-sitter-python]
 version = "0.25"
@@ -65,5 +74,29 @@ version = "0.25"
 optional = true
 
 [dependencies.tree-sitter-typescript]
+version = "0.23"
+optional = true
+
+[dependencies.tree-sitter-go]
+version = "0.25"
+optional = true
+
+[dependencies.tree-sitter-java]
+version = "0.23"
+optional = true
+
+[dependencies.tree-sitter-c]
+version = "0.24"
+optional = true
+
+[dependencies.tree-sitter-cpp]
+version = "0.23"
+optional = true
+
+[dependencies.tree-sitter-ruby]
+version = "0.23"
+optional = true
+
+[dependencies.tree-sitter-c-sharp]
 version = "0.23"
 optional = true
