@@ -17,7 +17,6 @@ __version__ = "0.1.1"  # x-release-please-version
 REPO = "montanetech/codeix"
 
 PLATFORM_MAP = {
-    ("Darwin", "x86_64"): "x86_64-apple-darwin",
     ("Darwin", "arm64"): "aarch64-apple-darwin",
     ("Linux", "x86_64"): "x86_64-unknown-linux-gnu",
     ("Windows", "AMD64"): "x86_64-pc-windows-msvc",
