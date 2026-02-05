@@ -82,14 +82,30 @@ Works uniformly for single repos, monorepos, sibling repos, and git submodules. 
 
 Tree-sitter grammars, feature-gated at compile time:
 
-| Language | Feature flag | Default |
-|---|---|---|
-| Python | `lang-python` | yes |
-| Rust | `lang-rust` | yes |
-| JavaScript | `lang-javascript` | yes |
-| TypeScript | `lang-typescript` | yes |
+| Language | Feature flag | Default | Extensions |
+|---|---|---|---|
+| Python | `lang-python` | yes | `.py` `.pyi` `.pyw` |
+| Rust | `lang-rust` | yes | `.rs` |
+| JavaScript | `lang-javascript` | yes | `.js` `.mjs` `.cjs` `.jsx` |
+| TypeScript | `lang-typescript` | yes | `.ts` `.mts` `.cts` `.tsx` |
+| Go | `lang-go` | yes | `.go` |
+| Java | `lang-java` | yes | `.java` |
+| C | `lang-c` | yes | `.c` `.h` |
+| C++ | `lang-cpp` | yes | `.cpp` `.cc` `.cxx` `.hpp` `.hxx` |
+| Ruby | `lang-ruby` | yes | `.rb` `.rake` `.gemspec` |
+| C# | `lang-csharp` | yes | `.cs` |
 
-More languages are additive — one grammar + one query file each.
+### Single File Components (SFC)
+
+Vue, Svelte, and Astro files are preprocessed to extract embedded script blocks, which are then parsed with the JavaScript or TypeScript grammar:
+
+| Format | Extensions | Script detection |
+|---|---|---|
+| Vue | `.vue` | `<script>` and `<script setup>`, with optional `lang="ts"` |
+| Svelte | `.svelte` | `<script>`, with optional `lang="ts"` |
+| Astro | `.astro` | `---` frontmatter (always TypeScript) + optional `<script>` tags |
+
+Line numbers in the index point to the original `.vue`/`.svelte`/`.astro` file, not the extracted script block.
 
 ## Install
 

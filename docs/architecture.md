@@ -155,8 +155,7 @@ server reads pyproject.toml → dependencies
 - One unified C library + query API for all languages
 - 100+ language grammars available, community-maintained
 - Built-in error recovery (handles incomplete/broken code)
-- `tags.scm` query files already exist for major languages (maintained by editor/tool communities)
-- Adding a language = adding one `.scm` query file, no new binary
+- Adding a language = adding one grammar crate + one extractor module
 
 **Alternatives considered:**
 
@@ -174,9 +173,26 @@ server reads pyproject.toml → dependencies
 - Grammar quality varies for niche languages — fallback to file-level indexing only
 - Each language grammar is a C library — packaging/distribution concern (not architectural)
 
+**Supported languages (10 + 3 SFC formats):**
+
+| Language | Grammar crate | Feature flag |
+|---|---|---|
+| Python | `tree-sitter-python` | `lang-python` |
+| Rust | `tree-sitter-rust` | `lang-rust` |
+| JavaScript | `tree-sitter-javascript` | `lang-javascript` |
+| TypeScript / TSX | `tree-sitter-typescript` | `lang-typescript` |
+| Go | `tree-sitter-go` | `lang-go` |
+| Java | `tree-sitter-java` | `lang-java` |
+| C | `tree-sitter-c` | `lang-c` |
+| C++ | `tree-sitter-cpp` | `lang-cpp` |
+| Ruby | `tree-sitter-ruby` | `lang-ruby` |
+| C# | `tree-sitter-c-sharp` | `lang-csharp` |
+
+Single File Components (Vue `.vue`, Svelte `.svelte`, Astro `.astro`) are preprocessed to extract `<script>` blocks (and Astro `---` frontmatter), which are then parsed with the JS/TS grammar. Line numbers are adjusted back to the original file.
+
 **Consequences:**
 - Consistent parsing across all supported languages
-- Language support is additive — add a grammar + query file per language
+- Language support is additive — add a grammar crate + one extractor module per language
 - Tree-sitter is C-based — fast regardless of host language
 - We rely on community-maintained grammars — risk of stale/buggy grammars for rare languages
 

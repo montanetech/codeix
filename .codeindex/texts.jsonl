@@ -72,66 +72,426 @@
 {"file":"src/main.rs","kind":"docstring","line":[27,27],"text":"Disable file watching"}
 {"file":"src/main.rs","kind":"comment","line":[42,42],"text":"Interactive: no subcommand given, print help and exit"}
 {"file":"src/main.rs","kind":"comment","line":[46,46],"text":"Piped stdin (e.g. MCP client): default to serve"}
+{"file":"src/parser/c_lang.rs","kind":"docstring","line":[1,1],"text":"C symbol and text extraction."}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[92,92],"text":"Check for static (file-scoped)"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[111,112],"text":"Top-level declarations: variables, function prototypes, extern declarations\nSkip if inside a function body (we only want top-level)"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[128,128],"text":"Walk declarators"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[133,133],"text":"Function prototype"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[188,188],"text":"Anonymous struct/union, skip symbol but recurse for comments"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[205,205],"text":"Extract fields"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[253,253],"text":"Extract enum constants"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[281,281],"text":"The typedef name is typically the last declarator"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[304,304],"text":"Strip < > or \" \""}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[345,345],"text":"*name — recurse into the declarator"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[360,360],"text":"parenthesized_declarator"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[361,361],"text":"(name) — look inside"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[378,378],"text":"storage_class_specifier"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[397,397],"text":"symbol not found: {name}"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[402,408],"text":"int add(int a, int b) {\n    return a + b;\n}\n\nstatic void helper() {\n    printf(\\\"helper\\\");\n}"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[413,413],"text":"int add"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[422,425],"text":"struct Point {\n    int x;\n    int y;\n};"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[441,445],"text":"enum Status {\n    OK,\n    ERROR,\n    PENDING\n};"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[461,465],"text":"typedef int MyInt;\n\nint add(MyInt a, MyInt b) {\n    return a + b;\n}"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[468,468],"text":"Function should definitely be extracted"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[475,479],"text":"int global = 100;\nstatic int file_scoped = 200;\nextern int external;\n\n#define MAX_SIZE 1000"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[495,496],"text":"#include <stdio.h>\n#include \\\"myheader.h\\\""}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[511,512],"text":"#define PI 3.14159\n#define MAX(a, b) ((a) > (b) ? (a) : (b))"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[524,528],"text":"union Data {\n    int i;\n    float f;\n    char str[20];\n};"}
+{"file":"src/parser/c_lang.rs","kind":"comment","line":[532,532],"text":"unions mapped to struct"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[540,542],"text":"/* Block comment */\n// Single line comment\nint foo() { return 0; }"}
+{"file":"src/parser/c_lang.rs","kind":"string","line":[549,550],"text":"int add(int a, int b);\nextern void print(const char* msg);"}
+{"file":"src/parser/cpp.rs","kind":"docstring","line":[1,1],"text":"C++ symbol and text extraction."}
+{"file":"src/parser/cpp.rs","kind":"docstring","line":[3,3],"text":"Extends C extraction with classes, namespaces, templates, and access specifiers."}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[55,55],"text":"Recurse into the templated declaration"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[66,66],"text":"`using Foo = ...;`"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[146,146],"text":"Skip declarations inside function bodies"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[253,253],"text":"Walk class body with access tracking"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[255,255],"text":"Default access: private for class, public for struct"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[311,311],"text":"Extract enum values"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[321,321],"text":"{full_name}.{const_name}"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[343,343],"text":"Anonymous namespace"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[432,432],"text":"`using namespace std;` or `using std::string;`"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[498,498],"text":"namespace::name — use the full qualified name"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[516,516],"text":"parenthesized_declarator"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[527,527],"text":"operator+, operator<< etc."}
+{"file":"src/parser/cpp.rs","kind":"string","line":[537,537],"text":"storage_class_specifier"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[556,556],"text":"symbol not found: {name}"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[561,567],"text":"int add(int a, int b) {\n    return a + b;\n}\n\nstatic void helper() {\n    std::cout << \\\"helper\\\";\n}"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[572,572],"text":"int add"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[581,594],"text":"class Person {\npublic:\n    Person(std::string name) {}\n\n    std::string getName() const {\n        return name;\n    }\n\nprivate:\n    void privateMethod() {}\n\nprotected:\n    void helper() {}\n};"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[613,619],"text":"struct Point {\n    void setX(int value) {}\n    void setY(int value) {}\n\nprivate:\n    void hidden() {}\n};"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[626,626],"text":"struct default"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[634,641],"text":"namespace utils {\n    void helper() {}\n\n    class Tool {\n    public:\n        void run() {}\n    };\n}"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[659,668],"text":"enum Color {\n    RED,\n    GREEN,\n    BLUE\n};\n\nenum class Status {\n    OK,\n    ERROR\n};"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[683,692],"text":"template<typename T>\nclass Container {\npublic:\n    void add(T item) {}\n};\n\ntemplate<typename T>\nT max(T a, T b) {\n    return (a > b) ? a : b;\n}"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[707,709],"text":"using namespace std;\nusing std::string;\nusing MyInt = int;"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[714,714],"text":"namespace std"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[727,728],"text":"#include <iostream>\n#include \\\"myheader.h\\\""}
+{"file":"src/parser/cpp.rs","kind":"string","line":[743,745],"text":"namespace MyNamespace {\n    void helper() {}\n}"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[748,748],"text":"Named namespace should be extracted"}
+{"file":"src/parser/cpp.rs","kind":"comment","line":[753,753],"text":"Functions inside namespaces might be classified as methods"}
+{"file":"src/parser/cpp.rs","kind":"string","line":[759,761],"text":"/* Block comment */\n// Single line comment\nclass Foo {};"}
+{"file":"src/parser/csharp.rs","kind":"docstring","line":[1,1],"text":"C# symbol and text extraction."}
+{"file":"src/parser/csharp.rs","kind":"string","line":[38,38],"text":"interface_declaration"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[49,49],"text":"namespace_declaration"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[49,49],"text":"file_scoped_namespace_declaration"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[56,56],"text":"constructor_declaration"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[75,75],"text":"verbatim_string_literal"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[75,75],"text":"interpolated_string_expression"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[117,117],"text":" : {}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[120,120],"text":"{kind} {name}{type_params}{bases}"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[133,133],"text":"Walk body"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[168,168],"text":"Extract enum members"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[172,172],"text":"enum_member_declaration"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[178,178],"text":"{full_name}.{member_name}"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[214,214],"text":"Walk namespace body"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[222,222],"text":"File-scoped namespace: declarations are siblings, not children of body"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[223,223],"text":"file_scoped_namespace_declaration"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[224,224],"text":"Walk all siblings after this node"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[344,344],"text":"Walk variable declarators"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[410,410],"text":"`using System.Linq;` or `using Foo = System.Bar;`"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[422,422],"text":"`using Alias = Namespace.Type;`"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[426,426],"text":"The actual type is the next sibling"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[455,455],"text":"XML doc comment"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[506,506],"text":"Check for modifiers list pattern (some tree-sitter versions)"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[517,517],"text":"C# default"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[530,530],"text":"Fallback: check the raw text"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[544,544],"text":"symbol not found: {name}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[549,564],"text":"public class Person\n{\n    private string name;\n\n    public Person(string name)\n    {\n        this.name = name;\n    }\n\n    public string GetName()\n    {\n        return name;\n    }\n\n    private void Helper() {}\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[570,570],"text":"class Person"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[586,590],"text":"public interface IRunnable\n{\n    void Run();\n    int Calculate(int x);\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[600,604],"text":"public struct Point\n{\n    public int X;\n    public int Y;\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[617,622],"text":"public enum Status\n{\n    Active,\n    Inactive,\n    Pending\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[635,641],"text":"namespace MyApp.Utils\n{\n    public class Helper\n    {\n        public void Run() {}\n    }\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[651,651],"text":"MyApp.Utils.Helper.Run"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[657,661],"text":"public class Config\n{\n    public string Name { get; set; }\n    private int version;\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[675,679],"text":"public class Constants\n{\n    public const int MAX_SIZE = 100;\n    private static readonly string Version = \\\"1.0\\\";\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[693,695],"text":"using System;\nusing System.Collections.Generic;\nusing System.Linq;"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[703,703],"text":"System.Collections.Generic"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[716,716],"text":"public delegate void EventHandler(object sender);"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[726,732],"text":"public class Foo\n{\n    public void PublicMethod() {}\n    private void PrivateMethod() {}\n    protected void ProtectedMethod() {}\n    internal void InternalMethod() {}\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[750,756],"text":"/// <summary>\n/// XML doc comment\n/// </summary>\npublic class Documented {}\n\n// Single line\n/* Block comment */"}
+{"file":"src/parser/go.rs","kind":"docstring","line":[1,1],"text":"Go symbol and text extraction."}
+{"file":"src/parser/go.rs","kind":"comment","line":[38,38],"text":"handled recursively"}
+{"file":"src/parser/go.rs","kind":"string","line":[57,57],"text":"interpreted_string_literal"}
+{"file":"src/parser/go.rs","kind":"comment","line":[103,103],"text":"Extract receiver type: `func (r *Receiver) Method()`"}
+{"file":"src/parser/go.rs","kind":"comment","line":[106,107],"text":"The receiver is a parameter_list with one entry\nTry to extract the type name"}
+{"file":"src/parser/go.rs","kind":"comment","line":[109,109],"text":"Strip parens and pointer/reference"}
+{"file":"src/parser/go.rs","kind":"comment","line":[148,148],"text":"`type (...)` block or `type Foo ...`"}
+{"file":"src/parser/go.rs","kind":"comment","line":[174,174],"text":"Determine kind from the type definition"}
+{"file":"src/parser/go.rs","kind":"comment","line":[188,188],"text":"For structs, extract fields"}
+{"file":"src/parser/go.rs","kind":"string","line":[194,194],"text":"field_declaration_list"}
+{"file":"src/parser/go.rs","kind":"comment","line":[212,212],"text":"Extract comments inside struct"}
+{"file":"src/parser/go.rs","kind":"comment","line":[219,219],"text":"For interfaces, extract method signatures"}
+{"file":"src/parser/go.rs","kind":"comment","line":[265,265],"text":"Handle multiple names in one spec: `var a, b, c int`"}
+{"file":"src/parser/go.rs","kind":"comment","line":[269,269],"text":"First identifier is captured by field \"name\", subsequent ones need manual check"}
+{"file":"src/parser/go.rs","kind":"comment","line":[274,274],"text":"already captured"}
+{"file":"src/parser/go.rs","kind":"comment","line":[313,313],"text":"Also handle single import: `import \"fmt\"`"}
+{"file":"src/parser/go.rs","kind":"string","line":[383,383],"text":"symbol not found: {name}"}
+{"file":"src/parser/go.rs","kind":"string","line":[388,396],"text":"package main\n\nfunc Hello(name string) string {\n    return \\\"Hello, \\\" + name\n}\n\nfunc privateHelper() {\n    println(\\\"private\\\")\n}"}
+{"file":"src/parser/go.rs","kind":"string","line":[401,401],"text":"func Hello"}
+{"file":"src/parser/go.rs","kind":"string","line":[410,420],"text":"package main\n\ntype Person struct {\n    Name string\n}\n\nfunc (p *Person) Greet() string {\n    return \\\"Hello, \\\" + p.Name\n}\n\nfunc (p Person) privateMethod() {}"}
+{"file":"src/parser/go.rs","kind":"string","line":[437,443],"text":"package main\n\ntype Point struct {\n    X int\n    Y int\n    z int\n}"}
+{"file":"src/parser/go.rs","kind":"string","line":[459,464],"text":"package main\n\ntype Reader interface {\n    Read() (int, error)\n    close()\n}"}
+{"file":"src/parser/go.rs","kind":"comment","line":[471,473],"text":"Interface methods may or may not be extracted depending on implementation\nJust verify the interface itself is extracted correctly\nat least package + interface"}
+{"file":"src/parser/go.rs","kind":"string","line":[478,484],"text":"package main\n\nvar GlobalVar = 100\nvar privateVar = 200\n\nconst MaxSize = 1000\nconst minSize = 10"}
+{"file":"src/parser/go.rs","kind":"string","line":[501,507],"text":"package main\n\nimport \\\"fmt\\\"\nimport (\n    \\\"os\\\"\n    io \\\"io/ioutil\\\"\n)"}
+{"file":"src/parser/go.rs","kind":"string","line":[522,525],"text":"package main\n\ntype UserID int\ntype Handler func(string) error"}
+{"file":"src/parser/go.rs","kind":"string","line":[537,539],"text":"package mypackage\n\nfunc Foo() {}"}
+{"file":"src/parser/go.rs","kind":"string","line":[548,553],"text":"package main\n\n// Single line comment\nfunc Helper() {}\n\n/* Block comment */"}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[1,1],"text":"Shared helpers for tree-sitter extraction across all languages."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[7,7],"text":"Get the text content of a tree-sitter node."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[14,14],"text":"Get the 1-based [start, end] line range for a node."}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[16,16],"text":"tree-sitter is 0-based"}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[18,19],"text":"When end_position().column == 0, the node ends at the start of the next line\n(e.g. line_comment includes trailing \\n), so the actual end line is the previous row."}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[21,21],"text":"don't add 1, since it's actually the previous line"}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[28,28],"text":"Find a child node by its field name."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[33,33],"text":"Check if a text string is too trivial to index."}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[39,39],"text":"Skip whitespace-only strings"}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[43,44],"text":"Skip short strings that look like code identifiers rather than prose.\nProse typically contains spaces or is substantially longer."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[51,51],"text":"Collapse multiple whitespace characters into single spaces."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[69,69],"text":"Strip `///` or `//!` prefix from each line of a doc comment."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[88,88],"text":"Strip `/* */` delimiters and leading `*` from block comments."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[111,111],"text":"Strip surrounding quotes from string literals."}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[113,113],"text":"Triple-quoted strings (Python, etc.)"}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[120,120],"text":"Template literals (JS/TS)"}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[124,124],"text":"Raw strings: r\"...\" or r#\"...\"#"}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[133,133],"text":"Byte strings: b\"...\""}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[138,138],"text":"F-strings: f\"...\" (Python)"}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[156,156],"text":"Extract a comment node as a TextEntry (generic for C-style comments)."}
+{"file":"src/parser/helpers.rs","kind":"comment","line":[186,186],"text":"Hash-style comments (Python, Ruby, etc.)"}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[210,210],"text":"Extract a string literal node as a TextEntry."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[235,235],"text":"Push a symbol entry (convenience builder)."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[259,260],"text":"Extract a function/method signature: everything from start to opening `{` or `:`.\nCollapses whitespace."}
+{"file":"src/parser/java.rs","kind":"docstring","line":[1,1],"text":"Java symbol and text extraction."}
+{"file":"src/parser/java.rs","kind":"string","line":[34,34],"text":"interface_declaration"}
+{"file":"src/parser/java.rs","kind":"string","line":[42,42],"text":"annotation_type_declaration"}
+{"file":"src/parser/java.rs","kind":"string","line":[53,53],"text":"constructor_declaration"}
+{"file":"src/parser/java.rs","kind":"comment","line":[100,100],"text":"Build signature"}
+{"file":"src/parser/java.rs","kind":"comment","line":[114,114],"text":"Walk class body"}
+{"file":"src/parser/java.rs","kind":"comment","line":[189,189],"text":"Check for static final → constant"}
+{"file":"src/parser/java.rs","kind":"comment","line":[199,199],"text":"Find declarators"}
+{"file":"src/parser/java.rs","kind":"comment","line":[229,229],"text":"Get the import path"}
+{"file":"src/parser/java.rs","kind":"comment","line":[285,285],"text":"package-private (no explicit modifier)"}
+{"file":"src/parser/java.rs","kind":"comment","line":[289,289],"text":"default: package-private"}
+{"file":"src/parser/java.rs","kind":"string","line":[309,309],"text":" extends {}"}
+{"file":"src/parser/java.rs","kind":"string","line":[313,313],"text":" implements {}"}
+{"file":"src/parser/java.rs","kind":"string","line":[316,316],"text":"{kind} {name}{type_params}{extends}{implements}"}
+{"file":"src/parser/java.rs","kind":"string","line":[328,328],"text":"symbol not found: {name}"}
+{"file":"src/parser/java.rs","kind":"string","line":[333,345],"text":"public class Person {\n    private String name;\n\n    public Person(String name) {\n        this.name = name;\n    }\n\n    public String getName() {\n        return name;\n    }\n\n    private void helper() {}\n}"}
+{"file":"src/parser/java.rs","kind":"string","line":[351,351],"text":"class Person"}
+{"file":"src/parser/java.rs","kind":"string","line":[370,373],"text":"public interface Runnable {\n    void run();\n    default void start() {}\n}"}
+{"file":"src/parser/java.rs","kind":"string","line":[383,387],"text":"public enum Status {\n    ACTIVE,\n    INACTIVE,\n    PENDING\n}"}
+{"file":"src/parser/java.rs","kind":"string","line":[397,401],"text":"class Config {\n    public static final int MAX_SIZE = 100;\n    private int value;\n    protected String name;\n}"}
+{"file":"src/parser/java.rs","kind":"string","line":[418,428],"text":"class Calculator {\n    public int add(int a, int b) {\n        return a + b;\n    }\n\n    protected double divide(double x, double y) {\n        return x / y;\n    }\n\n    private void log(String msg) {}\n}"}
+{"file":"src/parser/java.rs","kind":"string","line":[433,433],"text":"int add"}
+{"file":"src/parser/java.rs","kind":"string","line":[445,447],"text":"import java.util.List;\nimport java.util.*;\nimport java.io.File;"}
+{"file":"src/parser/java.rs","kind":"comment","line":[450,450],"text":"Check at least one import is extracted"}
+{"file":"src/parser/java.rs","kind":"comment","line":[454,454],"text":"Check if we have any java.util imports"}
+{"file":"src/parser/java.rs","kind":"string","line":[461,463],"text":"package com.example.app;\n\nclass Foo {}"}
+{"file":"src/parser/java.rs","kind":"string","line":[472,474],"text":"class Foo {\n    void packagePrivate() {}\n}"}
+{"file":"src/parser/java.rs","kind":"comment","line":[478,478],"text":"default = package-private"}
+{"file":"src/parser/java.rs","kind":"string","line":[486,490],"text":"/** Javadoc comment */\nclass Documented {}\n\n// Single line\n/* Block comment */"}
+{"file":"src/parser/javascript.rs","kind":"docstring","line":[1,1],"text":"JavaScript symbol and text extraction."}
+{"file":"src/parser/javascript.rs","kind":"string","line":[33,33],"text":"generator_function_declaration"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[38,38],"text":"handled recursively"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[47,47],"text":"Recurse into the exported declaration"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[68,68],"text":"Recurse into children"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[150,150],"text":"Build class signature with extends"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[171,171],"text":"Walk class body"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[194,194],"text":"Check for static/get/set/async modifiers"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[241,241],"text":"{prefix}{name}{params}"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[289,289],"text":"Determine if const"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[296,296],"text":"Walk declarators"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[304,304],"text":"Only index simple identifiers, not destructuring patterns"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[310,310],"text":"Check if the value is a function/arrow function"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[362,362],"text":"Get the source module"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[378,378],"text":"Default import: `import foo from \"...\"`"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[394,394],"text":"`import { foo, bar as baz } from \"...\"`"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[404,404],"text":"{source_module}.{imp_name}"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[421,421],"text":"`import * as foo from \"...\"`"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[425,425],"text":"In some grammars, the identifier is a direct child"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[465,465],"text":"JSDoc comment"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[501,501],"text":"generator_function_declaration"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[504,504],"text":"async function*"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[505,505],"text":"async function"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[510,510],"text":"{prefix} {name}{params}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[532,532],"text":"async {name}{params}"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[539,539],"text":"Check for extends clause"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[552,552],"text":"class {name}{extends}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[564,564],"text":"symbol not found: {name}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[569,579],"text":"function hello(name) {\n    return `Hello, ${name}!`;\n}\n\nasync function fetchData() {\n    return await fetch('/api');\n}\n\nfunction* generator() {\n    yield 1;\n}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[585,585],"text":"function hello"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[597,613],"text":"export class Person {\n    constructor(name) {\n        this.name = name;\n    }\n\n    greet() {\n        return `Hi, ${this.name}`;\n    }\n\n    static create() {\n        return new Person('default');\n    }\n\n    get fullName() {\n        return this.name;\n    }\n}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[634,641],"text":"const MAX_SIZE = 100;\nlet debug = true;\nvar legacy = 'old';\n\nexport const API_KEY = 'secret';\n\nconst add = (a, b) => a + b;\nconst asyncFn = async (x) => x * 2;"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[663,666],"text":"import React from 'react';\nimport { useState, useEffect } from 'react';\nimport * as Utils from './utils';\nimport { render as renderDOM } from 'react-dom';"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[691,697],"text":"class Foo {\n    publicMethod() {}\n\n    _internalMethod() {}\n\n    #privateMethod() {}\n}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[721,729],"text":"/**\n * JSDoc comment\n */\nfunction documented() {}\n\n// Single line comment\nfunction helper() {}\n\n/* Block comment */"}
 {"file":"src/parser/languages.rs","kind":"docstring","line":[4,4],"text":"Return the tree-sitter [`Language`] for the given language name."}
 {"file":"src/parser/languages.rs","kind":"docstring","line":[6,6],"text":"Languages are feature-gated — only grammars enabled at compile time are"}
-{"file":"src/parser/languages.rs","kind":"string","line":[25,25],"text":"unsupported language: {name}"}
-{"file":"src/parser/languages.rs","kind":"docstring","line":[29,29],"text":"Detect the language from a file extension."}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[7,7],"text":"Parse a single file using tree-sitter and extract symbols and text blocks."}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[19,19],"text":"failed to parse {file_path}"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[27,27],"text":"For unsupported languages, just extract comments and strings"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[32,32],"text":"Merge consecutive doc comments (/// lines) into single entries"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[38,40],"text":"---------------------------------------------------------------------------\nRust extraction\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[93,93],"text":"impl is handled recursively inside extract_rust_impl"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[97,97],"text":"no children to recurse into"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[106,106],"text":"Recurse into children"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[113,113],"text":"Extract a function/method item."}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[154,154],"text":"Extract a named symbol (struct, enum, trait, type, mod, const, static)."}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[183,183],"text":"Extract an impl block: emit the impl itself plus methods inside it."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[191,193],"text":"Determine the type being implemented.\nFor `impl Foo`, the type child is directly available.\nFor `impl Trait for Foo`, we need to find the type after `for`."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[199,199],"text":"Check if this is a trait impl (has `trait` child)"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[208,208],"text":"Build a signature like \"impl Trait for Type\" or \"impl Type\""}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[210,210],"text":"impl {trait_n} for {impl_type_name}"}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[212,212],"text":"impl {impl_type_name}"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[226,226],"text":"Now walk children of the body to find methods"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[279,279],"text":"Recurse for any other nodes that might contain comments/strings"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[294,294],"text":"Extract the type name from an impl block."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[296,296],"text":"tree-sitter-rust: impl item has field \"type\" for the target type"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[300,300],"text":"Fallback: just use a generic name"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[304,304],"text":"Extract a use declaration as an import symbol."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[314,315],"text":"Get the full use path text\nThe argument field contains the use tree"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[321,321],"text":"Recursively extract paths from a use tree."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[332,332],"text":"`foo::bar as baz`"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[349,349],"text":"`{Foo, Bar}` — recurse into children"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[356,356],"text":"`foo::*` or `foo::{bar, baz}` — emit the whole text"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[370,370],"text":"Simple path like `std::path::Path`"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[384,384],"text":"For other node types, try recursing"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[393,393],"text":"Extract visibility from a node's children."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[403,403],"text":"plain `pub`"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[410,410],"text":"Extract a function signature: everything from `fn` to the opening `{` (exclusive)."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[417,417],"text":"Find the opening brace and take everything before it"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[420,420],"text":"Collapse multiple whitespace into single space"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[423,423],"text":"For declarations without a body (e.g., trait methods)"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[431,431],"text":"Extract a comment node as a TextEntry."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[443,443],"text":"Doc comment"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[454,454],"text":"Block comment"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[479,479],"text":"Extract a string literal as a TextEntry."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[490,490],"text":"Strip surrounding quotes"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[506,508],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[563,565],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[567,567],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[569,571],"text":"Tree-sitter emits each `/// ...` line as a separate `line_comment` node.\nThis pass merges them into a single `TextEntry` with joined text and\na line range spanning the full block."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[599,599],"text":"---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[601,601],"text":"---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[614,614],"text":"tree-sitter is 0-based"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[616,617],"text":"When end_position().column == 0, the node ends at the start of the next line\n(e.g. line_comment includes trailing \\n), so the actual end line is the previous row."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[619,619],"text":"don't add 1, since it's actually the previous line"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[631,631],"text":"Skip whitespace-only strings"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[635,636],"text":"Skip short strings that look like code identifiers rather than prose.\nProse typically contains spaces or is substantially longer."}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[660,660],"text":"Strip `///` or `//!` prefix from each line of a doc comment."}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[679,679],"text":"Strip `/* */` delimiters and leading `*` from block comments."}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[702,702],"text":"Strip surrounding quotes from string literals."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[704,704],"text":"Raw strings: r\"...\" or r#\"...\"#"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[713,713],"text":"Byte strings: b\"...\""}
+{"file":"src/parser/languages.rs","kind":"string","line":[43,43],"text":"unsupported language: {name}"}
+{"file":"src/parser/languages.rs","kind":"docstring","line":[47,47],"text":"Detect the language from a file extension."}
+{"file":"src/parser/mod.rs","kind":"comment","line":[6,6],"text":"Language-specific extractors"}
+{"file":"src/parser/python.rs","kind":"docstring","line":[1,1],"text":"Python symbol and text extraction."}
+{"file":"src/parser/python.rs","kind":"comment","line":[32,32],"text":"handled recursively"}
+{"file":"src/parser/python.rs","kind":"comment","line":[36,36],"text":"handled recursively"}
+{"file":"src/parser/python.rs","kind":"string","line":[41,41],"text":"import_from_statement"}
+{"file":"src/parser/python.rs","kind":"comment","line":[45,45],"text":"Recurse into the definition inside the decorator"}
+{"file":"src/parser/python.rs","kind":"comment","line":[53,53],"text":"Check for module-level assignments and docstrings"}
+{"file":"src/parser/python.rs","kind":"comment","line":[60,60],"text":"Could be a module/class docstring"}
+{"file":"src/parser/python.rs","kind":"comment","line":[78,78],"text":"Recurse into children"}
+{"file":"src/parser/python.rs","kind":"comment","line":[100,100],"text":"Determine if it's a method (inside a class) or function"}
+{"file":"src/parser/python.rs","kind":"comment","line":[107,107],"text":"Check for decorators to detect properties, staticmethods, etc."}
+{"file":"src/parser/python.rs","kind":"comment","line":[110,110],"text":"Build signature from parameters"}
+{"file":"src/parser/python.rs","kind":"comment","line":[131,131],"text":"Recurse into function body for nested definitions"}
+{"file":"src/parser/python.rs","kind":"comment","line":[133,133],"text":"Check for docstring as first statement"}
+{"file":"src/parser/python.rs","kind":"comment","line":[152,153],"text":"Don't recurse deeply into function bodies for symbols,\nbut do recurse for nested classes/functions"}
+{"file":"src/parser/python.rs","kind":"comment","line":[185,185],"text":"Build signature with base classes"}
+{"file":"src/parser/python.rs","kind":"comment","line":[206,206],"text":"Walk class body"}
+{"file":"src/parser/python.rs","kind":"comment","line":[211,211],"text":"Check for class docstring"}
+{"file":"src/parser/python.rs","kind":"comment","line":[235,235],"text":"`import foo, bar` or `import foo as bar`"}
+{"file":"src/parser/python.rs","kind":"comment","line":[285,285],"text":"Get module name: `from X import ...`"}
+{"file":"src/parser/python.rs","kind":"comment","line":[290,290],"text":"Iterate over imported names"}
+{"file":"src/parser/python.rs","kind":"comment","line":[295,295],"text":"Skip the module name itself (already captured)"}
+{"file":"src/parser/python.rs","kind":"comment","line":[374,374],"text":"Module/class-level assignments: `FOO = ...` or `foo: type = ...`"}
+{"file":"src/parser/python.rs","kind":"comment","line":[380,380],"text":"Only capture simple identifier assignments (not destructuring, subscripts, etc.)"}
+{"file":"src/parser/python.rs","kind":"comment","line":[389,389],"text":"UPPER_CASE → constant, otherwise variable"}
+{"file":"src/parser/python.rs","kind":"string","line":[465,465],"text":" -> {}"}
+{"file":"src/parser/python.rs","kind":"comment","line":[468,468],"text":"Check for async"}
+{"file":"src/parser/python.rs","kind":"string","line":[474,474],"text":"async def"}
+{"file":"src/parser/python.rs","kind":"string","line":[476,476],"text":"{prefix} {name}{params}{return_type}"}
+{"file":"src/parser/python.rs","kind":"string","line":[485,485],"text":"class {name}"}
+{"file":"src/parser/python.rs","kind":"string","line":[487,487],"text":"class {name}{bases}"}
+{"file":"src/parser/python.rs","kind":"string","line":[500,500],"text":"symbol not found: {name}"}
+{"file":"src/parser/python.rs","kind":"string","line":[505,512],"text":"def hello(name):\n    return f'Hello, {name}!'\n\ndef _private():\n    pass\n\nasync def fetch_data():\n    return None"}
+{"file":"src/parser/python.rs","kind":"string","line":[518,518],"text":"def hello"}
+{"file":"src/parser/python.rs","kind":"string","line":[525,525],"text":"async def"}
+{"file":"src/parser/python.rs","kind":"string","line":[530,538],"text":"class Person:\n    def __init__(self, name):\n        self.name = name\n\n    def greet(self):\n        return f'Hi, {self.name}'\n\nclass _Private:\n    pass"}
+{"file":"src/parser/python.rs","kind":"string","line":[543,543],"text":"class Person"}
+{"file":"src/parser/python.rs","kind":"string","line":[559,562],"text":"import os\nimport sys as system\nfrom pathlib import Path\nfrom typing import List, Dict as D"}
+{"file":"src/parser/python.rs","kind":"string","line":[580,585],"text":"MAX_SIZE = 100\ndebug_mode = True\n\nclass Config:\n    def __init__(self):\n        self.version = '1.0'"}
+{"file":"src/parser/python.rs","kind":"string","line":[600,611],"text":"def public_fn():\n    pass\n\ndef _internal():\n    pass\n\ndef __private():\n    pass\n\nclass Foo:\n    def __special__(self):\n        pass"}
+{"file":"src/parser/python.rs","kind":"comment","line":[624,624],"text":"__special__ starts with _ so it's internal (not __x without trailing __)"}
+{"file":"src/parser/python.rs","kind":"string","line":[630,638],"text":"\\\"\\\"\\\"Module docstring\\\"\\\"\\\"\n\ndef foo():\n    \\\"\\\"\\\"Function docstring\\\"\\\"\\\"\n    pass\n\nclass Bar:\n    \\\"\\\"\\\"Class docstring\\\"\\\"\\\"\n    pass"}
+{"file":"src/parser/ruby.rs","kind":"docstring","line":[1,1],"text":"Ruby symbol and text extraction."}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[50,50],"text":"Capture `require`, `include`, `extend`, `attr_*`"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[93,93],"text":"def {name}{params}"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[108,108],"text":"Recurse for nested definitions"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[146,146],"text":"def self.{name}{params}"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[159,159],"text":"Recurse for nested definitions"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[193,193],"text":"Check for superclass"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[195,195],"text":" < {}"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[198,198],"text":"class {name}{superclass}"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[211,211],"text":"Walk class body"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[271,271],"text":"CONSTANT = value"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[283,283],"text":"Module/class level assignment"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[285,285],"text":"Only capture top-level assignments"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[294,294],"text":"@var or @@var"}
+{"file":"src/parser/ruby.rs","kind":"comment","line":[330,330],"text":"Extract the required file"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[377,377],"text":"symbol not found: {name}"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[382,388],"text":"def hello(name)\n  \\\"Hello, #{name}!\\\"\nend\n\ndef _private_helper\n  puts 'private'\nend"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[393,393],"text":"def hello"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[402,414],"text":"class Person\n  def initialize(name)\n    @name = name\n  end\n\n  def greet\n    \\\"Hi, #{@name}\\\"\n  end\n\n  def self.create\n    Person.new('default')\n  end\nend"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[419,419],"text":"class Person"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[426,426],"text":"def self.create"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[431,440],"text":"module Utils\n  def self.helper\n    puts 'helping'\n  end\nend\n\nmodule Logger\n  class Writer\n  end\nend"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[459,464],"text":"MAX_SIZE = 100\nDEFAULT_NAME = 'Unknown'\n\nclass Config\n  VERSION = '1.0'\nend"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[477,480],"text":"class Foo\n  @instance_var = 1\n  @@class_var = 2\nend"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[494,496],"text":"require 'json'\nrequire_relative 'config'\nrequire 'active_support'"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[508,515],"text":"class Animal\nend\n\nclass Dog < Animal\n  def bark\n    'woof'\n  end\nend"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[520,520],"text":"< Animal"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[528,532],"text":"class Utils\n  def self.format(text)\n    text.upcase\n  end\nend"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[537,537],"text":"def self.format"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[542,548],"text":"# Single line comment\ndef foo\nend\n\n=begin\nMulti-line comment\n=end"}
+{"file":"src/parser/ruby.rs","kind":"string","line":[555,559],"text":"def public_method\nend\n\ndef _internal_method\nend"}
+{"file":"src/parser/rust_lang.rs","kind":"docstring","line":[1,1],"text":"Rust symbol and text extraction."}
+{"file":"src/parser/rust_lang.rs","kind":"comment","line":[59,59],"text":"impl is handled recursively inside extract_impl"}
+{"file":"src/parser/rust_lang.rs","kind":"comment","line":[72,72],"text":"Recurse into children"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[169,169],"text":"impl {trait_n} for {impl_type_name}"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[171,171],"text":"impl {impl_type_name}"}
+{"file":"src/parser/rust_lang.rs","kind":"comment","line":[186,186],"text":"Walk children of the body to find methods"}
+{"file":"src/parser/rust_lang.rs","kind":"docstring","line":[340,340],"text":"Rust-specific comment extraction (handles ///, //!, /**, etc.)"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[360,360],"text":"symbol not found: {name}"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[365,371],"text":"pub fn hello(name: &str) -> String {\n    format!(\\\"Hello, {}!\\\", name)\n}\n\nfn private_helper() {\n    println!(\\\"private\\\");\n}"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[377,377],"text":"pub fn hello"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[387,392],"text":"pub struct Point {\n    pub x: i32,\n    pub y: i32,\n}\n\nstruct Private;"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[407,415],"text":"struct Foo;\n\nimpl Foo {\n    pub fn new() -> Self {\n        Foo\n    }\n\n    fn private_method(&self) {}\n}"}
+{"file":"src/parser/rust_lang.rs","kind":"comment","line":[417,417],"text":"struct + impl + 2 methods"}
+{"file":"src/parser/rust_lang.rs","kind":"comment","line":[420,420],"text":"First is struct, second is impl"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[422,422],"text":"impl Foo"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[436,444],"text":"pub trait Display {\n    fn fmt(&self) -> String;\n}\n\nimpl Display for Foo {\n    fn fmt(&self) -> String {\n        String::new()\n    }\n}"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[454,454],"text":"impl Display for"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[459,461],"text":"use std::collections::HashMap;\nuse std::io::{self, Read};\npub use std::fmt::Debug;"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[466,466],"text":"std::collections::HashMap"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[478,481],"text":"pub enum Result<T, E> {\n    Ok(T),\n    Err(E),\n}"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[490,491],"text":"pub mod utils;\nmod private_mod;"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[504,505],"text":"pub const MAX: usize = 100;\nstatic GLOBAL: i32 = 0;"}
+{"file":"src/parser/rust_lang.rs","kind":"string","line":[519,524],"text":"/// This is a doc comment\n/// for the function\npub fn documented() {}\n\n// Regular comment\nfn helper() {}"}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[1,1],"text":"Single File Component (SFC) preprocessor."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[3,4],"text":"Extracts `<script>` blocks from Vue, Svelte, and Astro files so they can\nbe fed to the existing TypeScript/JavaScript tree-sitter extractors."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[6,6],"text":"No external dependencies — uses simple byte-level scanning."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[8,8],"text":"A script block extracted from an SFC file."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[10,10],"text":"The script content (without the surrounding tags)."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[12,12],"text":"The language to parse with: `\"typescript\"` or `\"javascript\"`."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[14,14],"text":"1-based line number where the content starts in the original file."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[18,18],"text":"Extract script blocks from an SFC file based on its extension."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[20,20],"text":"Returns an empty vec if no script blocks are found (e.g. template-only"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[31,33],"text":"---------------------------------------------------------------------------\nVue: <script> and <script setup>, with optional lang=\"ts\"\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[39,41],"text":"---------------------------------------------------------------------------\nSvelte: <script> with optional lang=\"ts\"\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[47,49],"text":"---------------------------------------------------------------------------\nAstro: --- frontmatter --- (always TS) + optional <script> blocks\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[55,55],"text":"Extract frontmatter: content between first `---` and second `---`"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[59,59],"text":"Skip leading newline after opening ---"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[72,72],"text":"Count lines before the frontmatter content starts"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[85,85],"text":"Also extract any <script> tags in the body"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[91,93],"text":"---------------------------------------------------------------------------\nShared: extract <script> ... </script> blocks from HTML-like content\n---------------------------------------------------------------------------"}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[95,95],"text":"Extract all `<script ...>...</script>` blocks from HTML-like source."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[97,97],"text":"`default_lang` is used when no `lang=\"...\"` attribute is present."}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[106,106],"text":"Find next <script"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[112,112],"text":"Make sure it's actually a tag (next char after \"script\" should be whitespace or >)"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[125,125],"text":"Find the closing > of the opening tag"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[131,131],"text":"Extract the opening tag attributes"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[134,134],"text":"Detect language from lang=\"...\" attribute"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[137,137],"text":"Content starts after the > (skip leading newline if present)"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[148,148],"text":"Find the matching </script> — content ends where the close tag begins"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[156,156],"text":"Calculate the 1-based start line of the content"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[167,167],"text":"Move past the closing tag"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[169,169],"text":"Skip past </script>"}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[180,180],"text":"Detect the script language from an opening `<script ...>` tag."}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[182,183],"text":"Looks for `lang=\"ts\"`, `lang=\"typescript\"`, `lang='ts'`, etc.\nReturns `\"typescript\"` or `\"javascript\"`."}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[187,187],"text":"Match lang=\"ts\" or lang=\"typescript\" (with either quote style)"}
+{"file":"src/parser/sfc.rs","kind":"comment","line":[201,201],"text":"No lang attribute — use the default"}
+{"file":"src/parser/sfc.rs","kind":"docstring","line":[209,209],"text":"Count the number of newline characters in a string slice."}
+{"file":"src/parser/sfc.rs","kind":"string","line":[220,220],"text":"<template>\\n  <div>hello</div>\\n</template>\\n\\n<script setup lang=\\\"ts\\\">\\nimport { ref } from 'vue'\\nconst msg = ref('hi')\\n</script>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[226,226],"text":"import { ref }"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[227,227],"text":"const msg"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[232,232],"text":"<script>\\nexport default { name: 'Foo' }\\n</script>\\n\\n<script setup lang=\\\"ts\\\">\\nconst x = 1\\n</script>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[243,243],"text":"<template>\\n  <div>hello</div>\\n</template>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[250,250],"text":"---\\nimport Layout from './Layout.astro'\\nconst title = 'Hello'\\n---\\n\\n<Layout title={title}>\\n  <h1>Hello</h1>\\n</Layout>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[256,256],"text":"import Layout"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[261,261],"text":"<script lang=\\\"ts\\\">\\n  let count = 0\\n  function inc() { count++ }\\n</script>\\n\\n<button on:click={inc}>{count}</button>\\n"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[270,270],"text":"<script lang=\\\"ts\\\">"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[271,271],"text":"<script lang='typescript'>"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[272,272],"text":"<script setup lang=\\\"ts\\\">"}
+{"file":"src/parser/sfc.rs","kind":"string","line":[278,278],"text":"<script setup>"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[9,9],"text":"Parse a single file using tree-sitter and extract symbols and text blocks."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[15,15],"text":"SFC preprocessing: extract script blocks from Vue/Svelte/Astro files"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[33,33],"text":"failed to parse {file_path}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[70,70],"text":"For unsupported languages, just extract comments and strings"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[75,75],"text":"Merge consecutive doc comments (/// lines) into single entries"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[81,83],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[138,140],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[142,142],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[170,172],"text":"---------------------------------------------------------------------------\nSFC (Single File Component) handling\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[174,175],"text":"Parse an SFC file by extracting script blocks and running them through the\nappropriate JS/TS parser, adjusting line numbers back to the original file."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[191,191],"text":"Parse each script block with the detected language"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[196,196],"text":"failed to parse {} script block in {}: {}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[203,204],"text":"Adjust line numbers: add the block's start_line offset (minus 1 because\nthe parser already counts from line 1)"}
+{"file":"src/parser/typescript.rs","kind":"docstring","line":[1,1],"text":"TypeScript symbol and text extraction."}
+{"file":"src/parser/typescript.rs","kind":"docstring","line":[3,5],"text":"TypeScript extends JavaScript with type annotations, interfaces,\nenums, type aliases, and namespaces. We reuse the JS extraction\nfor most constructs and add TS-specific ones."}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[34,34],"text":"--- JS constructs ---"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[35,35],"text":"generator_function_declaration"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[59,59],"text":"--- TS-specific constructs ---"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[60,60],"text":"interface_declaration"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[64,64],"text":"type_alias_declaration"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[71,71],"text":"`namespace Foo { ... }` or `module Foo { ... }`"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[75,75],"text":"abstract_class_declaration"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[91,91],"text":"Recurse into children"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[98,98],"text":"--- Shared JS-like extraction (adapted for TS node names) ---"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[155,155],"text":"abstract_class_declaration"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[204,204],"text":"accessibility_modifier"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[218,218],"text":": {}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[231,231],"text":"{prefix}{name}{params}{return_type}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[358,358],"text":"{source_module}.{name}"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[387,387],"text":"--- TS-specific constructs ---"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[409,409],"text":"Build signature with type parameters and extends"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[420,420],"text":" extends {}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[423,423],"text":"interface {name}{type_params}{extends}"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[436,436],"text":"Walk interface body for method signatures"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[453,453],"text":"{full_name}.{member_name}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[491,491],"text":"type {name}{type_params}"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[567,567],"text":"Recurse into namespace body"}
+{"file":"src/parser/typescript.rs","kind":"comment","line":[576,576],"text":"--- Helpers ---"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[620,620],"text":": {}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[632,632],"text":"async function"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[634,634],"text":"{prefix} {name}{type_params}{params}{return_type}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[651,651],"text":": {}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[660,660],"text":"async {name}{params}{return_type}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[662,662],"text":"{name}{params}{return_type}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[680,680],"text":"abstract class"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[682,682],"text":"{prefix} {name}{type_params}{extends}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[694,694],"text":"symbol not found: {name}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[699,705],"text":"function greet(name: string): string {\n    return `Hello, ${name}!`;\n}\n\nasync function fetch(): Promise<Data> {\n    return await api.get();\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[712,712],"text":": string"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[721,729],"text":"export interface User {\n    id: number;\n    name: string;\n    getEmail(): string;\n}\n\ninterface Private {\n    data: any;\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[735,735],"text":"interface User"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[747,748],"text":"export type Result<T> = Success<T> | Error;\ntype ID = string | number;"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[753,753],"text":"type Result"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[763,767],"text":"export enum Status {\n    Active,\n    Inactive,\n    Pending\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[777,796],"text":"export abstract class Base {\n    protected abstract doWork(): void;\n}\n\nexport class Worker extends Base {\n    private data: string;\n\n    constructor(data: string) {\n        super();\n        this.data = data;\n    }\n\n    protected doWork(): void {\n        console.log(this.data);\n    }\n\n    public run(): void {\n        this.doWork();\n    }\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[801,801],"text":"abstract class"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[815,817],"text":"export namespace Utils {\n    export function helper(): void {}\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[830,833],"text":"import React from 'react';\nimport { Component, useState } from 'react';\nimport * as Utils from './utils';\nimport type { User } from './types';"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[851,855],"text":"class Foo {\n    public publicMethod(): void {}\n    private privateMethod(): void {}\n    protected protectedMethod(): void {}\n}"}
 {"file":"src/scanner/hasher.rs","kind":"docstring","line":[5,6],"text":"Compute the BLAKE3 hash of a file's contents, truncated to 64 bits,\nreturned as a 16-character hex string."}
 {"file":"src/scanner/hasher.rs","kind":"docstring","line":[12,13],"text":"Compute the BLAKE3 hash of byte content, truncated to 64 bits,\nreturned as a 16-character hex string."}
 {"file":"src/scanner/hasher.rs","kind":"comment","line":[17,17],"text":"Truncate to first 8 bytes (64 bits), hex-encode to 16 chars"}

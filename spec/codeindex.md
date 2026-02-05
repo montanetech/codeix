@@ -75,7 +75,9 @@ Schema: [`files.schema.json`](files.schema.json)
 
 ### Language identifiers
 
-Language values are lowercase strings. Common values: `"python"`, `"rust"`, `"javascript"`, `"typescript"`, `"go"`, `"java"`, `"c"`, `"cpp"`, `"ruby"`, `"php"`, `"swift"`, `"kotlin"`, `"hcl"`, `"graphql"`, `"protobuf"`, `"yaml"`, `"toml"`, `"json"`.
+Language values are lowercase strings. Languages with tree-sitter symbol extraction: `"python"`, `"rust"`, `"javascript"`, `"typescript"`, `"tsx"`, `"go"`, `"java"`, `"c"`, `"cpp"`, `"ruby"`, `"csharp"`.
+
+Single File Component formats (`"vue"`, `"svelte"`, `"astro"`) are preprocessed to extract embedded script blocks, which are then parsed as JavaScript or TypeScript.
 
 The set is open — any string is valid. Consumers should handle unknown languages gracefully.
 
