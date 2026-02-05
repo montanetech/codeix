@@ -443,6 +443,83 @@ Git submodules:
 
 ---
 
+## Future Considerations
+
+### Project metadata tools
+
+Agents can search symbols but don't know *how to work with the project* — how to build, test, lint, deploy. That knowledge lives in scattered config files and docs.
+
+**Commands extraction:**
+- Extract targets/scripts from Makefile, justfile, package.json, pyproject.toml, Taskfile.yml, etc.
+- Expose via `get_project_commands` MCP tool
+- Open: persist in `.codeindex/meta.jsonl` or scan live at serve time? Live is simpler — few entries, cheap to read, avoids writer/reader/DB plumbing for ~20 entries.
+- Open: which sources in v1? Makefile + justfile + package.json covers 90%.
+
+**Project docs:**
+- Surface README, CONTRIBUTING, CLAUDE.md paths via `get_project_docs` MCP tool
+- Path-only listing — agent reads full content with its own file tools
+
+### External API documentation — two-tier model
+
+Projects use libraries with API docs that live outside the repo (e.g. [Nuxt UI MCP docs](https://ui.nuxt.com/docs/getting-started/ai/mcp)). An agent working on a Nuxt UI project would benefit from knowing those docs exist.
+
+**Tier 1 — Static `.codeindex/` (default, always available):**
+- Project docs extracted at index time (README, CONTRIBUTING, CLAUDE.md, etc.)
+- Free, offline, no infrastructure — committed to git, works anywhere
+- This is the baseline: every indexed project gets this for free
+
+**Tier 2 — Live MCP proxy (optional, declared in manifest):**
+- `index.json` gains an optional `"mcp"` field declaring upstream MCP server endpoints:
+  ```json
+  {
+    "version": "1.0",
+    "name": "my-nuxt-app",
+    "mcp": {
+      "nuxt-ui": { "command": "npx nuxi-mcp" },
+      "supabase": { "url": "https://mcp.supabase.com" }
+    }
+  }
+  ```
+- codeix discovers dependency `.codeindex/index.json`, reads `mcp` field, optionally spawns/proxies upstream
+- Hosting a live MCP server is costly — static `.codeindex/` is the better default for library authors. But for libraries that *do* offer an MCP server, codeix can aggregate them into a single endpoint
+
+**Open questions:**
+- Proxy protocol: stdio spawn (local tools) vs HTTP (remote services) — support both?
+- Discovery: explicit config only, or auto-discover from package metadata?
+- Security: spawning arbitrary commands from dependency manifests needs sandboxing/allowlisting
+- Caching: should codeix cache upstream MCP responses to reduce latency?
+
+### MCP resources
+
+MCP distinguishes **tools** (parameterized queries — agent calls them with arguments) from **resources** (`resource://` URIs — agent browses and reads them). codeix currently exposes only tools (search + lookup).
+
+**Future: expose indexed data as browsable resources:**
+- `resource://codeix/files` — list all indexed files
+- `resource://codeix/files/{path}` — file metadata + symbols for a specific file
+- `resource://codeix/symbols/{name}` — symbol details across all files
+- `resource://codeix/meta/commands` — project commands
+- `resource://codeix/meta/docs` — project documentation list
+
+**Why both tools and resources?**
+- Tools are for discovery — "search for something related to auth" (fuzzy, ranked)
+- Resources are for navigation — "show me this file's structure" (exact, browsable)
+- Some MCP clients (IDEs, chat UIs) can render resource lists as navigable trees — tools can't provide that UX
+
+**Open questions:**
+- MCP resource templates (parameterized URIs like `files/{path}`) vs static resource list?
+- Resource subscriptions for live updates in watch mode? (MCP supports `resource/subscribe`)
+- Should dependency indexes be exposed as sub-resources (`resource://codeix/deps/{pkg}/...`)?
+
+### Dependency index composition (ADR-003)
+
+Auto-mount `.codeindex/` from resolved dependencies — declared in ADR-003 but not yet implemented.
+
+- Read package manifests to resolve dependency locations on disk
+- Look for `.codeindex/` in each resolved dependency
+- Mount found indexes automatically, scope queries per-package
+
+---
+
 ## Resolved Questions
 
 - [x] **Host language**: Rust — native performance, first-class tree-sitter/SQLite/ripgrep support, single static binary
