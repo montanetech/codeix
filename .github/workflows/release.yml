@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag (e.g., v1.2.3)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -28,6 +34,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -56,6 +64,8 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -70,6 +80,7 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           files: artifacts/*
           generate_release_notes: true
 
@@ -78,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -88,14 +101,17 @@ jobs:
   trigger-wrappers:
     needs: release
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.tag && inputs.tag || github.ref_name }}
     steps:
       - uses: actions/github-script@v7
         with:
           script: |
+            const version = '${{ env.VERSION }}'.replace(/^v/, '');
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'publish-wrappers.yml',
-              ref: context.ref,
-              inputs: { version: context.ref.replace('refs/tags/v', '') }
+              ref: 'main',
+              inputs: { version }
             });

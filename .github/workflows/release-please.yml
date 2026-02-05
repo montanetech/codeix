@@ -7,12 +7,28 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release-please
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  release:
+    uses: ./.github/workflows/release.yml
+    needs: release-please
+    if: needs.release-please.outputs.release_created
+    secrets: inherit
+    permissions:
+      contents: write
+      actions: write
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
