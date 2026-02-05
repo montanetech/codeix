@@ -1,0 +1,27 @@
+{
+  "name": "codeix",
+  "version": "0.1.0",
+  "description": "Portable, composable code index — build with tree-sitter, query via MCP",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/montanetech/codeix"
+  },
+  "homepage": "https://github.com/montanetech/codeix",
+  "bin": {
+    "codeix": "run.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["x64", "arm64"],
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "install.js",
+    "run.js",
+    "bin/"
+  ]
+}

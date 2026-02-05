@@ -1,1 +1,10 @@
 /target/
+
+# npm wrapper
+npm/bin/
+npm/node_modules/
+
+# Python wrapper
+python/dist/
+python/*.egg-info/
+python/codeix/__pycache__/

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "codeix"
+version = "0.1.0" # x-release-please-version
+description = "Portable, composable code index — build with tree-sitter, query via MCP"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+requires-python = ">=3.8"
+authors = [{ name = "Montane Tech" }]
+keywords = ["code-index", "tree-sitter", "mcp", "code-search"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Indexing",
+]
+
+[project.urls]
+Homepage = "https://github.com/montanetech/codeix"
+Repository = "https://github.com/montanetech/codeix"
+Issues = "https://github.com/montanetech/codeix/issues"
+
+[project.scripts]
+codeix = "codeix:main"

@@ -5,6 +5,11 @@ edition = "2024"
 description = "Portable, composable code index — build with tree-sitter, query via MCP"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/montanetech/codeix"
+homepage = "https://github.com/montanetech/codeix"
+readme = "README.md"
+keywords = ["code-index", "tree-sitter", "mcp", "code-search", "symbols"]
+categories = ["command-line-utilities", "development-tools", "text-processing"]
+exclude = ["npm/", "python/", ".github/", "spec/", "tests/fixtures/"]
 
 [dependencies]
 # CLI
