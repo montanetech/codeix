@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codeix"
-version = "0.1.6" # x-release-please-version
+version = "0.1.7" # x-release-please-version
 description = "Portable, composable code index — build with tree-sitter, query via MCP"
 readme = "README.md"
 license = "MIT OR Apache-2.0"

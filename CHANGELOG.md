@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/montanetech/codeix/compare/v0.1.6...v0.1.7) (2026-02-05)
+
+
+### Bug Fixes
+
+* npm OIDC trusted publishing and crates.io auth token ([75db693](https://github.com/montanetech/codeix/commit/75db69337dcb0341b41e528e05de982f784a0afd))
+
 ## [0.1.6](https://github.com/montanetech/codeix/compare/v0.1.5...v0.1.6) (2026-02-05)
 
 
