@@ -1,0 +1,69 @@
+[package]
+name = "codeix"
+version = "0.1.0"
+edition = "2024"
+description = "Portable, composable code index — build with tree-sitter, query via MCP"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/montanetech/codeix"
+
+[dependencies]
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Hashing
+blake3 = "1"
+
+# Tree-sitter core
+tree-sitter = "0.26"
+
+# SQLite for FTS5 search at serve time
+rusqlite = { version = "0.33", features = ["bundled", "vtab"] }
+
+# File watching
+notify = "8"
+notify-debouncer-mini = "0.7"
+
+# MCP protocol (Rust SDK for Model Context Protocol)
+rmcp = { version = "0.1", features = ["server", "transport-io"] }
+
+# Async runtime (needed for MCP)
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# File walking (respects .gitignore)
+ignore = "0.4"
+
+# Tree-sitter grammars — feature-gated
+[features]
+default = ["lang-python", "lang-rust", "lang-javascript", "lang-typescript"]
+lang-python = ["dep:tree-sitter-python"]
+lang-rust = ["dep:tree-sitter-rust"]
+lang-javascript = ["dep:tree-sitter-javascript"]
+lang-typescript = ["dep:tree-sitter-typescript"]
+
+[dependencies.tree-sitter-python]
+version = "0.25"
+optional = true
+
+[dependencies.tree-sitter-rust]
+version = "0.24"
+optional = true
+
+[dependencies.tree-sitter-javascript]
+version = "0.25"
+optional = true
+
+[dependencies.tree-sitter-typescript]
+version = "0.23"
+optional = true
