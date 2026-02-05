@@ -1,0 +1,229 @@
+{"file":"src/cli/build.rs","kind":"docstring","line":[12,13],"text":"Build the index into a database without flushing to disk.\nReturns the populated database for immediate use."}
+{"file":"src/cli/build.rs","kind":"string","line":[17,17],"text":"cannot resolve path: {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[19,19],"text":"Derive project name from directory name"}
+{"file":"src/cli/build.rs","kind":"string","line":[25,25],"text":"building index for '{}' at {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[27,27],"text":"Create empty database"}
+{"file":"src/cli/build.rs","kind":"string","line":[28,28],"text":"failed to create search database"}
+{"file":"src/cli/build.rs","kind":"comment","line":[31,31],"text":"Walk directory to find all files"}
+{"file":"src/cli/build.rs","kind":"string","line":[34,34],"text":"found {} files"}
+{"file":"src/cli/build.rs","kind":"comment","line":[39,39],"text":"Process each file through the same path as the watcher"}
+{"file":"src/cli/build.rs","kind":"comment","line":[41,41],"text":"Compute relative path (forward slashes, no leading ./)"}
+{"file":"src/cli/build.rs","kind":"comment","line":[48,48],"text":"Skip .codeindex/ directory itself"}
+{"file":"src/cli/build.rs","kind":"string","line":[56,56],"text":"\\r  indexing [{count}/{total}] {rel_path}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[57,57],"text":"Clear any trailing characters from previous longer line"}
+{"file":"src/cli/build.rs","kind":"comment","line":[62,62],"text":"Process file using shared indexing logic"}
+{"file":"src/cli/build.rs","kind":"comment","line":[64,64],"text":"Log errors but continue with other files"}
+{"file":"src/cli/build.rs","kind":"string","line":[65,65],"text":"failed to process {}: {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[73,73],"text":"Single FTS rebuild after all files"}
+{"file":"src/cli/build.rs","kind":"string","line":[74,74],"text":"db lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"docstring","line":[81,82],"text":"Build the index: scan the directory tree, parse files with tree-sitter,\nand write the `.codeindex/` output."}
+{"file":"src/cli/build.rs","kind":"string","line":[86,86],"text":"cannot resolve path: {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[90,90],"text":"Flush to disk using shared logic"}
+{"file":"src/cli/build.rs","kind":"string","line":[91,91],"text":"failed to flush index to disk"}
+{"file":"src/cli/build.rs","kind":"comment","line":[93,93],"text":"Log final stats"}
+{"file":"src/cli/build.rs","kind":"string","line":[94,94],"text":"db lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"string","line":[99,99],"text":"wrote .codeindex/: {} files, {} symbols, {} texts"}
+{"file":"src/cli/build.rs","kind":"docstring","line":[108,109],"text":"Run the `build` subcommand: scan the directory tree, parse files with\ntree-sitter, and write the `.codeindex/` output."}
+{"file":"src/cli/serve.rs","kind":"docstring","line":[12,13],"text":"Run the `serve` subcommand: load the index into an in-memory SQLite FTS5\ndatabase and start the MCP server over stdio."}
+{"file":"src/cli/serve.rs","kind":"string","line":[17,17],"text":"cannot resolve path: {}"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[21,21],"text":"No index exists - build directly into memory and flush to disk"}
+{"file":"src/cli/serve.rs","kind":"string","line":[22,22],"text":"no .codeindex/ found, building initial index"}
+{"file":"src/cli/serve.rs","kind":"string","line":[23,23],"text":"failed to build initial index"}
+{"file":"src/cli/serve.rs","kind":"string","line":[24,24],"text":"failed to flush initial index"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[26,26],"text":"Log stats"}
+{"file":"src/cli/serve.rs","kind":"string","line":[27,27],"text":"db lock poisoned: {e}"}
+{"file":"src/cli/serve.rs","kind":"string","line":[34,34],"text":"built and loaded index"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[39,39],"text":"Index exists - read from disk and load into memory"}
+{"file":"src/cli/serve.rs","kind":"string","line":[41,41],"text":"failed to read index"}
+{"file":"src/cli/serve.rs","kind":"string","line":[48,48],"text":"loaded index"}
+{"file":"src/cli/serve.rs","kind":"string","line":[51,51],"text":"failed to create search database"}
+{"file":"src/cli/serve.rs","kind":"string","line":[53,53],"text":"failed to load index into search database"}
+{"file":"src/cli/serve.rs","kind":"string","line":[55,55],"text":"search database ready"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[59,59],"text":"Start the tokio runtime"}
+{"file":"src/cli/serve.rs","kind":"string","line":[60,60],"text":"failed to create tokio runtime"}
+{"file":"src/cli/serve.rs","kind":"string","line":[63,63],"text":"starting watch mode"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[67,67],"text":"Spawn watcher in background thread"}
+{"file":"src/cli/serve.rs","kind":"string","line":[70,70],"text":"watcher error: {}"}
+{"file":"src/cli/serve.rs","kind":"string","line":[76,76],"text":"starting MCP server on stdio"}
+{"file":"src/index/format.rs","kind":"docstring","line":[3,3],"text":"`index.json` manifest — top-level metadata for a `.codeindex/` directory."}
+{"file":"src/index/format.rs","kind":"docstring","line":[12,12],"text":"One line in `files.jsonl` — metadata for a single indexed file."}
+{"file":"src/index/format.rs","kind":"docstring","line":[21,21],"text":"One line in `symbols.jsonl` — a symbol extracted from the AST."}
+{"file":"src/index/format.rs","kind":"docstring","line":[38,38],"text":"One line in `texts.jsonl` — a text block (docstring, comment, etc.)."}
+{"file":"src/index/reader.rs","kind":"docstring","line":[9,10],"text":"Read an existing `.codeindex/` directory from disk.\nReturns the manifest, files, symbols, and texts."}
+{"file":"src/index/reader.rs","kind":"string","line":[16,16],"text":"failed to read index.json"}
+{"file":"src/index/reader.rs","kind":"string","line":[17,17],"text":"failed to parse index.json"}
+{"file":"src/index/reader.rs","kind":"string","line":[21,21],"text":"failed to read files.jsonl"}
+{"file":"src/index/reader.rs","kind":"string","line":[24,24],"text":"failed to read symbols.jsonl"}
+{"file":"src/index/reader.rs","kind":"string","line":[27,27],"text":"failed to read texts.jsonl"}
+{"file":"src/index/reader.rs","kind":"docstring","line":[32,32],"text":"Read a JSONL file into a Vec of deserialized items."}
+{"file":"src/index/reader.rs","kind":"string","line":[44,44],"text":"failed to parse line {} of {}"}
+{"file":"src/index/writer.rs","kind":"docstring","line":[9,9],"text":"Write a complete `.codeindex/` directory to disk."}
+{"file":"src/index/writer.rs","kind":"comment","line":[17,17],"text":"Create the output directory"}
+{"file":"src/index/writer.rs","kind":"comment","line":[20,20],"text":"Write index.json (pretty-printed)"}
+{"file":"src/index/writer.rs","kind":"comment","line":[25,25],"text":"Write files.jsonl — sorted by path"}
+{"file":"src/index/writer.rs","kind":"comment","line":[30,30],"text":"Write symbols.jsonl — sorted by file, then line[0]"}
+{"file":"src/index/writer.rs","kind":"comment","line":[35,35],"text":"Write texts.jsonl — sorted by file, then line[0]"}
+{"file":"src/index/writer.rs","kind":"docstring","line":[43,43],"text":"Write a slice of serializable items as JSONL (one JSON object per line)."}
+{"file":"src/main.rs","kind":"string","line":[8,8],"text":"Portable, composable code index"}
+{"file":"src/main.rs","kind":"docstring","line":[16,16],"text":"Build the .codeindex/ for discovered projects"}
+{"file":"src/main.rs","kind":"docstring","line":[18,18],"text":"Root directory to scan (defaults to current dir)"}
+{"file":"src/main.rs","kind":"docstring","line":[22,22],"text":"Start the MCP server (default when no subcommand given)"}
+{"file":"src/main.rs","kind":"docstring","line":[24,24],"text":"Root directory (defaults to current dir)"}
+{"file":"src/main.rs","kind":"docstring","line":[27,27],"text":"Disable file watching"}
+{"file":"src/main.rs","kind":"comment","line":[42,42],"text":"Interactive: no subcommand given, print help and exit"}
+{"file":"src/main.rs","kind":"comment","line":[46,46],"text":"Piped stdin (e.g. MCP client): default to serve"}
+{"file":"src/parser/languages.rs","kind":"docstring","line":[4,4],"text":"Return the tree-sitter [`Language`] for the given language name."}
+{"file":"src/parser/languages.rs","kind":"docstring","line":[6,6],"text":"Languages are feature-gated — only grammars enabled at compile time are"}
+{"file":"src/parser/languages.rs","kind":"string","line":[25,25],"text":"unsupported language: {name}"}
+{"file":"src/parser/languages.rs","kind":"docstring","line":[29,29],"text":"Detect the language from a file extension."}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[7,7],"text":"Parse a single file using tree-sitter and extract symbols and text blocks."}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[19,19],"text":"failed to parse {file_path}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[27,27],"text":"For unsupported languages, just extract comments and strings"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[32,32],"text":"Merge consecutive doc comments (/// lines) into single entries"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[38,40],"text":"---------------------------------------------------------------------------\nRust extraction\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[93,93],"text":"impl is handled recursively inside extract_rust_impl"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[97,97],"text":"no children to recurse into"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[106,106],"text":"Recurse into children"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[113,113],"text":"Extract a function/method item."}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[154,154],"text":"Extract a named symbol (struct, enum, trait, type, mod, const, static)."}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[183,183],"text":"Extract an impl block: emit the impl itself plus methods inside it."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[191,193],"text":"Determine the type being implemented.\nFor `impl Foo`, the type child is directly available.\nFor `impl Trait for Foo`, we need to find the type after `for`."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[199,199],"text":"Check if this is a trait impl (has `trait` child)"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[208,208],"text":"Build a signature like \"impl Trait for Type\" or \"impl Type\""}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[210,210],"text":"impl {trait_n} for {impl_type_name}"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[212,212],"text":"impl {impl_type_name}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[226,226],"text":"Now walk children of the body to find methods"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[279,279],"text":"Recurse for any other nodes that might contain comments/strings"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[294,294],"text":"Extract the type name from an impl block."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[296,296],"text":"tree-sitter-rust: impl item has field \"type\" for the target type"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[300,300],"text":"Fallback: just use a generic name"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[304,304],"text":"Extract a use declaration as an import symbol."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[314,315],"text":"Get the full use path text\nThe argument field contains the use tree"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[321,321],"text":"Recursively extract paths from a use tree."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[332,332],"text":"`foo::bar as baz`"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[349,349],"text":"`{Foo, Bar}` — recurse into children"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[356,356],"text":"`foo::*` or `foo::{bar, baz}` — emit the whole text"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[370,370],"text":"Simple path like `std::path::Path`"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[384,384],"text":"For other node types, try recursing"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[393,393],"text":"Extract visibility from a node's children."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[403,403],"text":"plain `pub`"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[410,410],"text":"Extract a function signature: everything from `fn` to the opening `{` (exclusive)."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[417,417],"text":"Find the opening brace and take everything before it"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[420,420],"text":"Collapse multiple whitespace into single space"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[423,423],"text":"For declarations without a body (e.g., trait methods)"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[431,431],"text":"Extract a comment node as a TextEntry."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[443,443],"text":"Doc comment"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[454,454],"text":"Block comment"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[479,479],"text":"Extract a string literal as a TextEntry."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[490,490],"text":"Strip surrounding quotes"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[506,508],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[563,565],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[567,567],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[569,571],"text":"Tree-sitter emits each `/// ...` line as a separate `line_comment` node.\nThis pass merges them into a single `TextEntry` with joined text and\na line range spanning the full block."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[599,599],"text":"---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[601,601],"text":"---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[614,614],"text":"tree-sitter is 0-based"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[616,617],"text":"When end_position().column == 0, the node ends at the start of the next line\n(e.g. line_comment includes trailing \\n), so the actual end line is the previous row."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[619,619],"text":"don't add 1, since it's actually the previous line"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[631,631],"text":"Skip whitespace-only strings"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[635,636],"text":"Skip short strings that look like code identifiers rather than prose.\nProse typically contains spaces or is substantially longer."}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[660,660],"text":"Strip `///` or `//!` prefix from each line of a doc comment."}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[679,679],"text":"Strip `/* */` delimiters and leading `*` from block comments."}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[702,702],"text":"Strip surrounding quotes from string literals."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[704,704],"text":"Raw strings: r\"...\" or r#\"...\"#"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[713,713],"text":"Byte strings: b\"...\""}
+{"file":"src/scanner/hasher.rs","kind":"docstring","line":[5,6],"text":"Compute the BLAKE3 hash of a file's contents, truncated to 64 bits,\nreturned as a 16-character hex string."}
+{"file":"src/scanner/hasher.rs","kind":"docstring","line":[12,13],"text":"Compute the BLAKE3 hash of byte content, truncated to 64 bits,\nreturned as a 16-character hex string."}
+{"file":"src/scanner/hasher.rs","kind":"comment","line":[17,17],"text":"Truncate to first 8 bytes (64 bits), hex-encode to 16 chars"}
+{"file":"src/scanner/walker.rs","kind":"docstring","line":[6,7],"text":"Walk a directory tree using the `ignore` crate (respects `.gitignore`),\nreturning all file paths that are not ignored."}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[12,13],"text":"skip hidden files/dirs (dotfiles)\nrespect .gitignore"}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[19,19],"text":"Only collect files, not directories"}
+{"file":"src/server/db.rs","kind":"docstring","line":[6,7],"text":"An in-memory SQLite database with FTS5 virtual tables for fast text search\nover the code index."}
+{"file":"src/server/db.rs","kind":"docstring","line":[13,13],"text":"Create a new in-memory database and initialize the FTS5 schema.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[84,84],"text":"Load index data into the database.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[155,155],"text":"FTS5 search on symbol names, with optional kind and file filters.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[202,202],"text":"FTS5 search on text content, with optional kind and file filters.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[244,244],"text":"FTS5 search on file paths, with optional language filter.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[281,281],"text":"Get all symbols in a file, ordered by start line.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[310,310],"text":"Get direct children of a symbol in a file.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[339,339],"text":"Get all imports for a file (symbols with kind \"import\").","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[368,368],"text":"Get the hash of a file from the DB (for change detection).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[381,382],"text":"Remove all data for a file (from files, symbols, texts tables).\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[394,396],"text":"Upsert a single file and its symbols/texts.\nRemoves old data for this path first, then inserts new data.\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[454,455],"text":"Rebuild all FTS5 indexes.\nCall this after batch upsert/remove operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[467,467],"text":"Export all data from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[540,541],"text":"Quote a string for use in an FTS5 MATCH expression.\nWraps in double quotes and escapes any internal double quotes."}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[14,14],"text":"MCP server exposing code-index query tools."}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[16,17],"text":"`SearchDb` wraps a `rusqlite::Connection` which is not `Sync`, so we protect\nit with a `Mutex` to satisfy rmcp's `Send + Sync` requirements."}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[25,25],"text":"Search symbols by name using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[26,26],"text":"Search symbols by name with optional kind/file filters","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[52,52],"text":"Search files by path using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[53,53],"text":"Search files by path with optional language filter","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[76,76],"text":"Search text entries (docstrings, comments) using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[77,77],"text":"Search text entries (docstrings, comments) with optional kind/file filters","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[103,103],"text":"Get all symbols in a file, ordered by line number.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[104,104],"text":"Get all symbols in a file, ordered by line number","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[124,124],"text":"Get direct children of a symbol (e.g. methods of a class).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[125,125],"text":"Get direct children of a symbol (e.g. methods of a class)","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[150,150],"text":"Get all import statements for a file.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[151,151],"text":"Get all import statements for a file","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[192,192],"text":"Start the MCP server over stdio with the given search database."}
+{"file":"src/server/mcp.rs","kind":"string","line":[198,198],"text":"MCP serve error: {e}"}
+{"file":"src/server/mcp.rs","kind":"string","line":[202,202],"text":"MCP runtime error: {e}"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[17,18],"text":"Start watching the given directory for file changes and trigger\nre-indexing when files are modified."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[22,22],"text":"cannot resolve path: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[24,24],"text":"Build gitignore matcher for the root"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[27,27],"text":"starting file watcher on {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[29,29],"text":"Create debouncer with 500ms delay"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[32,32],"text":"failed to create file watcher"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[34,34],"text":"Watch the root directory recursively"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[38,38],"text":"failed to watch directory"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[40,40],"text":"file watcher ready, processing events"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[42,42],"text":"Process events with separate flush debounce"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[49,49],"text":"Process events (update DB only, no flush)"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[51,51],"text":"error handling watch events: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[57,57],"text":"No events for 5s — flush if dirty"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[60,60],"text":"failed to flush index to disk: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[66,66],"text":"Channel closed — flush remaining and exit"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[70,70],"text":"watcher channel closed, shutting down"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[79,79],"text":"Handle a batch of file system events."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[86,86],"text":"file watcher error"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[92,92],"text":"processing {} file events"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[99,99],"text":"Compute relative path"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[102,102],"text":"Not under root"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[105,105],"text":"Skip .codeindex/ directory"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[110,110],"text":"Skip if gitignored"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[115,115],"text":"Skip directories"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[120,120],"text":"Check if file still exists"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[122,122],"text":"File was deleted"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[123,123],"text":"file deleted: {}"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[124,124],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[126,126],"text":"failed to remove file {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[131,131],"text":"File was created or modified"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[135,135],"text":"Process changed files"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[138,138],"text":"failed to process file {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[142,142],"text":"Rebuild FTS indexes once after all changes"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[143,143],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[149,149],"text":"Process a single file change (create or modify)."}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[151,151],"text":"Read file content once"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[153,153],"text":"failed to read {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[155,155],"text":"Hash the content"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[158,158],"text":"Check if hash changed"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[159,159],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[162,162],"text":"No change, skip"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[168,168],"text":"indexing file: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[170,170],"text":"Count lines"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[173,173],"text":"Detect language"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[183,183],"text":"Parse source files for symbols and texts"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[191,191],"text":"failed to parse {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[203,203],"text":"Upsert into database"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[204,204],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[210,210],"text":"Flush the entire index from memory to disk."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[212,212],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[216,216],"text":"Collect languages"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[224,224],"text":"Derive project name from directory name"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[242,242],"text":"flushed index to disk: {} files, {} symbols, {} texts"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[251,251],"text":"Load .gitignore rules from the root directory."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[257,257],"text":"failed to build gitignore"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[263,263],"text":"Count the number of lines in a byte buffer."}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[269,269],"text":"If file doesn't end with newline, the last line still counts"}

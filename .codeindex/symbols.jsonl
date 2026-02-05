@@ -1,0 +1,158 @@
+{"file":"src/cli/build.rs","name":"std::io::{IsTerminal, Write}","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"std::path::Path","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"anyhow::{Context, Result}","kind":"import","line":[5,5],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"tracing::info","kind":"import","line":[6,6],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"crate::scanner::walker::walk_directory","kind":"import","line":[8,8],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"crate::server::db::SearchDb","kind":"import","line":[9,9],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"crate::watcher::handler::{flush_index_to_disk, process_file_change}","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"build_index_to_db","kind":"function","line":[14,79],"sig":"pub fn build_index_to_db(path: &Path) -> Result<Arc<Mutex<SearchDb>>>","visibility":"public"}
+{"file":"src/cli/build.rs","name":"build_index","kind":"function","line":[83,106],"sig":"pub fn build_index(path: &Path) -> Result<()>","visibility":"public"}
+{"file":"src/cli/build.rs","name":"run","kind":"function","line":[110,112],"sig":"pub fn run(path: &Path) -> Result<()>","visibility":"public"}
+{"file":"src/cli/mod.rs","name":"build","kind":"module","line":[1,1],"visibility":"public"}
+{"file":"src/cli/mod.rs","name":"serve","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/cli/serve.rs","name":"std::path::Path","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"anyhow::{Context, Result}","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::cli::build::build_index_to_db","kind":"import","line":[6,6],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::index::reader::read_index","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::server::db::SearchDb","kind":"import","line":[8,8],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::server::mcp::start_server","kind":"import","line":[9,9],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::watcher::handler::{flush_index_to_disk, start_watcher}","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"run","kind":"function","line":[14,79],"sig":"pub fn run(path: &Path, watch: bool) -> Result<()>","visibility":"public"}
+{"file":"src/index/format.rs","name":"serde::{Deserialize, Serialize}","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/index/format.rs","name":"IndexManifest","kind":"struct","line":[5,10],"visibility":"public"}
+{"file":"src/index/format.rs","name":"FileEntry","kind":"struct","line":[14,19],"visibility":"public"}
+{"file":"src/index/format.rs","name":"SymbolEntry","kind":"struct","line":[23,36],"visibility":"public"}
+{"file":"src/index/format.rs","name":"TextEntry","kind":"struct","line":[40,47],"visibility":"public"}
+{"file":"src/index/mod.rs","name":"format","kind":"module","line":[1,1],"visibility":"public"}
+{"file":"src/index/mod.rs","name":"reader","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/index/mod.rs","name":"writer","kind":"module","line":[3,3],"visibility":"public"}
+{"file":"src/index/reader.rs","name":"std::fs","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/index/reader.rs","name":"std::io::{BufRead, BufReader}","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/index/reader.rs","name":"std::path::Path","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/index/reader.rs","name":"anyhow::{Context, Result}","kind":"import","line":[5,5],"visibility":"private"}
+{"file":"src/index/reader.rs","name":"super::format::{FileEntry, IndexManifest, SymbolEntry, TextEntry}","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/index/reader.rs","name":"read_index","kind":"function","line":[11,30],"sig":"pub fn read_index( path: &Path, ) -> Result<(IndexManifest, Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/index/reader.rs","name":"read_jsonl","kind":"function","line":[33,49],"sig":"fn read_jsonl<T: serde::de::DeserializeOwned>(path: &Path) -> Result<Vec<T>>","visibility":"private"}
+{"file":"src/index/writer.rs","name":"std::fs","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/index/writer.rs","name":"std::io::{BufWriter, Write}","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/index/writer.rs","name":"std::path::Path","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/index/writer.rs","name":"anyhow::Result","kind":"import","line":[5,5],"visibility":"private"}
+{"file":"src/index/writer.rs","name":"super::format::{FileEntry, IndexManifest, SymbolEntry, TextEntry}","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/index/writer.rs","name":"write_index","kind":"function","line":[10,41],"sig":"pub fn write_index( output_dir: &Path, manifest: &IndexManifest, files: &[FileEntry], symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
+{"file":"src/index/writer.rs","name":"write_jsonl","kind":"function","line":[44,55],"sig":"fn write_jsonl<T: serde::Serialize>(path: &Path, items: &[T]) -> Result<()>","visibility":"private"}
+{"file":"src/lib.rs","name":"cli","kind":"module","line":[1,1],"visibility":"public"}
+{"file":"src/lib.rs","name":"index","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/lib.rs","name":"parser","kind":"module","line":[3,3],"visibility":"public"}
+{"file":"src/lib.rs","name":"scanner","kind":"module","line":[4,4],"visibility":"public"}
+{"file":"src/lib.rs","name":"server","kind":"module","line":[5,5],"visibility":"public"}
+{"file":"src/lib.rs","name":"watcher","kind":"module","line":[6,6],"visibility":"public"}
+{"file":"src/main.rs","name":"std::io::IsTerminal","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/main.rs","name":"std::path::Path","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/main.rs","name":"anyhow::Result","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/main.rs","name":"clap::{Parser, Subcommand}","kind":"import","line":[5,5],"visibility":"private"}
+{"file":"src/main.rs","name":"Cli","kind":"struct","line":[9,12],"visibility":"private"}
+{"file":"src/main.rs","name":"Commands","kind":"enum","line":[15,31],"visibility":"private"}
+{"file":"src/main.rs","name":"main","kind":"function","line":[33,64],"sig":"fn main() -> Result<()>","visibility":"private"}
+{"file":"src/parser/languages.rs","name":"anyhow::Result","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/parser/languages.rs","name":"tree_sitter::Language","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/parser/languages.rs","name":"get_language","kind":"function","line":[8,27],"sig":"pub fn get_language(name: &str) -> Result<Language>","visibility":"public"}
+{"file":"src/parser/languages.rs","name":"detect_language","kind":"function","line":[30,39],"sig":"pub fn detect_language(extension: &str) -> Option<&'static str>","visibility":"public"}
+{"file":"src/parser/mod.rs","name":"languages","kind":"module","line":[1,1],"visibility":"public"}
+{"file":"src/parser/mod.rs","name":"treesitter","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/parser/treesitter.rs","name":"anyhow::Result","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"tree_sitter::{Node, Parser, Tree}","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"crate::parser::languages::get_language","kind":"import","line":[5,5],"visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"parse_file","kind":"function","line":[8,36],"sig":"pub fn parse_file( source: &[u8], language: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust","kind":"function","line":[42,51],"sig":"fn extract_rust( tree: &Tree, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"walk_rust_node","kind":"function","line":[53,111],"sig":"fn walk_rust_node( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_function","kind":"function","line":[114,152],"sig":"fn extract_rust_function( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_named_symbol","kind":"function","line":[155,181],"sig":"fn extract_rust_named_symbol( node: Node, source: &[u8], file_path: &str, kind: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_impl","kind":"function","line":[184,292],"sig":"fn extract_rust_impl( node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_impl_type_name","kind":"function","line":[295,302],"sig":"fn extract_impl_type_name(node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_use","kind":"function","line":[305,319],"sig":"fn extract_rust_use( node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_use_paths","kind":"function","line":[322,391],"sig":"fn extract_use_paths( node: Node, source: &[u8], file_path: &str, line: &[u32; 2], visibility: &str, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_visibility","kind":"function","line":[394,408],"sig":"fn extract_rust_visibility(node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_fn_signature","kind":"function","line":[411,429],"sig":"fn extract_rust_fn_signature(node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_comment","kind":"function","line":[432,477],"sig":"fn extract_rust_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_rust_string","kind":"function","line":[480,504],"sig":"fn extract_rust_string( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"extract_texts_generic","kind":"function","line":[510,517],"sig":"fn extract_texts_generic( tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"walk_texts_generic","kind":"function","line":[519,561],"sig":"fn walk_texts_generic( node: Node, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"merge_consecutive_texts","kind":"function","line":[572,597],"sig":"fn merge_consecutive_texts(texts: Vec<TextEntry>) -> Vec<TextEntry>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"find_child_by_field","kind":"function","line":[603,605],"sig":"fn find_child_by_field<'a>(node: Node<'a>, field: &str) -> Option<Node<'a>>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"node_text","kind":"function","line":[607,611],"sig":"fn node_text(node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"node_line_range","kind":"function","line":[613,624],"sig":"fn node_line_range(node: Node) -> [u32; 2]","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"is_trivial_text","kind":"function","line":[626,641],"sig":"fn is_trivial_text(text: &str) -> bool","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"collapse_whitespace","kind":"function","line":[643,658],"sig":"fn collapse_whitespace(s: &str) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"strip_doc_comment_prefix","kind":"function","line":[661,677],"sig":"fn strip_doc_comment_prefix(raw: &str) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"strip_block_comment","kind":"function","line":[680,700],"sig":"fn strip_block_comment(raw: &str) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"strip_string_quotes","kind":"function","line":[703,719],"sig":"fn strip_string_quotes(raw: &str) -> String","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"strip_simple_quotes","kind":"function","line":[721,729],"sig":"fn strip_simple_quotes(s: &str) -> String","visibility":"private"}
+{"file":"src/scanner/hasher.rs","name":"std::path::Path","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/scanner/hasher.rs","name":"anyhow::Result","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/scanner/hasher.rs","name":"hash_file","kind":"function","line":[7,10],"sig":"pub fn hash_file(path: &Path) -> Result<String>","visibility":"public"}
+{"file":"src/scanner/hasher.rs","name":"hash_bytes","kind":"function","line":[14,19],"sig":"pub fn hash_bytes(content: &[u8]) -> String","visibility":"public"}
+{"file":"src/scanner/mod.rs","name":"hasher","kind":"module","line":[1,1],"visibility":"public"}
+{"file":"src/scanner/mod.rs","name":"walker","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/scanner/walker.rs","name":"std::path::{Path, PathBuf}","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/scanner/walker.rs","name":"anyhow::Result","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/scanner/walker.rs","name":"ignore::WalkBuilder","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/scanner/walker.rs","name":"walk_directory","kind":"function","line":[8,27],"sig":"pub fn walk_directory(root: &Path) -> Result<Vec<PathBuf>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"anyhow::{Context, Result}","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/server/db.rs","name":"rusqlite::Connection","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/server/db.rs","name":"crate::index::format::{FileEntry, SymbolEntry, TextEntry}","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb","kind":"struct","line":[8,10],"visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb","kind":"impl","line":[12,538],"sig":"impl SearchDb","visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb.new","kind":"method","line":[14,82],"parent":"SearchDb","sig":"pub fn new() -> Result<Self>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.load","kind":"method","line":[85,153],"parent":"SearchDb","sig":"pub fn load( &self, files: &[FileEntry], symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_symbols","kind":"method","line":[156,200],"parent":"SearchDb","sig":"pub fn search_symbols( &self, query: &str, kind: Option<&str>, file: Option<&str>, ) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_text","kind":"method","line":[203,242],"parent":"SearchDb","sig":"pub fn search_text( &self, query: &str, kind: Option<&str>, file: Option<&str>, ) -> Result<Vec<TextEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_files","kind":"method","line":[245,279],"parent":"SearchDb","sig":"pub fn search_files( &self, query: &str, lang: Option<&str>, ) -> Result<Vec<FileEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_file_symbols","kind":"method","line":[282,308],"parent":"SearchDb","sig":"pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_symbol_children","kind":"method","line":[311,337],"parent":"SearchDb","sig":"pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_imports","kind":"method","line":[340,366],"parent":"SearchDb","sig":"pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_file_hash","kind":"method","line":[369,379],"parent":"SearchDb","sig":"pub fn get_file_hash(&self, path: &str) -> Result<Option<String>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.remove_file","kind":"method","line":[383,392],"parent":"SearchDb","sig":"pub fn remove_file(&self, path: &str) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.upsert_file","kind":"method","line":[397,452],"parent":"SearchDb","sig":"pub fn upsert_file( &self, file: &FileEntry, symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.rebuild_fts","kind":"method","line":[456,465],"parent":"SearchDb","sig":"pub fn rebuild_fts(&self) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.export_all","kind":"method","line":[468,537],"parent":"SearchDb","sig":"pub fn export_all(&self) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/server/db.rs","name":"fts5_quote","kind":"function","line":[542,544],"sig":"fn fts5_quote(s: &str) -> String","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/server/mcp.rs","name":"anyhow::Result","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/server/mcp.rs","name":"rmcp::{\n    Error as McpError, ServerHandler,\n    ServiceExt,\n    model::{CallToolResult, Content, Implementation, ProtocolVersion, ServerCapabilities, ServerInfo},\n    schemars, tool,\n    transport::stdio,\n}","kind":"import","line":[4,10],"visibility":"private"}
+{"file":"src/server/mcp.rs","name":"super::db::SearchDb","kind":"import","line":[12,12],"visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"struct","line":[19,21],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[24,170],"sig":"impl CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_symbols","kind":"method","line":[27,50],"parent":"CodeIndexServer","sig":"fn search_symbols( &self, #[tool(param)] #[schemars(description = \"Search query for symbol names\")] query: String, #[tool(param)] #[schemars(description = \"Filter by symbol kind (e.g. function, struct, class, method)\")] kind: Option<String>, #[tool(param)] #[schemars(description = \"Filter by file path\")] file: Option<String>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_files","kind":"method","line":[54,74],"parent":"CodeIndexServer","sig":"fn search_files( &self, #[tool(param)] #[schemars(description = \"Search query for file paths\")] query: String, #[tool(param)] #[schemars(description = \"Filter by language (e.g. python, rust, javascript)\")] lang: Option<String>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_texts","kind":"method","line":[78,101],"parent":"CodeIndexServer","sig":"fn search_texts( &self, #[tool(param)] #[schemars(description = \"Search query for text content\")] query: String, #[tool(param)] #[schemars(description = \"Filter by text kind (e.g. docstring, comment)\")] kind: Option<String>, #[tool(param)] #[schemars(description = \"Filter by file path\")] file: Option<String>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_file_symbols","kind":"method","line":[105,122],"parent":"CodeIndexServer","sig":"fn get_file_symbols( &self, #[tool(param)] #[schemars(description = \"File path to get symbols for\")] file: String, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_symbol_children","kind":"method","line":[126,148],"parent":"CodeIndexServer","sig":"fn get_symbol_children( &self, #[tool(param)] #[schemars(description = \"File path containing the parent symbol\")] file: String, #[tool(param)] #[schemars(description = \"Name of the parent symbol\")] parent: String, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_imports","kind":"method","line":[152,169],"parent":"CodeIndexServer","sig":"fn get_imports( &self, #[tool(param)] #[schemars(description = \"File path to get imports for\")] file: String, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"trait_impl","line":[173,190],"sig":"impl ServerHandler for CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_info","kind":"method","line":[174,189],"parent":"CodeIndexServer","sig":"fn get_info(&self) -> ServerInfo","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"start_server","kind":"function","line":[193,204],"sig":"pub async fn start_server(db: Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
+{"file":"src/server/mod.rs","name":"db","kind":"module","line":[1,1],"visibility":"public"}
+{"file":"src/server/mod.rs","name":"mcp","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"std::collections::BTreeSet","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"std::path::{Path, PathBuf}","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"std::time::Duration","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"anyhow::{Context, Result}","kind":"import","line":[6,6],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"ignore::gitignore::{Gitignore, GitignoreBuilder}","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"notify_debouncer_mini::{new_debouncer, notify::RecursiveMode, DebounceEventResult}","kind":"import","line":[8,8],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::index::format::{FileEntry, IndexManifest}","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::index::writer::write_index","kind":"import","line":[11,11],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::parser::languages::detect_language","kind":"import","line":[12,12],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[13,13],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::scanner::hasher::hash_bytes","kind":"import","line":[14,14],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::server::db::SearchDb","kind":"import","line":[15,15],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"start_watcher","kind":"function","line":[19,77],"sig":"pub fn start_watcher(root: PathBuf, db: Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"handle_events","kind":"function","line":[80,147],"sig":"fn handle_events( result: DebounceEventResult, root: &Path, db: &Arc<Mutex<SearchDb>>, gitignore: &Gitignore, ) -> Result<()>","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"process_file_change","kind":"function","line":[150,208],"sig":"pub fn process_file_change(abs_path: &Path, rel_path: &str, db: &Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"flush_index_to_disk","kind":"function","line":[211,249],"sig":"pub fn flush_index_to_disk(root: &Path, db: &Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"load_gitignore","kind":"function","line":[252,261],"sig":"fn load_gitignore(root: &Path) -> Result<Gitignore>","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"count_lines","kind":"function","line":[264,275],"sig":"fn count_lines(content: &[u8]) -> u32","visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"handler","kind":"module","line":[1,1],"visibility":"public"}
