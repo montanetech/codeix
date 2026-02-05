@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/montanetech/codeix/compare/v0.1.5...v0.1.6) (2026-02-05)
+
+
+### Bug Fixes
+
+* include README.md in npm and PyPI packages ([ca32fce](https://github.com/montanetech/codeix/commit/ca32fce723702203899ada2457f5275c4c379780))
+
 ## [0.1.5](https://github.com/montanetech/codeix/compare/v0.1.4...v0.1.5) (2026-02-05)
 
 
