@@ -18,8 +18,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          node-version: "22"
+
+      - name: Setup npm for trusted publishing
+        run: npm install -g npm@latest
 
       - name: Prepare package
         run: |
@@ -32,7 +34,7 @@ jobs:
           "
 
       - name: Publish
-        run: npm publish --access public --provenance
+        run: npm publish --access public
         working-directory: npm
 
   publish-pypi:

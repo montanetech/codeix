@@ -5,7 +5,7 @@
   "license": "MIT OR Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/montanetech/codeix"
+    "url": "git+https://github.com/montanetech/codeix.git"
   },
   "homepage": "https://github.com/montanetech/codeix",
   "bin": {
