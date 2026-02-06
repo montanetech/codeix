@@ -5,7 +5,7 @@
 {"path":"LICENSE-MIT","lang":null,"hash":"8ebd4140ca6a57ab","lines":21}
 {"path":"Makefile","lang":null,"hash":"ac847a3085e3f976","lines":16}
 {"path":"README.md","lang":null,"hash":"6fd80cc9ffa6bd74","lines":180}
-{"path":"docs/architecture.md","lang":null,"hash":"eb4d592f068d59cc","lines":548}
+{"path":"docs/architecture.md","lang":null,"hash":"9be0c338e7f0e974","lines":578}
 {"path":"npm/install.js","lang":"javascript","hash":"7c8e721255725e9f","lines":110}
 {"path":"npm/package.json","lang":null,"hash":"938ad83f8e89af6f","lines":35}
 {"path":"npm/run.js","lang":"javascript","hash":"e30c9632c57d1837","lines":20}

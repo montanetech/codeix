@@ -536,6 +536,36 @@ Auto-mount `.codeindex/` from resolved dependencies — declared in ADR-003 but 
 
 ---
 
+## ADR-012: Cross-platform support
+
+**Context:** Codeix targets developers on Linux, macOS, and Windows. All core functionality must work identically across platforms.
+
+**Decision:** Use platform-agnostic abstractions via Rust crates. No platform-specific code paths unless absolutely necessary.
+
+**Platform-specific concerns and solutions:**
+
+| Concern | Solution | Crate |
+|---------|----------|-------|
+| File paths | `std::path::Path` — handles `/` vs `\` | std |
+| File watching | Cross-platform event API | `notify` |
+| File locking | `flock()` on Unix, `LockFileEx()` on Windows | `fs2` |
+| Gitignore | Platform-aware path matching | `ignore` |
+| Symlinks | Follow by default, respect platform semantics | `ignore` |
+| Line endings | Preserve as-is (no normalization) | — |
+| Hidden files | `.` prefix on Unix, attribute on Windows — handled by `ignore` | `ignore` |
+
+**Crate selection criteria:**
+- Must support Linux, macOS, Windows (x86_64 and aarch64)
+- Prefer crates used by ripgrep/BurntSushi ecosystem (battle-tested)
+- Avoid crates with platform-specific feature flags that break builds
+
+**Consequences:**
+- Single codebase, no `#[cfg(target_os)]` sprawl
+- CI tests on all three platforms (already in place)
+- Same binary behavior regardless of platform
+
+---
+
 ## Resolved Questions
 
 - [x] **Host language**: Rust — native performance, first-class tree-sitter/SQLite/ripgrep support, single static binary
