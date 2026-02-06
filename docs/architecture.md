@@ -299,19 +299,25 @@ $ git commit -m "feat: ..."
 
 ---
 
-## ADR-009: MCP tool surface — 6 tools, zero plumbing
+## ADR-009: MCP tool surface — 7 tools, zero plumbing
 
 **Context:** The MCP server exposes tools to AI agents. Competing servers (code-index-mcp: 13 tools, claude-context: 4 tools, Serena: 21 tools) mix search tools with management plumbing (init, refresh, configure watcher, temp directories). This forces agents to manage infrastructure before they can query.
 
-**Decision:** 6 tools, split into search (FTS, fuzzy, ranked) and lookup (exact, structural). Zero management tools — the index is pre-built, the server loads it automatically.
+**Decision:** 7 tools, split into discovery (list projects), search (FTS, fuzzy, ranked), and lookup (exact, structural). Zero management tools — the index is pre-built, the server loads it automatically.
+
+### Discovery tool
+
+| Tool | Input | Returns |
+|---|---|---|
+| `list_projects` | — | All indexed projects (absolute paths) |
 
 ### Search tools (FTS5, BM25-ranked)
 
 | Tool | Input | Returns |
 |---|---|---|
-| `search_symbols` | `query`, optional `kind`/`file` filters | Matching symbols with file, line, kind, parent |
-| `search_files` | `query`, optional `lang` filter | Matching files with path, lang, lines |
-| `search_texts` | `query`, optional `kind`/`file` filters | Matching text entries (comments, docstrings, strings) with file, line, context |
+| `search_symbols` | `query`, optional `kind`/`file`/`project` filters | Matching symbols with file, line, kind, parent |
+| `search_files` | `query`, optional `lang`/`project` filters | Matching files with path, lang, lines |
+| `search_texts` | `query`, optional `kind`/`file`/`project` filters | Matching text entries (comments, docstrings, strings) with file, line, context |
 
 ### Lookup tools (exact, structural)
 
@@ -573,6 +579,6 @@ Auto-mount `.codeindex/` from resolved dependencies — declared in ADR-003 but 
 - [x] **Imports**: included in `symbols.jsonl` as `kind: "import"`. References (usage sites) excluded — unreliable without type resolution.
 - [x] **Search strategy**: all JSONL loaded into in-memory SQLite + FTS5 at serve time — one query engine for symbols, files, and text search. Raw code search left to the consumer (agent's own grep tools). Embedding `rg` as a library is a future option if needed.
 - [x] **File watching**: `serve --watch` keeps index in sync on disk — commit it with your code
-- [x] **MCP tools**: 6 tools — 3 search (symbols, files, texts) + 3 lookup (file symbols, children, imports). Zero management plumbing.
+- [x] **MCP tools**: 7 tools — 1 discovery (list projects) + 3 search (symbols, files, texts) + 3 lookup (file symbols, children, imports). Zero management plumbing.
 - [x] **Remote indexes**: deferred. Start local only. Future option: git-based references (`git+https://...#ref:.codeindex/`) with local caching. No dedicated registry — piggyback on git.
 - [x] **File hashing**: BLAKE3 truncated to 64-bit, hex-encoded (16 chars). Change detection only — collision worst case is a missed re-index, self-heals on next edit. Birthday bound at ~4B files — safe for any project. Hex over base64 for readability/tooling (grep, jq).

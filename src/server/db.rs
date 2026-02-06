@@ -663,6 +663,19 @@ impl SearchDb {
 
         Ok((files, symbols, texts))
     }
+
+    /// List all unique repos (projects) in the database.
+    pub fn list_projects(&self) -> Result<Vec<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT DISTINCT project FROM files ORDER BY project")?;
+        let rows = stmt.query_map([], |row| row.get(0))?;
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
 }
 
 /// Quote a string for use in an FTS5 MATCH expression.
