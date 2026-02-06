@@ -12,7 +12,7 @@ from io import BytesIO
 from pathlib import Path
 from urllib.request import urlopen, Request
 
-__version__ = "0.1.8"  # x-release-please-version
+__version__ = "0.2.0"  # x-release-please-version
 
 REPO = "montanetech/codeix"
 
