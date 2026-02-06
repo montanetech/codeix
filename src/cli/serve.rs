@@ -14,8 +14,9 @@ pub fn run(path: &Path, watch: bool) -> Result<()> {
         .canonicalize()
         .with_context(|| format!("cannot resolve path: {}", path.display()))?;
 
-    // Build index (loads from .codeindex/ if exists, otherwise parses files)
-    let (mount_table, db) = build_index_to_db(path).context("failed to build/load index")?;
+    // Build index with FTS enabled (loads from .codeindex/ if exists, otherwise parses files)
+    // Serve mode needs FTS for search functionality
+    let (mount_table, db) = build_index_to_db(path, true).context("failed to build/load index")?;
 
     // Flush any dirty mounts to disk (projects that were indexed, not loaded)
     {

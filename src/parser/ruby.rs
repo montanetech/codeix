@@ -4,6 +4,7 @@ use tree_sitter::{Node, Tree};
 
 use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
+use crate::parser::treesitter::MAX_DEPTH;
 
 pub fn extract(
     tree: &Tree,
@@ -13,7 +14,7 @@ pub fn extract(
     texts: &mut Vec<TextEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts);
+    walk_node(root, source, file_path, None, symbols, texts, 0);
 }
 
 fn walk_node(
@@ -23,24 +24,30 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
+    // Prevent stack overflow on deeply nested code
+    if depth > MAX_DEPTH {
+        return;
+    }
+
     let kind = node.kind();
 
     match kind {
         "method" => {
-            extract_method(node, source, file_path, parent_ctx, symbols, texts);
+            extract_method(node, source, file_path, parent_ctx, symbols, texts, depth);
             return;
         }
         "singleton_method" => {
-            extract_singleton_method(node, source, file_path, parent_ctx, symbols, texts);
+            extract_singleton_method(node, source, file_path, parent_ctx, symbols, texts, depth);
             return;
         }
         "class" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts);
+            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
             return;
         }
         "module" => {
-            extract_module(node, source, file_path, parent_ctx, symbols, texts);
+            extract_module(node, source, file_path, parent_ctx, symbols, texts, depth);
             return;
         }
         "assignment" => {
@@ -66,7 +73,15 @@ fn walk_node(
     // Recurse
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        walk_node(child, source, file_path, parent_ctx, symbols, texts);
+        walk_node(
+            child,
+            source,
+            file_path,
+            parent_ctx,
+            symbols,
+            texts,
+            depth + 1,
+        );
     }
 }
 
@@ -77,6 +92,7 @@ fn extract_method(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -127,7 +143,15 @@ fn extract_method(
         for child in body.children(&mut cursor) {
             match child.kind() {
                 "method" | "singleton_method" | "class" | "module" => {
-                    walk_node(child, source, file_path, Some(&ctx), symbols, texts);
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        Some(&ctx),
+                        symbols,
+                        texts,
+                        depth + 1,
+                    );
                 }
                 _ => {}
             }
@@ -142,6 +166,7 @@ fn extract_singleton_method(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -185,7 +210,15 @@ fn extract_singleton_method(
         for child in body.children(&mut cursor) {
             match child.kind() {
                 "method" | "singleton_method" | "class" | "module" => {
-                    walk_node(child, source, file_path, Some(&ctx), symbols, texts);
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        Some(&ctx),
+                        symbols,
+                        texts,
+                        depth + 1,
+                    );
                 }
                 _ => {}
             }
@@ -200,6 +233,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -237,7 +271,15 @@ fn extract_class(
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            walk_node(child, source, file_path, Some(&full_name), symbols, texts);
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                depth + 1,
+            );
         }
     }
 }
@@ -249,6 +291,7 @@ fn extract_module(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -278,7 +321,15 @@ fn extract_module(
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            walk_node(child, source, file_path, Some(&full_name), symbols, texts);
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                depth + 1,
+            );
         }
     }
 }

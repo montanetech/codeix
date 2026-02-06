@@ -6,6 +6,7 @@ use tree_sitter::{Node, Tree};
 
 use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
+use crate::parser::treesitter::MAX_DEPTH;
 
 pub fn extract(
     tree: &Tree,
@@ -15,9 +16,10 @@ pub fn extract(
     texts: &mut Vec<TextEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, "public", symbols, texts);
+    walk_node(root, source, file_path, None, "public", symbols, texts, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -26,7 +28,13 @@ fn walk_node(
     access: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
+    // Prevent stack overflow on deeply nested code
+    if depth > MAX_DEPTH {
+        return;
+    }
+
     let kind = node.kind();
 
     match kind {
@@ -37,7 +45,9 @@ fn walk_node(
             extract_declaration(node, source, file_path, parent_ctx, access, symbols);
         }
         "class_specifier" | "struct_specifier" => {
-            extract_class(node, source, file_path, kind, parent_ctx, symbols, texts);
+            extract_class(
+                node, source, file_path, kind, parent_ctx, symbols, texts, depth,
+            );
             return;
         }
         "union_specifier" => {
@@ -49,6 +59,7 @@ fn walk_node(
                 parent_ctx,
                 symbols,
                 texts,
+                depth,
             );
             return;
         }
@@ -56,14 +67,23 @@ fn walk_node(
             extract_enum(node, source, file_path, parent_ctx, symbols);
         }
         "namespace_definition" => {
-            extract_namespace(node, source, file_path, parent_ctx, symbols, texts);
+            extract_namespace(node, source, file_path, parent_ctx, symbols, texts, depth);
             return;
         }
         "template_declaration" => {
             // Recurse into the templated declaration
             let mut cursor = node.walk();
             for child in node.children(&mut cursor) {
-                walk_node(child, source, file_path, parent_ctx, access, symbols, texts);
+                walk_node(
+                    child,
+                    source,
+                    file_path,
+                    parent_ctx,
+                    access,
+                    symbols,
+                    texts,
+                    depth + 1,
+                );
             }
             return;
         }
@@ -97,7 +117,16 @@ fn walk_node(
     // Recurse
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        walk_node(child, source, file_path, parent_ctx, access, symbols, texts);
+        walk_node(
+            child,
+            source,
+            file_path,
+            parent_ctx,
+            access,
+            symbols,
+            texts,
+            depth + 1,
+        );
     }
 }
 
@@ -275,6 +304,7 @@ fn extract_declaration(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_class(
     node: Node,
     source: &[u8],
@@ -283,6 +313,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = find_child_by_field(node, "name")
         .map(|n| node_text(n, source))
@@ -350,6 +381,7 @@ fn extract_class(
                 &current_access,
                 symbols,
                 texts,
+                depth + 1,
             );
         }
     }
@@ -422,6 +454,7 @@ fn extract_namespace(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = find_child_by_field(node, "name")
         .map(|n| node_text(n, source))
@@ -433,7 +466,14 @@ fn extract_namespace(
             let mut cursor = body.walk();
             for child in body.children(&mut cursor) {
                 walk_node(
-                    child, source, file_path, parent_ctx, "private", symbols, texts,
+                    child,
+                    source,
+                    file_path,
+                    parent_ctx,
+                    "private",
+                    symbols,
+                    texts,
+                    depth + 1,
                 );
             }
         }
@@ -470,6 +510,7 @@ fn extract_namespace(
                 "public",
                 symbols,
                 texts,
+                depth + 1,
             );
         }
     }

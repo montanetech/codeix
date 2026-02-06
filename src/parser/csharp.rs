@@ -4,6 +4,7 @@ use tree_sitter::{Node, Tree};
 
 use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
+use crate::parser::treesitter::MAX_DEPTH;
 
 pub fn extract(
     tree: &Tree,
@@ -13,7 +14,7 @@ pub fn extract(
     texts: &mut Vec<TextEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts);
+    walk_node(root, source, file_path, None, symbols, texts, 0);
 }
 
 fn walk_node(
@@ -23,17 +24,25 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
+    // Prevent stack overflow on deeply nested code
+    if depth > MAX_DEPTH {
+        return;
+    }
+
     let kind = node.kind();
 
     match kind {
         "class_declaration" => {
-            extract_type_decl(node, source, file_path, "class", parent_ctx, symbols, texts);
+            extract_type_decl(
+                node, source, file_path, "class", parent_ctx, symbols, texts, depth,
+            );
             return;
         }
         "struct_declaration" => {
             extract_type_decl(
-                node, source, file_path, "struct", parent_ctx, symbols, texts,
+                node, source, file_path, "struct", parent_ctx, symbols, texts, depth,
             );
             return;
         }
@@ -46,6 +55,7 @@ fn walk_node(
                 parent_ctx,
                 symbols,
                 texts,
+                depth,
             );
             return;
         }
@@ -54,12 +64,12 @@ fn walk_node(
         }
         "record_declaration" => {
             extract_type_decl(
-                node, source, file_path, "struct", parent_ctx, symbols, texts,
+                node, source, file_path, "struct", parent_ctx, symbols, texts, depth,
             );
             return;
         }
         "namespace_declaration" | "file_scoped_namespace_declaration" => {
-            extract_namespace(node, source, file_path, parent_ctx, symbols, texts);
+            extract_namespace(node, source, file_path, parent_ctx, symbols, texts, depth);
             return;
         }
         "method_declaration" => {
@@ -97,10 +107,19 @@ fn walk_node(
     // Recurse
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        walk_node(child, source, file_path, parent_ctx, symbols, texts);
+        walk_node(
+            child,
+            source,
+            file_path,
+            parent_ctx,
+            symbols,
+            texts,
+            depth + 1,
+        );
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_type_decl(
     node: Node,
     source: &[u8],
@@ -109,6 +128,7 @@ fn extract_type_decl(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -154,7 +174,15 @@ fn extract_type_decl(
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            walk_node(child, source, file_path, Some(&full_name), symbols, texts);
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                depth + 1,
+            );
         }
     }
 }
@@ -224,6 +252,7 @@ fn extract_namespace(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -254,7 +283,15 @@ fn extract_namespace(
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            walk_node(child, source, file_path, Some(&full_name), symbols, texts);
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                depth + 1,
+            );
         }
     }
 
@@ -270,7 +307,15 @@ fn extract_namespace(
                     continue;
                 }
                 if found_ns {
-                    walk_node(child, source, file_path, Some(&full_name), symbols, texts);
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        Some(&full_name),
+                        symbols,
+                        texts,
+                        depth + 1,
+                    );
                 }
             }
         }

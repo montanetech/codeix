@@ -1,10 +1,13 @@
 use anyhow::Result;
-use tree_sitter::{Node, Parser, Tree};
+use tree_sitter::{Parser, Tree};
 
 use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::languages::get_language;
 use crate::parser::sfc;
+
+/// Maximum recursion depth for AST traversal to prevent stack overflow on deeply nested code.
+pub const MAX_DEPTH: usize = 150;
 
 /// Parse a single file using tree-sitter and extract symbols and text blocks.
 pub fn parse_file(
@@ -94,47 +97,50 @@ pub fn parse_file(
 // ---------------------------------------------------------------------------
 
 fn extract_texts_generic(tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>) {
-    walk_texts_generic(tree.root_node(), source, file_path, texts);
-}
+    // Use iterative traversal with explicit stack to avoid stack overflow
+    let mut stack = vec![tree.root_node()];
 
-fn walk_texts_generic(node: Node, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>) {
-    let kind = node.kind();
+    while let Some(node) = stack.pop() {
+        let kind = node.kind();
 
-    if kind.contains("comment") {
-        let raw = node_text(node, source);
-        let text = raw.trim().to_string();
-        if !is_trivial_text(&text) {
-            texts.push(TextEntry {
-                file: file_path.to_string(),
-                kind: "comment".to_string(),
-                line: node_line_range(node),
-                text,
-                parent: None,
-                project: String::new(),
-            });
+        if kind.contains("comment") {
+            let raw = node_text(node, source);
+            let text = raw.trim().to_string();
+            if !is_trivial_text(&text) {
+                texts.push(TextEntry {
+                    file: file_path.to_string(),
+                    kind: "comment".to_string(),
+                    line: node_line_range(node),
+                    text,
+                    parent: None,
+                    project: String::new(),
+                });
+            }
+            continue;
         }
-        return;
-    }
 
-    if kind.contains("string") {
-        let raw = node_text(node, source);
-        let text = strip_string_quotes(&raw);
-        if !is_trivial_text(&text) {
-            texts.push(TextEntry {
-                file: file_path.to_string(),
-                kind: "string".to_string(),
-                line: node_line_range(node),
-                text,
-                parent: None,
-                project: String::new(),
-            });
+        if kind.contains("string") {
+            let raw = node_text(node, source);
+            let text = strip_string_quotes(&raw);
+            if !is_trivial_text(&text) {
+                texts.push(TextEntry {
+                    file: file_path.to_string(),
+                    kind: "string".to_string(),
+                    line: node_line_range(node),
+                    text,
+                    parent: None,
+                    project: String::new(),
+                });
+            }
+            continue;
         }
-        return;
-    }
 
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        walk_texts_generic(child, source, file_path, texts);
+        // Push children in reverse order so they're processed in forward order
+        let mut cursor = node.walk();
+        let children: Vec<_> = node.children(&mut cursor).collect();
+        for child in children.into_iter().rev() {
+            stack.push(child);
+        }
     }
 }
 
