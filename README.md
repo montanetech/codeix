@@ -63,13 +63,14 @@ Works with Git repos, npm, PyPI, and crates.io.
 
 ## MCP tools
 
-Six tools, zero setup. The agent queries immediately — no init, no config, no refresh.
+Seven tools, zero setup. The agent queries immediately — no init, no config, no refresh.
 
 | Tool | What it does |
 |---|---|
-| `search_symbols` | Fuzzy search across all symbols (FTS5, BM25-ranked) |
-| `search_files` | Find files by name, path, or language |
-| `search_texts` | Full-text search on comments, docstrings, strings |
+| `list_projects` | List all indexed projects |
+| `search_symbols` | Fuzzy search across all symbols (FTS5, BM25-ranked), optionally filtered by project |
+| `search_files` | Find files by name, path, or language, optionally filtered by project |
+| `search_texts` | Full-text search on comments, docstrings, strings, optionally filtered by project |
 | `get_file_symbols` | List all symbols in a file |
 | `get_symbol_children` | Get children of a class/module |
 | `get_imports` | List imports for a file |
@@ -169,7 +170,7 @@ Add to your MCP client config (e.g. Claude Desktop, Cursor):
 - **Local only** — no network, no API keys, works offline and air-gapped
 - **Deterministic** — same source always produces the same index (clean diffs)
 - **Composable** — dependency indexes are auto-discovered and mounted at query time
-- **Minimal surface** — 6 query tools, zero management plumbing
+- **Minimal surface** — 7 query tools, zero management plumbing
 
 ## Architecture
 

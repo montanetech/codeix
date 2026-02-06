@@ -423,6 +423,7 @@ fn extract_docstring(
         line,
         text,
         parent: parent_ctx.map(String::from),
+        project: String::new(),
     });
 }
 

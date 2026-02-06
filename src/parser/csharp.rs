@@ -569,6 +569,7 @@ fn extract_csharp_comment(
         line,
         text,
         parent: parent_ctx.map(String::from),
+        project: String::new(),
     });
 }
 

@@ -16,6 +16,8 @@ pub struct FileEntry {
     pub lang: Option<String>,
     pub hash: String,
     pub lines: u32,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub project: String,
 }
 
 /// One line in `symbols.jsonl` — a symbol extracted from the AST.
@@ -33,6 +35,8 @@ pub struct SymbolEntry {
     pub alias: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub visibility: Option<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub project: String,
 }
 
 /// One line in `texts.jsonl` — a text block (docstring, comment, etc.).
@@ -44,4 +48,6 @@ pub struct TextEntry {
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub project: String,
 }

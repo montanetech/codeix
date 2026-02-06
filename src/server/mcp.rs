@@ -23,6 +23,8 @@ pub struct SearchSymbolsParams {
     pub kind: Option<String>,
     /// Filter by file path
     pub file: Option<String>,
+    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    pub project: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -31,6 +33,8 @@ pub struct SearchFilesParams {
     pub query: String,
     /// Filter by language (e.g. python, rust, javascript)
     pub lang: Option<String>,
+    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    pub project: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -41,6 +45,8 @@ pub struct SearchTextsParams {
     pub kind: Option<String>,
     /// Filter by file path
     pub file: Option<String>,
+    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    pub project: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -99,6 +105,7 @@ impl CodeIndexServer {
                 &params.query,
                 params.kind.as_deref(),
                 params.file.as_deref(),
+                params.project.as_deref(),
             )
             .map_err(|e| McpError::internal_error(format!("search_symbols failed: {e}"), None))?;
 
@@ -119,7 +126,11 @@ impl CodeIndexServer {
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .search_files(&params.query, params.lang.as_deref())
+            .search_files(
+                &params.query,
+                params.lang.as_deref(),
+                params.project.as_deref(),
+            )
             .map_err(|e| McpError::internal_error(format!("search_files failed: {e}"), None))?;
 
         let json = serde_json::to_string_pretty(&results)
@@ -145,6 +156,7 @@ impl CodeIndexServer {
                 &params.query,
                 params.kind.as_deref(),
                 params.file.as_deref(),
+                params.project.as_deref(),
             )
             .map_err(|e| McpError::internal_error(format!("search_texts failed: {e}"), None))?;
 
@@ -215,6 +227,23 @@ impl CodeIndexServer {
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
+
+    /// List all indexed projects.
+    #[tool(description = "List all indexed projects")]
+    async fn list_projects(&self) -> Result<CallToolResult, McpError> {
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+        let results = db
+            .list_projects()
+            .map_err(|e| McpError::internal_error(format!("list_projects failed: {e}"), None))?;
+
+        let json = serde_json::to_string_pretty(&results)
+            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
+
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
 }
 
 #[tool_handler]
@@ -222,9 +251,10 @@ impl ServerHandler for CodeIndexServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             instructions: Some(
-                "Code index query tools. Use search_symbols, search_files, and search_texts \
-                 for full-text search. Use get_file_symbols, get_symbol_children, and \
-                 get_imports for structural lookups."
+                "Code index query tools. Use list_projects to see indexed projects. \
+                 Use search_symbols, search_files, and search_texts for full-text search \
+                 (optionally filtered by project). Use get_file_symbols, get_symbol_children, \
+                 and get_imports for structural lookups."
                     .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),

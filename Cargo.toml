@@ -49,6 +49,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # File walking (respects .gitignore)
 ignore = "0.4"
 
+# File locking (flock)
+fs2 = "0.4"
+
 # Tree-sitter grammars — feature-gated
 [features]
 default = [
@@ -105,3 +108,6 @@ optional = true
 [dependencies.tree-sitter-c-sharp]
 version = "0.23"
 optional = true
+
+[dev-dependencies]
+tempfile = "3"

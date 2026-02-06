@@ -196,6 +196,7 @@ pub fn extract_comment(
         line,
         text,
         parent: parent_ctx.map(String::from),
+        project: String::new(),
     });
 }
 
@@ -221,6 +222,7 @@ pub fn extract_string(
         line,
         text,
         parent: parent_ctx.map(String::from),
+        project: String::new(),
     });
 }
 
@@ -246,6 +248,7 @@ pub fn push_symbol(
         sig,
         alias,
         visibility,
+        project: String::new(),
     });
 }
 

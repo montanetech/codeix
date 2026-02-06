@@ -36,57 +36,73 @@
 {"file":"site/templates/index.html","kind":"comment","line":[1262,1262],"text":"Sticky header: show after scrolling past the hero"}
 {"file":"site/templates/spec.html","kind":"string","line":[471,471],"text":".spec-nav a[href^=\"#\"]"}
 {"file":"site/templates/spec.html","kind":"string","line":[489,489],"text":"-20% 0px -60% 0px"}
-{"file":"src/cli/build.rs","kind":"docstring","line":[12,13],"text":"Build the index into a database without flushing to disk.\nReturns the populated database for immediate use."}
-{"file":"src/cli/build.rs","kind":"string","line":[17,17],"text":"cannot resolve path: {}"}
-{"file":"src/cli/build.rs","kind":"comment","line":[19,19],"text":"Derive project name from directory name"}
-{"file":"src/cli/build.rs","kind":"string","line":[25,25],"text":"building index for '{}' at {}"}
-{"file":"src/cli/build.rs","kind":"comment","line":[27,27],"text":"Create empty database"}
-{"file":"src/cli/build.rs","kind":"string","line":[28,28],"text":"failed to create search database"}
-{"file":"src/cli/build.rs","kind":"comment","line":[31,31],"text":"Walk directory to find all files"}
-{"file":"src/cli/build.rs","kind":"string","line":[34,34],"text":"found {} files"}
-{"file":"src/cli/build.rs","kind":"comment","line":[39,39],"text":"Process each file through the same path as the watcher"}
-{"file":"src/cli/build.rs","kind":"comment","line":[41,41],"text":"Compute relative path (forward slashes, no leading ./)"}
-{"file":"src/cli/build.rs","kind":"comment","line":[48,48],"text":"Skip .codeindex/ directory itself"}
-{"file":"src/cli/build.rs","kind":"string","line":[56,56],"text":"\\r  indexing [{count}/{total}] {rel_path}"}
-{"file":"src/cli/build.rs","kind":"comment","line":[57,57],"text":"Clear any trailing characters from previous longer line"}
-{"file":"src/cli/build.rs","kind":"comment","line":[62,62],"text":"Process file using shared indexing logic"}
-{"file":"src/cli/build.rs","kind":"comment","line":[64,64],"text":"Log errors but continue with other files"}
-{"file":"src/cli/build.rs","kind":"string","line":[65,65],"text":"failed to process {}: {}"}
-{"file":"src/cli/build.rs","kind":"comment","line":[73,73],"text":"Single FTS rebuild after all files"}
-{"file":"src/cli/build.rs","kind":"string","line":[76,76],"text":"db lock poisoned: {e}"}
-{"file":"src/cli/build.rs","kind":"docstring","line":[83,84],"text":"Build the index: scan the directory tree, parse files with tree-sitter,\nand write the `.codeindex/` output."}
-{"file":"src/cli/build.rs","kind":"string","line":[88,88],"text":"cannot resolve path: {}"}
-{"file":"src/cli/build.rs","kind":"comment","line":[92,92],"text":"Flush to disk using shared logic"}
-{"file":"src/cli/build.rs","kind":"string","line":[93,93],"text":"failed to flush index to disk"}
-{"file":"src/cli/build.rs","kind":"comment","line":[95,95],"text":"Log final stats"}
-{"file":"src/cli/build.rs","kind":"string","line":[98,98],"text":"db lock poisoned: {e}"}
-{"file":"src/cli/build.rs","kind":"string","line":[103,103],"text":"wrote .codeindex/: {} files, {} symbols, {} texts"}
-{"file":"src/cli/build.rs","kind":"docstring","line":[112,113],"text":"Run the `build` subcommand: scan the directory tree, parse files with\ntree-sitter, and write the `.codeindex/` output."}
-{"file":"src/cli/serve.rs","kind":"docstring","line":[12,13],"text":"Run the `serve` subcommand: load the index into an in-memory SQLite FTS5\ndatabase and start the MCP server over stdio."}
-{"file":"src/cli/serve.rs","kind":"string","line":[17,17],"text":"cannot resolve path: {}"}
-{"file":"src/cli/serve.rs","kind":"comment","line":[21,21],"text":"No index exists - build directly into memory and flush to disk"}
-{"file":"src/cli/serve.rs","kind":"string","line":[22,22],"text":"no .codeindex/ found, building initial index"}
-{"file":"src/cli/serve.rs","kind":"string","line":[23,23],"text":"failed to build initial index"}
-{"file":"src/cli/serve.rs","kind":"string","line":[24,24],"text":"failed to flush initial index"}
-{"file":"src/cli/serve.rs","kind":"comment","line":[26,26],"text":"Log stats"}
-{"file":"src/cli/serve.rs","kind":"string","line":[29,29],"text":"db lock poisoned: {e}"}
-{"file":"src/cli/serve.rs","kind":"string","line":[36,36],"text":"built and loaded index"}
-{"file":"src/cli/serve.rs","kind":"comment","line":[41,41],"text":"Index exists - read from disk and load into memory"}
-{"file":"src/cli/serve.rs","kind":"string","line":[43,43],"text":"failed to read index"}
-{"file":"src/cli/serve.rs","kind":"string","line":[50,50],"text":"loaded index"}
-{"file":"src/cli/serve.rs","kind":"string","line":[53,53],"text":"failed to create search database"}
-{"file":"src/cli/serve.rs","kind":"string","line":[55,55],"text":"failed to load index into search database"}
-{"file":"src/cli/serve.rs","kind":"string","line":[57,57],"text":"search database ready"}
-{"file":"src/cli/serve.rs","kind":"comment","line":[61,61],"text":"Start the tokio runtime"}
-{"file":"src/cli/serve.rs","kind":"string","line":[62,62],"text":"failed to create tokio runtime"}
-{"file":"src/cli/serve.rs","kind":"string","line":[65,65],"text":"starting watch mode"}
-{"file":"src/cli/serve.rs","kind":"comment","line":[69,69],"text":"Spawn watcher in background thread"}
-{"file":"src/cli/serve.rs","kind":"string","line":[72,72],"text":"watcher error: {}"}
-{"file":"src/cli/serve.rs","kind":"string","line":[78,78],"text":"starting MCP server on stdio"}
+{"file":"src/cli/build.rs","kind":"docstring","line":[14,14],"text":"Result type for build_index_to_db: (MountTable, SearchDb)"}
+{"file":"src/cli/build.rs","kind":"docstring","line":[17,19],"text":"Build the index into a database without flushing to disk.\nUses walk() for project discovery. Returns MountTable + SearchDb\nfor both build (flush to disk) and serve (keep in memory) use cases."}
+{"file":"src/cli/build.rs","kind":"docstring","line":[21,22],"text":"Always mounts root first, then discovers and mounts any subprojects.\nFiles route to the most specific mount (longest prefix match)."}
+{"file":"src/cli/build.rs","kind":"string","line":[26,26],"text":"cannot resolve path: {}"}
+{"file":"src/cli/build.rs","kind":"string","line":[28,28],"text":"building index at {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[30,30],"text":"Create mount table and database"}
+{"file":"src/cli/build.rs","kind":"string","line":[33,33],"text":"failed to create search database"}
+{"file":"src/cli/build.rs","kind":"comment","line":[36,36],"text":"Always mount root first (may or may not have .git/)"}
+{"file":"src/cli/build.rs","kind":"string","line":[40,40],"text":"mount table lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[44,44],"text":"Track files per project for progress display"}
+{"file":"src/cli/build.rs","kind":"comment","line":[46,46],"text":"ensure root exists"}
+{"file":"src/cli/build.rs","kind":"comment","line":[48,48],"text":"First pass: discover projects and collect files"}
+{"file":"src/cli/build.rs","kind":"comment","line":[52,52],"text":"Mount subprojects (root already mounted above)"}
+{"file":"src/cli/build.rs","kind":"string","line":[56,56],"text":"mount table lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"string","line":[59,59],"text":"discovered subproject: {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[65,65],"text":"Route to most specific mount (longest prefix)"}
+{"file":"src/cli/build.rs","kind":"string","line":[68,68],"text":"mount table lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[83,83],"text":"Second pass: index files per project"}
+{"file":"src/cli/build.rs","kind":"comment","line":[95,95],"text":"Compute relative project path from workspace root"}
+{"file":"src/cli/build.rs","kind":"string","line":[99,99],"text":"mount table lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"string","line":[103,103],"text":"indexing '{}': {} files"}
+{"file":"src/cli/build.rs","kind":"comment","line":[112,112],"text":"Skip .codeindex/"}
+{"file":"src/cli/build.rs","kind":"string","line":[118,118],"text":"\\r  [{}/{}] {}"}
+{"file":"src/cli/build.rs","kind":"string","line":[124,124],"text":"failed to process {}: {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[132,132],"text":"Mark mount as dirty"}
+{"file":"src/cli/build.rs","kind":"comment","line":[139,139],"text":"Rebuild FTS indexes once after all files"}
+{"file":"src/cli/build.rs","kind":"string","line":[142,142],"text":"db lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"docstring","line":[149,150],"text":"Build the index: scan the directory tree, parse files with tree-sitter,\nand write the `.codeindex/` output."}
+{"file":"src/cli/build.rs","kind":"docstring","line":[152,153],"text":"Discovers .git/ boundaries and creates separate .codeindex/ for each\nproject found. Root is always treated as a project (with or without .git/)."}
+{"file":"src/cli/build.rs","kind":"comment","line":[157,157],"text":"Flush each dirty mount to disk"}
+{"file":"src/cli/build.rs","kind":"string","line":[160,160],"text":"mount table lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"string","line":[169,169],"text":"failed to flush index to disk for {}"}
+{"file":"src/cli/build.rs","kind":"comment","line":[171,171],"text":"Get stats for this mount (use relative project path)"}
+{"file":"src/cli/build.rs","kind":"string","line":[175,175],"text":"db lock poisoned: {e}"}
+{"file":"src/cli/build.rs","kind":"string","line":[185,185],"text":"wrote .codeindex/ for '{}': {} files, {} symbols, {} texts"}
+{"file":"src/cli/build.rs","kind":"string","line":[199,199],"text":"total: {} files, {} symbols, {} texts"}
+{"file":"src/cli/build.rs","kind":"docstring","line":[206,207],"text":"Run the `build` subcommand: scan the directory tree, parse files with\ntree-sitter, and write the `.codeindex/` output."}
+{"file":"src/cli/serve.rs","kind":"docstring","line":[13,14],"text":"Run the `serve` subcommand: load the index into an in-memory SQLite FTS5\ndatabase and start the MCP server over stdio."}
+{"file":"src/cli/serve.rs","kind":"string","line":[18,18],"text":"cannot resolve path: {}"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[22,22],"text":"No index exists - build directly into memory and flush to disk"}
+{"file":"src/cli/serve.rs","kind":"string","line":[23,23],"text":"no .codeindex/ found, building initial index"}
+{"file":"src/cli/serve.rs","kind":"string","line":[24,24],"text":"failed to build initial index"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[26,26],"text":"Flush all dirty mounts to disk"}
+{"file":"src/cli/serve.rs","kind":"string","line":[30,30],"text":"mount table lock poisoned: {e}"}
+{"file":"src/cli/serve.rs","kind":"string","line":[34,34],"text":"failed to flush {}"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[39,39],"text":"Log stats"}
+{"file":"src/cli/serve.rs","kind":"string","line":[42,42],"text":"db lock poisoned: {e}"}
+{"file":"src/cli/serve.rs","kind":"string","line":[49,49],"text":"built and loaded index"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[54,54],"text":"Index exists - read from disk and load into memory"}
+{"file":"src/cli/serve.rs","kind":"string","line":[56,56],"text":"failed to read index"}
+{"file":"src/cli/serve.rs","kind":"string","line":[63,63],"text":"loaded index"}
+{"file":"src/cli/serve.rs","kind":"string","line":[66,66],"text":"failed to create search database"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[67,67],"text":"Root project uses empty string (relative path from workspace root)"}
+{"file":"src/cli/serve.rs","kind":"string","line":[70,70],"text":"failed to load index into search database"}
+{"file":"src/cli/serve.rs","kind":"string","line":[72,72],"text":"search database ready"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[74,74],"text":"Create mount table with root mounted"}
+{"file":"src/cli/serve.rs","kind":"string","line":[79,79],"text":"mount table lock poisoned: {e}"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[86,86],"text":"Start the tokio runtime"}
+{"file":"src/cli/serve.rs","kind":"string","line":[87,87],"text":"failed to create tokio runtime"}
+{"file":"src/cli/serve.rs","kind":"string","line":[90,90],"text":"starting watch mode"}
+{"file":"src/cli/serve.rs","kind":"comment","line":[95,95],"text":"Spawn watcher in background thread"}
+{"file":"src/cli/serve.rs","kind":"string","line":[98,98],"text":"watcher error: {}"}
+{"file":"src/cli/serve.rs","kind":"string","line":[104,104],"text":"starting MCP server on stdio"}
 {"file":"src/index/format.rs","kind":"docstring","line":[3,3],"text":"`index.json` manifest — top-level metadata for a `.codeindex/` directory."}
 {"file":"src/index/format.rs","kind":"docstring","line":[12,12],"text":"One line in `files.jsonl` — metadata for a single indexed file."}
-{"file":"src/index/format.rs","kind":"docstring","line":[21,21],"text":"One line in `symbols.jsonl` — a symbol extracted from the AST."}
-{"file":"src/index/format.rs","kind":"docstring","line":[38,38],"text":"One line in `texts.jsonl` — a text block (docstring, comment, etc.)."}
+{"file":"src/index/format.rs","kind":"docstring","line":[23,23],"text":"One line in `symbols.jsonl` — a symbol extracted from the AST."}
+{"file":"src/index/format.rs","kind":"docstring","line":[42,42],"text":"One line in `texts.jsonl` — a text block (docstring, comment, etc.)."}
 {"file":"src/index/reader.rs","kind":"docstring","line":[9,9],"text":"Convenience alias for the tuple returned by `read_index`."}
 {"file":"src/index/reader.rs","kind":"docstring","line":[17,18],"text":"Read an existing `.codeindex/` directory from disk.\nReturns the manifest, files, symbols, and texts."}
 {"file":"src/index/reader.rs","kind":"string","line":[22,22],"text":"failed to read index.json"}
@@ -200,24 +216,24 @@
 {"file":"src/parser/csharp.rs","kind":"comment","line":[498,498],"text":"`using Alias = Namespace.Type;`"}
 {"file":"src/parser/csharp.rs","kind":"comment","line":[501,501],"text":"The actual type is the next sibling"}
 {"file":"src/parser/csharp.rs","kind":"comment","line":[537,537],"text":"XML doc comment"}
-{"file":"src/parser/csharp.rs","kind":"comment","line":[588,588],"text":"Check for modifiers list pattern (some tree-sitter versions)"}
-{"file":"src/parser/csharp.rs","kind":"comment","line":[599,599],"text":"C# default"}
-{"file":"src/parser/csharp.rs","kind":"comment","line":[612,612],"text":"Fallback: check the raw text"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[626,626],"text":"symbol not found: {name}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[631,646],"text":"public class Person\n{\n    private string name;\n\n    public Person(string name)\n    {\n        this.name = name;\n    }\n\n    public string GetName()\n    {\n        return name;\n    }\n\n    private void Helper() {}\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[652,652],"text":"class Person"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[668,672],"text":"public interface IRunnable\n{\n    void Run();\n    int Calculate(int x);\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[682,686],"text":"public struct Point\n{\n    public int X;\n    public int Y;\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[699,704],"text":"public enum Status\n{\n    Active,\n    Inactive,\n    Pending\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[717,723],"text":"namespace MyApp.Utils\n{\n    public class Helper\n    {\n        public void Run() {}\n    }\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[733,733],"text":"MyApp.Utils.Helper.Run"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[739,743],"text":"public class Config\n{\n    public string Name { get; set; }\n    private int version;\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[757,761],"text":"public class Constants\n{\n    public const int MAX_SIZE = 100;\n    private static readonly string Version = \\\"1.0\\\";\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[775,777],"text":"using System;\nusing System.Collections.Generic;\nusing System.Linq;"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[785,785],"text":"System.Collections.Generic"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[795,795],"text":"public delegate void EventHandler(object sender);"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[805,811],"text":"public class Foo\n{\n    public void PublicMethod() {}\n    private void PrivateMethod() {}\n    protected void ProtectedMethod() {}\n    internal void InternalMethod() {}\n}"}
-{"file":"src/parser/csharp.rs","kind":"string","line":[829,835],"text":"/// <summary>\n/// XML doc comment\n/// </summary>\npublic class Documented {}\n\n// Single line\n/* Block comment */"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[589,589],"text":"Check for modifiers list pattern (some tree-sitter versions)"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[600,600],"text":"C# default"}
+{"file":"src/parser/csharp.rs","kind":"comment","line":[613,613],"text":"Fallback: check the raw text"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[627,627],"text":"symbol not found: {name}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[632,647],"text":"public class Person\n{\n    private string name;\n\n    public Person(string name)\n    {\n        this.name = name;\n    }\n\n    public string GetName()\n    {\n        return name;\n    }\n\n    private void Helper() {}\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[653,653],"text":"class Person"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[669,673],"text":"public interface IRunnable\n{\n    void Run();\n    int Calculate(int x);\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[683,687],"text":"public struct Point\n{\n    public int X;\n    public int Y;\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[700,705],"text":"public enum Status\n{\n    Active,\n    Inactive,\n    Pending\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[718,724],"text":"namespace MyApp.Utils\n{\n    public class Helper\n    {\n        public void Run() {}\n    }\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[734,734],"text":"MyApp.Utils.Helper.Run"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[740,744],"text":"public class Config\n{\n    public string Name { get; set; }\n    private int version;\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[758,762],"text":"public class Constants\n{\n    public const int MAX_SIZE = 100;\n    private static readonly string Version = \\\"1.0\\\";\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[776,778],"text":"using System;\nusing System.Collections.Generic;\nusing System.Linq;"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[786,786],"text":"System.Collections.Generic"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[796,796],"text":"public delegate void EventHandler(object sender);"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[806,812],"text":"public class Foo\n{\n    public void PublicMethod() {}\n    private void PrivateMethod() {}\n    protected void ProtectedMethod() {}\n    internal void InternalMethod() {}\n}"}
+{"file":"src/parser/csharp.rs","kind":"string","line":[830,836],"text":"/// <summary>\n/// XML doc comment\n/// </summary>\npublic class Documented {}\n\n// Single line\n/* Block comment */"}
 {"file":"src/parser/go.rs","kind":"docstring","line":[1,1],"text":"Go symbol and text extraction."}
 {"file":"src/parser/go.rs","kind":"comment","line":[38,38],"text":"handled recursively"}
 {"file":"src/parser/go.rs","kind":"string","line":[57,57],"text":"interpreted_string_literal"}
@@ -267,9 +283,9 @@
 {"file":"src/parser/helpers.rs","kind":"comment","line":[138,138],"text":"F-strings: f\"...\" (Python)"}
 {"file":"src/parser/helpers.rs","kind":"docstring","line":[156,156],"text":"Extract a comment node as a TextEntry (generic for C-style comments)."}
 {"file":"src/parser/helpers.rs","kind":"comment","line":[182,182],"text":"Hash-style comments (Python, Ruby, etc.)"}
-{"file":"src/parser/helpers.rs","kind":"docstring","line":[202,202],"text":"Extract a string literal node as a TextEntry."}
-{"file":"src/parser/helpers.rs","kind":"docstring","line":[227,227],"text":"Push a symbol entry (convenience builder)."}
-{"file":"src/parser/helpers.rs","kind":"docstring","line":[252,253],"text":"Extract a function/method signature: everything from start to opening `{` or `:`.\nCollapses whitespace."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[203,203],"text":"Extract a string literal node as a TextEntry."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[229,229],"text":"Push a symbol entry (convenience builder)."}
+{"file":"src/parser/helpers.rs","kind":"docstring","line":[255,256],"text":"Extract a function/method signature: everything from start to opening `{` or `:`.\nCollapses whitespace."}
 {"file":"src/parser/java.rs","kind":"docstring","line":[1,1],"text":"Java symbol and text extraction."}
 {"file":"src/parser/java.rs","kind":"string","line":[34,34],"text":"interface_declaration"}
 {"file":"src/parser/java.rs","kind":"string","line":[50,50],"text":"annotation_type_declaration"}
@@ -319,21 +335,21 @@
 {"file":"src/parser/javascript.rs","kind":"comment","line":[416,416],"text":"`import * as foo from \"...\"`"}
 {"file":"src/parser/javascript.rs","kind":"comment","line":[419,419],"text":"In some grammars, the identifier is a direct child"}
 {"file":"src/parser/javascript.rs","kind":"comment","line":[457,457],"text":"JSDoc comment"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[490,490],"text":"generator_function_declaration"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[493,493],"text":"async function*"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[494,494],"text":"async function"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[499,499],"text":"{prefix} {name}{params}"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[521,521],"text":"async {name}{params}"}
-{"file":"src/parser/javascript.rs","kind":"comment","line":[528,528],"text":"Check for extends clause"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[541,541],"text":"class {name}{extends}"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[553,553],"text":"symbol not found: {name}"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[558,568],"text":"function hello(name) {\n    return `Hello, ${name}!`;\n}\n\nasync function fetchData() {\n    return await fetch('/api');\n}\n\nfunction* generator() {\n    yield 1;\n}"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[574,574],"text":"function hello"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[586,602],"text":"export class Person {\n    constructor(name) {\n        this.name = name;\n    }\n\n    greet() {\n        return `Hi, ${this.name}`;\n    }\n\n    static create() {\n        return new Person('default');\n    }\n\n    get fullName() {\n        return this.name;\n    }\n}"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[623,630],"text":"const MAX_SIZE = 100;\nlet debug = true;\nvar legacy = 'old';\n\nexport const API_KEY = 'secret';\n\nconst add = (a, b) => a + b;\nconst asyncFn = async (x) => x * 2;"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[652,655],"text":"import React from 'react';\nimport { useState, useEffect } from 'react';\nimport * as Utils from './utils';\nimport { render as renderDOM } from 'react-dom';"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[677,683],"text":"class Foo {\n    publicMethod() {}\n\n    _internalMethod() {}\n\n    #privateMethod() {}\n}"}
-{"file":"src/parser/javascript.rs","kind":"string","line":[707,715],"text":"/**\n * JSDoc comment\n */\nfunction documented() {}\n\n// Single line comment\nfunction helper() {}\n\n/* Block comment */"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[491,491],"text":"generator_function_declaration"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[494,494],"text":"async function*"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[495,495],"text":"async function"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[500,500],"text":"{prefix} {name}{params}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[522,522],"text":"async {name}{params}"}
+{"file":"src/parser/javascript.rs","kind":"comment","line":[529,529],"text":"Check for extends clause"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[542,542],"text":"class {name}{extends}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[554,554],"text":"symbol not found: {name}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[559,569],"text":"function hello(name) {\n    return `Hello, ${name}!`;\n}\n\nasync function fetchData() {\n    return await fetch('/api');\n}\n\nfunction* generator() {\n    yield 1;\n}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[575,575],"text":"function hello"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[587,603],"text":"export class Person {\n    constructor(name) {\n        this.name = name;\n    }\n\n    greet() {\n        return `Hi, ${this.name}`;\n    }\n\n    static create() {\n        return new Person('default');\n    }\n\n    get fullName() {\n        return this.name;\n    }\n}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[624,631],"text":"const MAX_SIZE = 100;\nlet debug = true;\nvar legacy = 'old';\n\nexport const API_KEY = 'secret';\n\nconst add = (a, b) => a + b;\nconst asyncFn = async (x) => x * 2;"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[653,656],"text":"import React from 'react';\nimport { useState, useEffect } from 'react';\nimport * as Utils from './utils';\nimport { render as renderDOM } from 'react-dom';"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[678,684],"text":"class Foo {\n    publicMethod() {}\n\n    _internalMethod() {}\n\n    #privateMethod() {}\n}"}
+{"file":"src/parser/javascript.rs","kind":"string","line":[708,716],"text":"/**\n * JSDoc comment\n */\nfunction documented() {}\n\n// Single line comment\nfunction helper() {}\n\n/* Block comment */"}
 {"file":"src/parser/languages.rs","kind":"docstring","line":[4,4],"text":"Return the tree-sitter [`Language`] for the given language name."}
 {"file":"src/parser/languages.rs","kind":"docstring","line":[6,6],"text":"Languages are feature-gated — only grammars enabled at compile time are"}
 {"file":"src/parser/languages.rs","kind":"string","line":[43,43],"text":"unsupported language: {name}"}
@@ -363,23 +379,23 @@
 {"file":"src/parser/python.rs","kind":"comment","line":[364,364],"text":"Module/class-level assignments: `FOO = ...` or `foo: type = ...`"}
 {"file":"src/parser/python.rs","kind":"comment","line":[370,370],"text":"Only capture simple identifier assignments (not destructuring, subscripts, etc.)"}
 {"file":"src/parser/python.rs","kind":"comment","line":[379,379],"text":"UPPER_CASE → constant, otherwise variable"}
-{"file":"src/parser/python.rs","kind":"string","line":[455,455],"text":" -> {}"}
-{"file":"src/parser/python.rs","kind":"comment","line":[458,458],"text":"Check for async"}
-{"file":"src/parser/python.rs","kind":"string","line":[461,461],"text":"async def"}
-{"file":"src/parser/python.rs","kind":"string","line":[463,463],"text":"{prefix} {name}{params}{return_type}"}
-{"file":"src/parser/python.rs","kind":"string","line":[472,472],"text":"class {name}"}
-{"file":"src/parser/python.rs","kind":"string","line":[474,474],"text":"class {name}{bases}"}
-{"file":"src/parser/python.rs","kind":"string","line":[487,487],"text":"symbol not found: {name}"}
-{"file":"src/parser/python.rs","kind":"string","line":[492,499],"text":"def hello(name):\n    return f'Hello, {name}!'\n\ndef _private():\n    pass\n\nasync def fetch_data():\n    return None"}
-{"file":"src/parser/python.rs","kind":"string","line":[505,505],"text":"def hello"}
-{"file":"src/parser/python.rs","kind":"string","line":[512,512],"text":"async def"}
-{"file":"src/parser/python.rs","kind":"string","line":[517,525],"text":"class Person:\n    def __init__(self, name):\n        self.name = name\n\n    def greet(self):\n        return f'Hi, {self.name}'\n\nclass _Private:\n    pass"}
-{"file":"src/parser/python.rs","kind":"string","line":[530,530],"text":"class Person"}
-{"file":"src/parser/python.rs","kind":"string","line":[546,549],"text":"import os\nimport sys as system\nfrom pathlib import Path\nfrom typing import List, Dict as D"}
-{"file":"src/parser/python.rs","kind":"string","line":[567,572],"text":"MAX_SIZE = 100\ndebug_mode = True\n\nclass Config:\n    def __init__(self):\n        self.version = '1.0'"}
-{"file":"src/parser/python.rs","kind":"string","line":[587,598],"text":"def public_fn():\n    pass\n\ndef _internal():\n    pass\n\ndef __private():\n    pass\n\nclass Foo:\n    def __special__(self):\n        pass"}
-{"file":"src/parser/python.rs","kind":"comment","line":[611,611],"text":"__special__ starts with _ so it's internal (not __x without trailing __)"}
-{"file":"src/parser/python.rs","kind":"string","line":[617,625],"text":"\\\"\\\"\\\"Module docstring\\\"\\\"\\\"\n\ndef foo():\n    \\\"\\\"\\\"Function docstring\\\"\\\"\\\"\n    pass\n\nclass Bar:\n    \\\"\\\"\\\"Class docstring\\\"\\\"\\\"\n    pass"}
+{"file":"src/parser/python.rs","kind":"string","line":[456,456],"text":" -> {}"}
+{"file":"src/parser/python.rs","kind":"comment","line":[459,459],"text":"Check for async"}
+{"file":"src/parser/python.rs","kind":"string","line":[462,462],"text":"async def"}
+{"file":"src/parser/python.rs","kind":"string","line":[464,464],"text":"{prefix} {name}{params}{return_type}"}
+{"file":"src/parser/python.rs","kind":"string","line":[473,473],"text":"class {name}"}
+{"file":"src/parser/python.rs","kind":"string","line":[475,475],"text":"class {name}{bases}"}
+{"file":"src/parser/python.rs","kind":"string","line":[488,488],"text":"symbol not found: {name}"}
+{"file":"src/parser/python.rs","kind":"string","line":[493,500],"text":"def hello(name):\n    return f'Hello, {name}!'\n\ndef _private():\n    pass\n\nasync def fetch_data():\n    return None"}
+{"file":"src/parser/python.rs","kind":"string","line":[506,506],"text":"def hello"}
+{"file":"src/parser/python.rs","kind":"string","line":[513,513],"text":"async def"}
+{"file":"src/parser/python.rs","kind":"string","line":[518,526],"text":"class Person:\n    def __init__(self, name):\n        self.name = name\n\n    def greet(self):\n        return f'Hi, {self.name}'\n\nclass _Private:\n    pass"}
+{"file":"src/parser/python.rs","kind":"string","line":[531,531],"text":"class Person"}
+{"file":"src/parser/python.rs","kind":"string","line":[547,550],"text":"import os\nimport sys as system\nfrom pathlib import Path\nfrom typing import List, Dict as D"}
+{"file":"src/parser/python.rs","kind":"string","line":[568,573],"text":"MAX_SIZE = 100\ndebug_mode = True\n\nclass Config:\n    def __init__(self):\n        self.version = '1.0'"}
+{"file":"src/parser/python.rs","kind":"string","line":[588,599],"text":"def public_fn():\n    pass\n\ndef _internal():\n    pass\n\ndef __private():\n    pass\n\nclass Foo:\n    def __special__(self):\n        pass"}
+{"file":"src/parser/python.rs","kind":"comment","line":[612,612],"text":"__special__ starts with _ so it's internal (not __x without trailing __)"}
+{"file":"src/parser/python.rs","kind":"string","line":[618,626],"text":"\\\"\\\"\\\"Module docstring\\\"\\\"\\\"\n\ndef foo():\n    \\\"\\\"\\\"Function docstring\\\"\\\"\\\"\n    pass\n\nclass Bar:\n    \\\"\\\"\\\"Class docstring\\\"\\\"\\\"\n    pass"}
 {"file":"src/parser/ruby.rs","kind":"docstring","line":[1,1],"text":"Ruby symbol and text extraction."}
 {"file":"src/parser/ruby.rs","kind":"comment","line":[50,50],"text":"Capture `require`, `include`, `extend`, `attr_*`"}
 {"file":"src/parser/ruby.rs","kind":"string","line":[93,93],"text":"def {name}{params}"}
@@ -489,13 +505,13 @@
 {"file":"src/parser/treesitter.rs","kind":"comment","line":[81,81],"text":"For unsupported languages, just extract comments and strings"}
 {"file":"src/parser/treesitter.rs","kind":"comment","line":[86,86],"text":"Merge consecutive doc comments (/// lines) into single entries"}
 {"file":"src/parser/treesitter.rs","kind":"comment","line":[92,94],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[139,141],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[143,143],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[171,173],"text":"---------------------------------------------------------------------------\nSFC (Single File Component) handling\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[175,176],"text":"Parse an SFC file by extracting script blocks and running them through the\nappropriate JS/TS parser, adjusting line numbers back to the original file."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[192,192],"text":"Parse each script block with the detected language"}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[197,197],"text":"failed to parse {} script block in {}: {}"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[206,207],"text":"Adjust line numbers: add the block's start_line offset (minus 1 because\nthe parser already counts from line 1)"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[141,143],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[145,145],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[173,175],"text":"---------------------------------------------------------------------------\nSFC (Single File Component) handling\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[177,178],"text":"Parse an SFC file by extracting script blocks and running them through the\nappropriate JS/TS parser, adjusting line numbers back to the original file."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[194,194],"text":"Parse each script block with the detected language"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[199,199],"text":"failed to parse {} script block in {}: {}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[208,209],"text":"Adjust line numbers: add the block's start_line offset (minus 1 because\nthe parser already counts from line 1)"}
 {"file":"src/parser/typescript.rs","kind":"docstring","line":[1,1],"text":"TypeScript symbol and text extraction."}
 {"file":"src/parser/typescript.rs","kind":"docstring","line":[3,5],"text":"TypeScript extends JavaScript with type annotations, interfaces,\nenums, type aliases, and namespaces. We reuse the JS extraction\nfor most constructs and add TS-specific ones."}
 {"file":"src/parser/typescript.rs","kind":"comment","line":[34,34],"text":"--- JS constructs ---"}
@@ -521,134 +537,230 @@
 {"file":"src/parser/typescript.rs","kind":"string","line":[568,568],"text":"type {name}{type_params}"}
 {"file":"src/parser/typescript.rs","kind":"comment","line":[665,665],"text":"Recurse into namespace body"}
 {"file":"src/parser/typescript.rs","kind":"comment","line":[674,674],"text":"--- Helpers ---"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[718,718],"text":": {}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[728,728],"text":"async function"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[733,733],"text":"{prefix} {name}{type_params}{params}{return_type}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[750,750],"text":": {}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[759,759],"text":"async {name}{params}{return_type}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[761,761],"text":"{name}{params}{return_type}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[780,780],"text":"abstract class"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[785,785],"text":"{prefix} {name}{type_params}{extends}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[797,797],"text":"symbol not found: {name}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[802,808],"text":"function greet(name: string): string {\n    return `Hello, ${name}!`;\n}\n\nasync function fetch(): Promise<Data> {\n    return await api.get();\n}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[815,815],"text":": string"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[824,832],"text":"export interface User {\n    id: number;\n    name: string;\n    getEmail(): string;\n}\n\ninterface Private {\n    data: any;\n}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[838,838],"text":"interface User"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[850,851],"text":"export type Result<T> = Success<T> | Error;\ntype ID = string | number;"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[856,856],"text":"type Result"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[866,870],"text":"export enum Status {\n    Active,\n    Inactive,\n    Pending\n}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[880,899],"text":"export abstract class Base {\n    protected abstract doWork(): void;\n}\n\nexport class Worker extends Base {\n    private data: string;\n\n    constructor(data: string) {\n        super();\n        this.data = data;\n    }\n\n    protected doWork(): void {\n        console.log(this.data);\n    }\n\n    public run(): void {\n        this.doWork();\n    }\n}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[904,904],"text":"abstract class"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[918,920],"text":"export namespace Utils {\n    export function helper(): void {}\n}"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[933,936],"text":"import React from 'react';\nimport { Component, useState } from 'react';\nimport * as Utils from './utils';\nimport type { User } from './types';"}
-{"file":"src/parser/typescript.rs","kind":"string","line":[954,958],"text":"class Foo {\n    public publicMethod(): void {}\n    private privateMethod(): void {}\n    protected protectedMethod(): void {}\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[719,719],"text":": {}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[729,729],"text":"async function"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[734,734],"text":"{prefix} {name}{type_params}{params}{return_type}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[751,751],"text":": {}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[760,760],"text":"async {name}{params}{return_type}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[762,762],"text":"{name}{params}{return_type}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[781,781],"text":"abstract class"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[786,786],"text":"{prefix} {name}{type_params}{extends}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[798,798],"text":"symbol not found: {name}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[803,809],"text":"function greet(name: string): string {\n    return `Hello, ${name}!`;\n}\n\nasync function fetch(): Promise<Data> {\n    return await api.get();\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[816,816],"text":": string"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[825,833],"text":"export interface User {\n    id: number;\n    name: string;\n    getEmail(): string;\n}\n\ninterface Private {\n    data: any;\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[839,839],"text":"interface User"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[851,852],"text":"export type Result<T> = Success<T> | Error;\ntype ID = string | number;"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[857,857],"text":"type Result"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[867,871],"text":"export enum Status {\n    Active,\n    Inactive,\n    Pending\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[881,900],"text":"export abstract class Base {\n    protected abstract doWork(): void;\n}\n\nexport class Worker extends Base {\n    private data: string;\n\n    constructor(data: string) {\n        super();\n        this.data = data;\n    }\n\n    protected doWork(): void {\n        console.log(this.data);\n    }\n\n    public run(): void {\n        this.doWork();\n    }\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[905,905],"text":"abstract class"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[919,921],"text":"export namespace Utils {\n    export function helper(): void {}\n}"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[934,937],"text":"import React from 'react';\nimport { Component, useState } from 'react';\nimport * as Utils from './utils';\nimport type { User } from './types';"}
+{"file":"src/parser/typescript.rs","kind":"string","line":[955,959],"text":"class Foo {\n    public publicMethod(): void {}\n    private privateMethod(): void {}\n    protected protectedMethod(): void {}\n}"}
 {"file":"src/scanner/hasher.rs","kind":"docstring","line":[5,6],"text":"Compute the BLAKE3 hash of a file's contents, truncated to 64 bits,\nreturned as a 16-character hex string."}
 {"file":"src/scanner/hasher.rs","kind":"docstring","line":[12,13],"text":"Compute the BLAKE3 hash of byte content, truncated to 64 bits,\nreturned as a 16-character hex string."}
 {"file":"src/scanner/hasher.rs","kind":"comment","line":[17,17],"text":"Truncate to first 8 bytes (64 bits), hex-encode to 16 chars"}
-{"file":"src/scanner/walker.rs","kind":"docstring","line":[6,7],"text":"Walk a directory tree using the `ignore` crate (respects `.gitignore`),\nreturning all file paths that are not ignored."}
-{"file":"src/scanner/walker.rs","kind":"comment","line":[12,13],"text":"skip hidden files/dirs (dotfiles)\nrespect .gitignore"}
-{"file":"src/scanner/walker.rs","kind":"comment","line":[19,19],"text":"Only collect files, not directories"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[9,9],"text":"Mount mode determines whether the index can be written to."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[12,12],"text":"Read-write: acquires exclusive flock, allows modifications."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[14,14],"text":"Read-only: no lock, index data is immutable."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[18,18],"text":"A single mounted directory with its index."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[21,21],"text":"Root directory of the mount."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[23,23],"text":"Mount mode (read-write or read-only)."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[25,25],"text":"File lock handle (only present for ReadWrite mounts)."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[27,27],"text":"Whether the index has been modified and needs flushing."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[29,29],"text":"Gitignore rules for this mount."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[34,34],"text":"Create a new read-only mount (no lock acquired).","parent":"Mount"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[46,46],"text":"Create a new read-write mount with exclusive flock.","parent":"Mount"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[82,82],"text":"Check if a path should be ignored according to gitignore rules.","parent":"Mount"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[88,88],"text":"Mark this mount as dirty (needs flushing).","parent":"Mount"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[93,93],"text":"Clear the dirty flag (after flushing).","parent":"Mount"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[108,108],"text":"Build gitignore rules for a directory."}
+{"file":"src/scanner/mount.rs","kind":"comment","line":[112,112],"text":"Add .gitignore if it exists"}
+{"file":"src/scanner/mount.rs","kind":"comment","line":[118,118],"text":"Add .git/info/exclude if it exists"}
+{"file":"src/scanner/mount.rs","kind":"string","line":[126,126],"text":"failed to build gitignore for {:?}"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[129,129],"text":"Table of mounted directories."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[132,132],"text":"Root of the workspace (where codeix was launched)."}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[138,138],"text":"Create a new mount table with the given workspace root.","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[146,146],"text":"Get the workspace root.","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[151,152],"text":"Compute the relative project path from workspace root.\nReturns empty string for the root project.","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[160,160],"text":"Mount a directory in read-write mode (acquires exclusive lock).","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[176,176],"text":"Mount a directory in read-only mode (no lock).","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[192,192],"text":"Find the mount that contains a given path (longest prefix match).","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[203,203],"text":"Find the mount that contains a given path (mutable, longest prefix match).","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[221,221],"text":"Unmount a directory (releases lock if held).","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[234,234],"text":"Iterate over all mounts.","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[239,239],"text":"Iterate over all mounts (mutable).","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"docstring","line":[244,244],"text":"Mark a path's mount as dirty.","parent":"MountTable"}
+{"file":"src/scanner/mount.rs","kind":"comment","line":[270,270],"text":".codeindex/index.json should exist"}
+{"file":"src/scanner/mount.rs","kind":"string","line":[271,271],"text":".codeindex/index.json"}
+{"file":"src/scanner/mount.rs","kind":"comment","line":[294,294],"text":"File in subdir should match subdir mount"}
+{"file":"src/scanner/mount.rs","kind":"comment","line":[304,304],"text":"File in root should match root mount"}
+{"file":"src/scanner/walker.rs","kind":"docstring","line":[6,6],"text":"Events emitted during directory walk with project discovery."}
+{"file":"src/scanner/walker.rs","kind":"docstring","line":[9,9],"text":"A `.git/` directory was found - parent is the project root"}
+{"file":"src/scanner/walker.rs","kind":"docstring","line":[11,11],"text":"A regular file to index"}
+{"file":"src/scanner/walker.rs","kind":"docstring","line":[15,15],"text":"Walk a directory tree, detecting project boundaries via `.git/` markers."}
+{"file":"src/scanner/walker.rs","kind":"docstring","line":[17,19],"text":"Uses `.hidden(false)` to see `.git/` directories for project discovery,\nbut still skips other hidden files (dotfiles like `.env`, `.mcp.json`).\nFiles inside `.git/` directories are skipped."}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[22,22],"text":"Need to see .git/ directories"}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[34,34],"text":"Check if this is a .git directory (project marker)"}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[36,36],"text":"Emit project discovered with the parent (project root)"}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[45,45],"text":"Skip anything inside .git/ directories"}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[52,52],"text":"Skip other hidden files/directories (dotfiles)"}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[59,59],"text":"Only emit regular files"}
+{"file":"src/scanner/walker.rs","kind":"docstring","line":[70,71],"text":"Walk a directory tree using the `ignore` crate (respects `.gitignore`),\nreturning all file paths that are not ignored."}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[76,77],"text":"skip hidden files/dirs (dotfiles)\nrespect .gitignore"}
+{"file":"src/scanner/walker.rs","kind":"comment","line":[83,83],"text":"Only collect files, not directories"}
 {"file":"src/server/db.rs","kind":"docstring","line":[6,7],"text":"An in-memory SQLite database with FTS5 virtual tables for fast text search\nover the code index."}
 {"file":"src/server/db.rs","kind":"docstring","line":[13,13],"text":"Create a new in-memory database and initialize the FTS5 schema.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[84,84],"text":"Load index data into the database.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[149,149],"text":"FTS5 search on symbol names, with optional kind and file filters.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[196,196],"text":"FTS5 search on text content, with optional kind and file filters.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[238,238],"text":"FTS5 search on file paths, with optional language filter.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[271,271],"text":"Get all symbols in a file, ordered by start line.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[300,300],"text":"Get direct children of a symbol in a file.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[329,329],"text":"Get all imports for a file (symbols with kind \"import\").","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[358,358],"text":"Get the hash of a file from the DB (for change detection).","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[371,372],"text":"Remove all data for a file (from files, symbols, texts tables).\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[384,386],"text":"Upsert a single file and its symbols/texts.\nRemoves old data for this path first, then inserts new data.\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[444,445],"text":"Rebuild all FTS5 indexes.\nCall this after batch upsert/remove operations.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[457,457],"text":"Export all data from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[530,531],"text":"Quote a string for use in an FTS5 MATCH expression.\nWraps in double quotes and escapes any internal double quotes."}
+{"file":"src/server/db.rs","kind":"docstring","line":[94,94],"text":"Load index data into the database for a specific project.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[162,162],"text":"FTS5 search on symbol names, with optional kind, file, and project filters.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[214,214],"text":"FTS5 search on text content, with optional kind, file, and project filters.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[261,261],"text":"FTS5 search on file paths, with optional language and project filters.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[303,303],"text":"Get all symbols in a file, ordered by start line.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[333,333],"text":"Get direct children of a symbol in a file.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[363,363],"text":"Get all imports for a file (symbols with kind \"import\").","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[393,393],"text":"Get the hash of a file from the DB (for change detection).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[406,407],"text":"Remove all data for a file (from files, symbols, texts tables).\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[428,430],"text":"Upsert a single file and its symbols/texts.\nRemoves old data for this path first, then inserts new data.\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[499,500],"text":"Rebuild all FTS5 indexes.\nCall this after batch upsert/remove operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[512,512],"text":"Export all data from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[587,587],"text":"Export data for a specific project from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[667,667],"text":"List all unique repos (projects) in the database.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[681,682],"text":"Quote a string for use in an FTS5 MATCH expression.\nWraps in double quotes and escapes any internal double quotes."}
 {"file":"src/server/mcp.rs","kind":"comment","line":[17,17],"text":"Parameter structs for each tool"}
 {"file":"src/server/mcp.rs","kind":"docstring","line":[20,20],"text":"Search query for symbol names"}
 {"file":"src/server/mcp.rs","kind":"docstring","line":[22,22],"text":"Filter by symbol kind (e.g. function, struct, class, method)"}
 {"file":"src/server/mcp.rs","kind":"docstring","line":[24,24],"text":"Filter by file path"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[30,30],"text":"Search query for file paths"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[32,32],"text":"Filter by language (e.g. python, rust, javascript)"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[38,38],"text":"Search query for text content"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[40,40],"text":"Filter by text kind (e.g. docstring, comment)"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[42,42],"text":"Filter by file path"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[48,48],"text":"File path to get symbols for"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[54,54],"text":"File path containing the parent symbol"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[56,56],"text":"Name of the parent symbol"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[62,62],"text":"File path to get imports for"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[66,66],"text":"MCP server exposing code-index query tools."}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[68,69],"text":"`SearchDb` wraps a `rusqlite::Connection` which is not `Sync`, so we protect\nit with a `Mutex` to satisfy rmcp's `Send + Sync` requirements."}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[87,87],"text":"Search symbols by name using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[88,88],"text":"Search symbols by name with optional kind/file filters","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[111,111],"text":"Search files by path using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[112,112],"text":"Search files by path with optional language filter","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[131,131],"text":"Search text entries (docstrings, comments) using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[133,133],"text":"Search text entries (docstrings, comments) with optional kind/file filters","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[157,157],"text":"Get all symbols in a file, ordered by line number.","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[158,158],"text":"Get all symbols in a file, ordered by line number","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[177,177],"text":"Get direct children of a symbol (e.g. methods of a class).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[178,178],"text":"Get direct children of a symbol (e.g. methods of a class)","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[199,199],"text":"Get all import statements for a file.","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[200,200],"text":"Get all import statements for a file","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[236,236],"text":"Start the MCP server over stdio with the given search database."}
-{"file":"src/server/mcp.rs","kind":"string","line":[242,242],"text":"MCP serve error: {e}"}
-{"file":"src/server/mcp.rs","kind":"string","line":[246,246],"text":"MCP runtime error: {e}"}
-{"file":"src/watcher/handler.rs","kind":"docstring","line":[20,21],"text":"Start watching the given directory for file changes and trigger\nre-indexing when files are modified."}
-{"file":"src/watcher/handler.rs","kind":"string","line":[25,25],"text":"cannot resolve path: {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[27,27],"text":"Build gitignore matcher for the root"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[30,30],"text":"starting file watcher on {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[32,32],"text":"Channel for receiving events"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[35,35],"text":"Create watcher with CORE mask (excludes ACCESS/OPEN events)"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[45,45],"text":"failed to create file watcher"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[47,47],"text":"Watch root recursively"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[50,50],"text":"failed to watch directory"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[52,52],"text":"file watcher ready (recursive mode)"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[54,54],"text":"Debounce state: path -> last event time"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[60,60],"text":"Wait for events with timeout"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[69,69],"text":"Check for debounced events ready to process"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[75,75],"text":"watcher channel closed, shutting down"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[80,80],"text":"Process debounced events"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[94,94],"text":"error handling watch events: {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[100,100],"text":"Flush to disk after quiet period"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[103,103],"text":"failed to flush index to disk: {}"}
-{"file":"src/watcher/handler.rs","kind":"docstring","line":[113,113],"text":"Handle a batch of file system events."}
-{"file":"src/watcher/handler.rs","kind":"string","line":[124,124],"text":"processing {} file events"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[129,129],"text":"Compute relative path"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[132,132],"text":"Not under root"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[135,135],"text":"Skip .codeindex/ directory"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[140,140],"text":"Skip hidden files (dotfiles like .mcp.json)"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[145,145],"text":"Skip if gitignored (use matched_path_or_any_parents to check parent dirs like target/)"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[153,153],"text":"Skip directories"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[158,158],"text":"Check if file still exists"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[160,160],"text":"File was deleted"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[161,161],"text":"file deleted: {}"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[164,164],"text":"db lock poisoned: {e}"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[166,166],"text":"failed to remove file {}: {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[171,171],"text":"File was created or modified"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[175,175],"text":"Process changed files"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[178,178],"text":"failed to process file {}: {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[182,182],"text":"Rebuild FTS indexes once after all changes"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[185,185],"text":"db lock poisoned: {e}"}
-{"file":"src/watcher/handler.rs","kind":"docstring","line":[191,191],"text":"Process a single file change (create or modify)."}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[197,197],"text":"Read file content once"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[199,199],"text":"failed to read {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[201,201],"text":"Hash the content"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[204,204],"text":"Check if hash changed"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[207,207],"text":"db lock poisoned: {e}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[211,211],"text":"No change, skip"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[216,216],"text":"indexing file: {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[218,218],"text":"Count lines"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[221,221],"text":"Detect language"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[231,231],"text":"Parse source files for symbols and texts"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[239,239],"text":"failed to parse {}: {}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[251,251],"text":"Upsert into database"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[254,254],"text":"db lock poisoned: {e}"}
-{"file":"src/watcher/handler.rs","kind":"docstring","line":[260,260],"text":"Flush the entire index from memory to disk."}
-{"file":"src/watcher/handler.rs","kind":"string","line":[264,264],"text":"db lock poisoned: {e}"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[268,268],"text":"Collect languages"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[276,276],"text":"Derive project name from directory name"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[294,294],"text":"flushed index to disk: {} files, {} symbols, {} texts"}
-{"file":"src/watcher/handler.rs","kind":"docstring","line":[303,303],"text":"Load .gitignore rules from the root directory."}
-{"file":"src/watcher/handler.rs","kind":"string","line":[309,309],"text":"failed to build gitignore"}
-{"file":"src/watcher/handler.rs","kind":"docstring","line":[315,315],"text":"Count the number of lines in a byte buffer."}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[321,321],"text":"If file doesn't end with newline, the last line still counts"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[26,26],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[32,32],"text":"Search query for file paths"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[34,34],"text":"Filter by language (e.g. python, rust, javascript)"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[36,36],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[42,42],"text":"Search query for text content"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[44,44],"text":"Filter by text kind (e.g. docstring, comment)"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[46,46],"text":"Filter by file path"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[48,48],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[54,54],"text":"File path to get symbols for"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[60,60],"text":"File path containing the parent symbol"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[62,62],"text":"Name of the parent symbol"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[68,68],"text":"File path to get imports for"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[72,72],"text":"MCP server exposing code-index query tools."}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[74,75],"text":"`SearchDb` wraps a `rusqlite::Connection` which is not `Sync`, so we protect\nit with a `Mutex` to satisfy rmcp's `Send + Sync` requirements."}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[93,93],"text":"Search symbols by name using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[94,94],"text":"Search symbols by name with optional kind/file filters","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[118,118],"text":"Search files by path using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[119,119],"text":"Search files by path with optional language filter","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[142,142],"text":"Search text entries (docstrings, comments) using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[144,144],"text":"Search text entries (docstrings, comments) with optional kind/file filters","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[169,169],"text":"Get all symbols in a file, ordered by line number.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[170,170],"text":"Get all symbols in a file, ordered by line number","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[189,189],"text":"Get direct children of a symbol (e.g. methods of a class).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[190,190],"text":"Get direct children of a symbol (e.g. methods of a class)","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[211,211],"text":"Get all import statements for a file.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[212,212],"text":"Get all import statements for a file","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[231,231],"text":"List all indexed projects.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[232,232],"text":"List all indexed projects","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[266,266],"text":"Start the MCP server over stdio with the given search database."}
+{"file":"src/server/mcp.rs","kind":"string","line":[272,272],"text":"MCP serve error: {e}"}
+{"file":"src/server/mcp.rs","kind":"string","line":[276,276],"text":"MCP runtime error: {e}"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[21,22],"text":"Start watching the given directory for file changes and trigger\nre-indexing when files are modified."}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[24,25],"text":"Uses `GitignoreWatcher` for efficient watching that respects `.gitignore` rules.\nRoutes events to the appropriate mount via `MountTable`."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[33,33],"text":"cannot resolve path: {}"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[35,35],"text":"starting file watcher on {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[37,37],"text":"Channel for receiving events"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[40,40],"text":"Create gitignore-aware watcher (non-recursive, respects .gitignore)"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[44,44],"text":"file watcher ready ({} directories watched)"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[48,48],"text":"Debounce state: path -> (last event time, event kind)"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[53,53],"text":"Wait for events with timeout"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[62,62],"text":"watcher error: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[65,65],"text":"Check for debounced events ready to process"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[68,68],"text":"Flush all dirty mounts before shutting down"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[70,70],"text":"watcher channel closed, shutting down"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[75,75],"text":"Process debounced events"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[89,89],"text":"error handling watch events: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[93,93],"text":"Flush dirty mounts to disk after quiet period"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[96,96],"text":"failed to flush index to disk: {}"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[105,106],"text":"Handle when a .git/ directory is discovered during watch.\nMounts the project (parent of .git/) and starts indexing it."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[114,114],"text":"mount table lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[116,116],"text":"Check if already mounted"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[121,121],"text":"Mount the new project in read-write mode"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[123,123],"text":"discovered project: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[125,125],"text":"Mark as dirty so it gets indexed"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[130,130],"text":"Index all files in the new project"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[136,136],"text":"Index all files in a project directory."}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[144,144],"text":"Use relative project path from workspace root"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[148,148],"text":"mount table lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[171,171],"text":"failed to index {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[175,175],"text":"Rebuild FTS after batch indexing"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[178,178],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[181,181],"text":"Mark mount as dirty"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[190,190],"text":"Handle a batch of file system events."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[201,201],"text":"processing {} file events"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[203,203],"text":"(abs_path, rel_path, project)"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[206,206],"text":"Handle directory creation/deletion for watcher updates"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[209,209],"text":"Check if this is a .git directory (new project discovered)"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[214,214],"text":"failed to handle project discovery: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[219,219],"text":"Add watch for new directory if not ignored"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[222,222],"text":"mount table lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[231,231],"text":"failed to watch new dir: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[242,242],"text":"Find the mount for this path"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[245,245],"text":"mount table lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[248,248],"text":"Not under any mount"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[251,251],"text":"Get mount info before dropping lock"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[260,260],"text":"Compute relative path"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[266,266],"text":"Skip .codeindex/ directory"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[271,271],"text":"Skip hidden files (dotfiles like .mcp.json)"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[276,276],"text":"Skip directories"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[281,281],"text":"Compute relative project path from workspace root"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[285,285],"text":"mount table lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[289,289],"text":"Check if file still exists"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[291,291],"text":"File was deleted"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[292,292],"text":"file deleted: {} (project: {})"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[295,295],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[297,297],"text":"failed to remove file {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[299,299],"text":"Mark mount as dirty"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[304,304],"text":"File was created or modified"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[308,308],"text":"Process changed files"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[311,311],"text":"failed to process file {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[313,313],"text":"Mark mount as dirty on successful change"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[321,321],"text":"Rebuild FTS indexes once after all changes"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[325,325],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[332,332],"text":"Process a single file change (create or modify)."}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[339,339],"text":"Read file content once"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[341,341],"text":"failed to read {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[343,343],"text":"Hash the content"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[346,346],"text":"Check if hash changed"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[349,349],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[353,353],"text":"No change, skip"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[358,358],"text":"indexing file: {} (project: {})"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[360,360],"text":"Count lines"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[363,363],"text":"Detect language"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[373,373],"text":"Parse source files for symbols and texts"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[381,381],"text":"failed to parse {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[394,394],"text":"Upsert into database"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[397,397],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[403,403],"text":"Flush all dirty mounts to disk."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[410,410],"text":"mount table lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[412,412],"text":"Collect dirty RW mounts"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[421,421],"text":"failed to flush {}: {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[423,423],"text":"Clear dirty flag"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[433,433],"text":"Flush a single mount's index from memory to disk."}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[439,439],"text":"Use relative project path from workspace root"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[444,444],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[449,449],"text":"no files to flush for {}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[453,453],"text":"Collect languages"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[461,461],"text":"Derive project name from directory name"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[479,479],"text":"flushed index to disk for {}: {} files, {} symbols, {} texts"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[489,490],"text":"Flush the entire index from memory to disk (legacy single-project).\nThis is used during initial index building before MountTable is set up."}
+{"file":"src/watcher/handler.rs","kind":"string","line":[494,494],"text":"db lock poisoned: {e}"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[498,498],"text":"Collect languages"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[506,506],"text":"Derive project name from directory name"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[524,524],"text":"flushed index to disk: {} files, {} symbols, {} texts"}
+{"file":"src/watcher/handler.rs","kind":"docstring","line":[533,533],"text":"Count the number of lines in a byte buffer."}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[539,539],"text":"If file doesn't end with newline, the last line still counts"}
+{"file":"src/watcher/mod.rs","kind":"docstring","line":[12,13],"text":"A file watcher that respects .gitignore rules.\nUses non-recursive watching on each directory to avoid watching ignored paths."}
+{"file":"src/watcher/mod.rs","kind":"docstring","line":[20,21],"text":"Create a new watcher for the given root directory.\nWalks the tree respecting .gitignore and watches each non-ignored directory.","parent":"GitignoreWatcher"}
+{"file":"src/watcher/mod.rs","kind":"docstring","line":[67,67],"text":"Watch a directory (non-recursive).","parent":"GitignoreWatcher"}
+{"file":"src/watcher/mod.rs","kind":"docstring","line":[78,78],"text":"Called when a new directory is created - check if it should be watched.","parent":"GitignoreWatcher"}
+{"file":"src/watcher/mod.rs","kind":"docstring","line":[90,91],"text":"Watch a directory if it's valid (exists and not already watched).\nThis is used for dynamically adding watches when directories are created.","parent":"GitignoreWatcher"}
+{"file":"src/watcher/mod.rs","kind":"docstring","line":[100,100],"text":"Called when a directory is deleted - stop watching.","parent":"GitignoreWatcher"}
+{"file":"src/watcher/mod.rs","kind":"docstring","line":[107,107],"text":"Get the number of watched directories.","parent":"GitignoreWatcher"}
