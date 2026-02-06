@@ -162,7 +162,7 @@ fn handle_events(
             let db_guard = db
                 .lock()
                 .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-            if let Err(e) = db_guard.remove_file(&rel_path) {
+            if let Err(e) = db_guard.remove_file("", &rel_path) {
                 tracing::warn!("failed to remove file {}: {}", rel_path, e);
             }
             continue;
@@ -205,7 +205,7 @@ pub fn process_file_change(
     let db_guard = db
         .lock()
         .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    if let Some(old_hash) = db_guard.get_file_hash(rel_path)?
+    if let Some(old_hash) = db_guard.get_file_hash("", rel_path)?
         && old_hash == new_hash
     {
         // No change, skip
@@ -246,13 +246,14 @@ pub fn process_file_change(
         lang,
         hash: new_hash,
         lines: line_count,
+        project: String::new(),
     };
 
     // Upsert into database
     let db_guard = db
         .lock()
         .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    db_guard.upsert_file(&file_entry, &symbols, &texts)?;
+    db_guard.upsert_file("", &file_entry, &symbols, &texts)?;
 
     Ok(())
 }

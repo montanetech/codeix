@@ -18,13 +18,16 @@ impl SearchDb {
         conn.execute_batch(
             "
             CREATE TABLE files (
-                path    TEXT PRIMARY KEY,
+                project    TEXT NOT NULL,
+                path    TEXT NOT NULL,
                 lang    TEXT,
                 hash    TEXT NOT NULL,
-                lines   INTEGER NOT NULL
+                lines   INTEGER NOT NULL,
+                PRIMARY KEY (project, path)
             );
 
             CREATE TABLE symbols (
+                project       TEXT NOT NULL,
                 file       TEXT NOT NULL,
                 name       TEXT NOT NULL,
                 kind       TEXT NOT NULL,
@@ -37,6 +40,7 @@ impl SearchDb {
             );
 
             CREATE TABLE texts (
+                project       TEXT NOT NULL,
                 file       TEXT NOT NULL,
                 kind       TEXT NOT NULL,
                 line_start INTEGER NOT NULL,
@@ -47,6 +51,7 @@ impl SearchDb {
 
             -- FTS5 virtual tables for full-text search
             CREATE VIRTUAL TABLE files_fts USING fts5(
+                project,
                 path,
                 lang,
                 content='files',
@@ -54,6 +59,7 @@ impl SearchDb {
             );
 
             CREATE VIRTUAL TABLE symbols_fts USING fts5(
+                project,
                 name,
                 file,
                 kind,
@@ -62,6 +68,7 @@ impl SearchDb {
             );
 
             CREATE VIRTUAL TABLE texts_fts USING fts5(
+                project,
                 text,
                 file,
                 kind,
@@ -70,10 +77,13 @@ impl SearchDb {
             );
 
             -- Indexes for exact lookups
-            CREATE INDEX idx_symbols_file ON symbols(file);
-            CREATE INDEX idx_symbols_file_parent ON symbols(file, parent);
-            CREATE INDEX idx_symbols_file_kind ON symbols(file, kind);
-            CREATE INDEX idx_texts_file ON texts(file);
+            CREATE INDEX idx_symbols_project_file ON symbols(project, file);
+            CREATE INDEX idx_symbols_project_file_parent ON symbols(project, file, parent);
+            CREATE INDEX idx_symbols_project_file_kind ON symbols(project, file, kind);
+            CREATE INDEX idx_texts_project_file ON texts(project, file);
+            CREATE INDEX idx_files_project ON files(project);
+            CREATE INDEX idx_symbols_project ON symbols(project);
+            CREATE INDEX idx_texts_project ON texts(project);
             ",
         )
         .context("failed to create database schema")?;
@@ -81,9 +91,10 @@ impl SearchDb {
         Ok(Self { conn })
     }
 
-    /// Load index data into the database.
+    /// Load index data into the database for a specific project.
     pub fn load(
         &self,
+        project: &str,
         files: &[FileEntry],
         symbols: &[SymbolEntry],
         texts: &[TextEntry],
@@ -92,21 +103,23 @@ impl SearchDb {
 
         // Insert files
         {
-            let mut stmt =
-                tx.prepare("INSERT INTO files (path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4)")?;
+            let mut stmt = tx.prepare(
+                "INSERT INTO files (project, path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4, ?5)",
+            )?;
             for f in files {
-                stmt.execute(rusqlite::params![f.path, f.lang, f.hash, f.lines])?;
+                stmt.execute(rusqlite::params![project, f.path, f.lang, f.hash, f.lines])?;
             }
         }
 
         // Insert symbols
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO symbols (file, name, kind, line_start, line_end, parent, sig, alias, visibility)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO symbols (project, file, name, kind, line_start, line_end, parent, sig, alias, visibility)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )?;
             for s in symbols {
                 stmt.execute(rusqlite::params![
+                    project,
                     s.file,
                     s.name,
                     s.kind,
@@ -123,12 +136,12 @@ impl SearchDb {
         // Insert texts
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO texts (file, kind, line_start, line_end, text, parent)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO texts (project, file, kind, line_start, line_end, text, parent)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             )?;
             for t in texts {
                 stmt.execute(rusqlite::params![
-                    t.file, t.kind, t.line[0], t.line[1], t.text, t.parent,
+                    project, t.file, t.kind, t.line[0], t.line[1], t.text, t.parent,
                 ])?;
             }
         }
@@ -146,12 +159,13 @@ impl SearchDb {
         Ok(())
     }
 
-    /// FTS5 search on symbol names, with optional kind and file filters.
+    /// FTS5 search on symbol names, with optional kind, file, and project filters.
     pub fn search_symbols(
         &self,
         query: &str,
         kind: Option<&str>,
         file: Option<&str>,
+        project: Option<&str>,
     ) -> Result<Vec<SymbolEntry>> {
         // Build the FTS5 match expression, incorporating filters into the query
         let mut fts_parts = vec![format!("name : {}", fts5_quote(query))];
@@ -161,10 +175,13 @@ impl SearchDb {
         if let Some(f) = file {
             fts_parts.push(format!("file : {}", fts5_quote(f)));
         }
+        if let Some(r) = project {
+            fts_parts.push(format!("project : {}", fts5_quote(r)));
+        }
         let fts_query = fts_parts.join(" AND ");
 
         let mut stmt = self.conn.prepare(
-            "SELECT s.file, s.name, s.kind, s.line_start, s.line_end,
+            "SELECT s.project, s.file, s.name, s.kind, s.line_start, s.line_end,
                     s.parent, s.sig, s.alias, s.visibility
              FROM symbols_fts f
              JOIN symbols s ON s.rowid = f.rowid
@@ -175,14 +192,15 @@ impl SearchDb {
 
         let rows = stmt.query_map([&fts_query], |row| {
             Ok(SymbolEntry {
-                file: row.get(0)?,
-                name: row.get(1)?,
-                kind: row.get(2)?,
-                line: [row.get(3)?, row.get(4)?],
-                parent: row.get(5)?,
-                sig: row.get(6)?,
-                alias: row.get(7)?,
-                visibility: row.get(8)?,
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                parent: row.get(6)?,
+                sig: row.get(7)?,
+                alias: row.get(8)?,
+                visibility: row.get(9)?,
             })
         })?;
 
@@ -193,12 +211,13 @@ impl SearchDb {
         Ok(results)
     }
 
-    /// FTS5 search on text content, with optional kind and file filters.
+    /// FTS5 search on text content, with optional kind, file, and project filters.
     pub fn search_text(
         &self,
         query: &str,
         kind: Option<&str>,
         file: Option<&str>,
+        project: Option<&str>,
     ) -> Result<Vec<TextEntry>> {
         let mut fts_parts = vec![format!("text : {}", fts5_quote(query))];
         if let Some(k) = kind {
@@ -207,10 +226,13 @@ impl SearchDb {
         if let Some(f) = file {
             fts_parts.push(format!("file : {}", fts5_quote(f)));
         }
+        if let Some(r) = project {
+            fts_parts.push(format!("project : {}", fts5_quote(r)));
+        }
         let fts_query = fts_parts.join(" AND ");
 
         let mut stmt = self.conn.prepare(
-            "SELECT t.file, t.kind, t.line_start, t.line_end, t.text, t.parent
+            "SELECT t.project, t.file, t.kind, t.line_start, t.line_end, t.text, t.parent
              FROM texts_fts f
              JOIN texts t ON t.rowid = f.rowid
              WHERE texts_fts MATCH ?1
@@ -220,11 +242,12 @@ impl SearchDb {
 
         let rows = stmt.query_map([&fts_query], |row| {
             Ok(TextEntry {
-                file: row.get(0)?,
-                kind: row.get(1)?,
-                line: [row.get(2)?, row.get(3)?],
-                text: row.get(4)?,
-                parent: row.get(5)?,
+                project: row.get(0)?,
+                file: row.get(1)?,
+                kind: row.get(2)?,
+                line: [row.get(3)?, row.get(4)?],
+                text: row.get(5)?,
+                parent: row.get(6)?,
             })
         })?;
 
@@ -235,16 +258,24 @@ impl SearchDb {
         Ok(results)
     }
 
-    /// FTS5 search on file paths, with optional language filter.
-    pub fn search_files(&self, query: &str, lang: Option<&str>) -> Result<Vec<FileEntry>> {
+    /// FTS5 search on file paths, with optional language and project filters.
+    pub fn search_files(
+        &self,
+        query: &str,
+        lang: Option<&str>,
+        project: Option<&str>,
+    ) -> Result<Vec<FileEntry>> {
         let mut fts_parts = vec![format!("path : {}", fts5_quote(query))];
         if let Some(l) = lang {
             fts_parts.push(format!("lang : {}", fts5_quote(l)));
         }
+        if let Some(r) = project {
+            fts_parts.push(format!("project : {}", fts5_quote(r)));
+        }
         let fts_query = fts_parts.join(" AND ");
 
         let mut stmt = self.conn.prepare(
-            "SELECT fl.path, fl.lang, fl.hash, fl.lines
+            "SELECT fl.project, fl.path, fl.lang, fl.hash, fl.lines
              FROM files_fts f
              JOIN files fl ON fl.rowid = f.rowid
              WHERE files_fts MATCH ?1
@@ -254,10 +285,11 @@ impl SearchDb {
 
         let rows = stmt.query_map([&fts_query], |row| {
             Ok(FileEntry {
-                path: row.get(0)?,
-                lang: row.get(1)?,
-                hash: row.get(2)?,
-                lines: row.get(3)?,
+                project: row.get(0)?,
+                path: row.get(1)?,
+                lang: row.get(2)?,
+                hash: row.get(3)?,
+                lines: row.get(4)?,
             })
         })?;
 
@@ -271,7 +303,7 @@ impl SearchDb {
     /// Get all symbols in a file, ordered by start line.
     pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT file, name, kind, line_start, line_end, parent, sig, alias, visibility
+            "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
              FROM symbols
              WHERE file = ?1
              ORDER BY line_start",
@@ -279,14 +311,15 @@ impl SearchDb {
 
         let rows = stmt.query_map([file], |row| {
             Ok(SymbolEntry {
-                file: row.get(0)?,
-                name: row.get(1)?,
-                kind: row.get(2)?,
-                line: [row.get(3)?, row.get(4)?],
-                parent: row.get(5)?,
-                sig: row.get(6)?,
-                alias: row.get(7)?,
-                visibility: row.get(8)?,
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                parent: row.get(6)?,
+                sig: row.get(7)?,
+                alias: row.get(8)?,
+                visibility: row.get(9)?,
             })
         })?;
 
@@ -300,7 +333,7 @@ impl SearchDb {
     /// Get direct children of a symbol in a file.
     pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT file, name, kind, line_start, line_end, parent, sig, alias, visibility
+            "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
              FROM symbols
              WHERE file = ?1 AND parent = ?2
              ORDER BY line_start",
@@ -308,14 +341,15 @@ impl SearchDb {
 
         let rows = stmt.query_map(rusqlite::params![file, parent], |row| {
             Ok(SymbolEntry {
-                file: row.get(0)?,
-                name: row.get(1)?,
-                kind: row.get(2)?,
-                line: [row.get(3)?, row.get(4)?],
-                parent: row.get(5)?,
-                sig: row.get(6)?,
-                alias: row.get(7)?,
-                visibility: row.get(8)?,
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                parent: row.get(6)?,
+                sig: row.get(7)?,
+                alias: row.get(8)?,
+                visibility: row.get(9)?,
             })
         })?;
 
@@ -329,7 +363,7 @@ impl SearchDb {
     /// Get all imports for a file (symbols with kind "import").
     pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT file, name, kind, line_start, line_end, parent, sig, alias, visibility
+            "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
              FROM symbols
              WHERE file = ?1 AND kind = 'import'
              ORDER BY line_start",
@@ -337,14 +371,15 @@ impl SearchDb {
 
         let rows = stmt.query_map([file], |row| {
             Ok(SymbolEntry {
-                file: row.get(0)?,
-                name: row.get(1)?,
-                kind: row.get(2)?,
-                line: [row.get(3)?, row.get(4)?],
-                parent: row.get(5)?,
-                sig: row.get(6)?,
-                alias: row.get(7)?,
-                visibility: row.get(8)?,
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                parent: row.get(6)?,
+                sig: row.get(7)?,
+                alias: row.get(8)?,
+                visibility: row.get(9)?,
             })
         })?;
 
@@ -356,11 +391,11 @@ impl SearchDb {
     }
 
     /// Get the hash of a file from the DB (for change detection).
-    pub fn get_file_hash(&self, path: &str) -> Result<Option<String>> {
+    pub fn get_file_hash(&self, project: &str, path: &str) -> Result<Option<String>> {
         let mut stmt = self
             .conn
-            .prepare("SELECT hash FROM files WHERE path = ?1")?;
-        let mut rows = stmt.query([path])?;
+            .prepare("SELECT hash FROM files WHERE project = ?1 AND path = ?2")?;
+        let mut rows = stmt.query(rusqlite::params![project, path])?;
         if let Some(row) = rows.next()? {
             Ok(Some(row.get(0)?))
         } else {
@@ -370,12 +405,21 @@ impl SearchDb {
 
     /// Remove all data for a file (from files, symbols, texts tables).
     /// Does not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.
-    pub fn remove_file(&self, path: &str) -> Result<()> {
+    pub fn remove_file(&self, project: &str, path: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
 
-        tx.execute("DELETE FROM files WHERE path = ?1", [path])?;
-        tx.execute("DELETE FROM symbols WHERE file = ?1", [path])?;
-        tx.execute("DELETE FROM texts WHERE file = ?1", [path])?;
+        tx.execute(
+            "DELETE FROM files WHERE project = ?1 AND path = ?2",
+            rusqlite::params![project, path],
+        )?;
+        tx.execute(
+            "DELETE FROM symbols WHERE project = ?1 AND file = ?2",
+            rusqlite::params![project, path],
+        )?;
+        tx.execute(
+            "DELETE FROM texts WHERE project = ?1 AND file = ?2",
+            rusqlite::params![project, path],
+        )?;
 
         tx.commit()?;
         Ok(())
@@ -386,6 +430,7 @@ impl SearchDb {
     /// Does not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.
     pub fn upsert_file(
         &self,
+        project: &str,
         file: &FileEntry,
         symbols: &[SymbolEntry],
         texts: &[TextEntry],
@@ -393,24 +438,34 @@ impl SearchDb {
         let tx = self.conn.unchecked_transaction()?;
 
         // Remove old data for this file
-        tx.execute("DELETE FROM files WHERE path = ?1", [&file.path])?;
-        tx.execute("DELETE FROM symbols WHERE file = ?1", [&file.path])?;
-        tx.execute("DELETE FROM texts WHERE file = ?1", [&file.path])?;
+        tx.execute(
+            "DELETE FROM files WHERE project = ?1 AND path = ?2",
+            rusqlite::params![project, &file.path],
+        )?;
+        tx.execute(
+            "DELETE FROM symbols WHERE project = ?1 AND file = ?2",
+            rusqlite::params![project, &file.path],
+        )?;
+        tx.execute(
+            "DELETE FROM texts WHERE project = ?1 AND file = ?2",
+            rusqlite::params![project, &file.path],
+        )?;
 
         // Insert file
         tx.execute(
-            "INSERT INTO files (path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4)",
-            rusqlite::params![file.path, file.lang, file.hash, file.lines],
+            "INSERT INTO files (project, path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![project, file.path, file.lang, file.hash, file.lines],
         )?;
 
         // Insert symbols
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO symbols (file, name, kind, line_start, line_end, parent, sig, alias, visibility)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO symbols (project, file, name, kind, line_start, line_end, parent, sig, alias, visibility)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )?;
             for s in symbols {
                 stmt.execute(rusqlite::params![
+                    project,
                     s.file,
                     s.name,
                     s.kind,
@@ -427,12 +482,12 @@ impl SearchDb {
         // Insert texts
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO texts (file, kind, line_start, line_end, text, parent)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO texts (project, file, kind, line_start, line_end, text, parent)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             )?;
             for t in texts {
                 stmt.execute(rusqlite::params![
-                    t.file, t.kind, t.line[0], t.line[1], t.text, t.parent,
+                    project, t.file, t.kind, t.line[0], t.line[1], t.text, t.parent,
                 ])?;
             }
         }
@@ -462,15 +517,16 @@ impl SearchDb {
 
         // Export files
         {
-            let mut stmt = self
-                .conn
-                .prepare("SELECT path, lang, hash, lines FROM files ORDER BY path")?;
+            let mut stmt = self.conn.prepare(
+                "SELECT project, path, lang, hash, lines FROM files ORDER BY project, path",
+            )?;
             let rows = stmt.query_map([], |row| {
                 Ok(FileEntry {
-                    path: row.get(0)?,
-                    lang: row.get(1)?,
-                    hash: row.get(2)?,
-                    lines: row.get(3)?,
+                    project: row.get(0)?,
+                    path: row.get(1)?,
+                    lang: row.get(2)?,
+                    hash: row.get(3)?,
+                    lines: row.get(4)?,
                 })
             })?;
             for row in rows {
@@ -481,20 +537,21 @@ impl SearchDb {
         // Export symbols
         {
             let mut stmt = self.conn.prepare(
-                "SELECT file, name, kind, line_start, line_end, parent, sig, alias, visibility
+                "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
                  FROM symbols
-                 ORDER BY file, line_start",
+                 ORDER BY project, file, line_start",
             )?;
             let rows = stmt.query_map([], |row| {
                 Ok(SymbolEntry {
-                    file: row.get(0)?,
-                    name: row.get(1)?,
-                    kind: row.get(2)?,
-                    line: [row.get(3)?, row.get(4)?],
-                    parent: row.get(5)?,
-                    sig: row.get(6)?,
-                    alias: row.get(7)?,
-                    visibility: row.get(8)?,
+                    project: row.get(0)?,
+                    file: row.get(1)?,
+                    name: row.get(2)?,
+                    kind: row.get(3)?,
+                    line: [row.get(4)?, row.get(5)?],
+                    parent: row.get(6)?,
+                    sig: row.get(7)?,
+                    alias: row.get(8)?,
+                    visibility: row.get(9)?,
                 })
             })?;
             for row in rows {
@@ -505,17 +562,98 @@ impl SearchDb {
         // Export texts
         {
             let mut stmt = self.conn.prepare(
-                "SELECT file, kind, line_start, line_end, text, parent
+                "SELECT project, file, kind, line_start, line_end, text, parent
                  FROM texts
-                 ORDER BY file, line_start",
+                 ORDER BY project, file, line_start",
             )?;
             let rows = stmt.query_map([], |row| {
                 Ok(TextEntry {
-                    file: row.get(0)?,
-                    kind: row.get(1)?,
-                    line: [row.get(2)?, row.get(3)?],
-                    text: row.get(4)?,
-                    parent: row.get(5)?,
+                    project: row.get(0)?,
+                    file: row.get(1)?,
+                    kind: row.get(2)?,
+                    line: [row.get(3)?, row.get(4)?],
+                    text: row.get(5)?,
+                    parent: row.get(6)?,
+                })
+            })?;
+            for row in rows {
+                texts.push(row?);
+            }
+        }
+
+        Ok((files, symbols, texts))
+    }
+
+    /// Export data for a specific project from DB back to vecs (for flushing to disk).
+    pub fn export_for_project(
+        &self,
+        project: &str,
+    ) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)> {
+        let mut files = Vec::new();
+        let mut symbols = Vec::new();
+        let mut texts = Vec::new();
+
+        // Export files
+        {
+            let mut stmt = self.conn.prepare(
+                "SELECT project, path, lang, hash, lines FROM files WHERE project = ?1 ORDER BY path",
+            )?;
+            let rows = stmt.query_map([project], |row| {
+                Ok(FileEntry {
+                    project: row.get(0)?,
+                    path: row.get(1)?,
+                    lang: row.get(2)?,
+                    hash: row.get(3)?,
+                    lines: row.get(4)?,
+                })
+            })?;
+            for row in rows {
+                files.push(row?);
+            }
+        }
+
+        // Export symbols
+        {
+            let mut stmt = self.conn.prepare(
+                "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
+                 FROM symbols
+                 WHERE project = ?1
+                 ORDER BY file, line_start",
+            )?;
+            let rows = stmt.query_map([project], |row| {
+                Ok(SymbolEntry {
+                    project: row.get(0)?,
+                    file: row.get(1)?,
+                    name: row.get(2)?,
+                    kind: row.get(3)?,
+                    line: [row.get(4)?, row.get(5)?],
+                    parent: row.get(6)?,
+                    sig: row.get(7)?,
+                    alias: row.get(8)?,
+                    visibility: row.get(9)?,
+                })
+            })?;
+            for row in rows {
+                symbols.push(row?);
+            }
+        }
+
+        // Export texts
+        {
+            let mut stmt = self.conn.prepare(
+                "SELECT project, file, kind, line_start, line_end, text, parent
+                 FROM texts
+                 WHERE project = ?1
+                 ORDER BY file, line_start",
+            )?;
+            let rows = stmt.query_map([project], |row| {
+                Ok(TextEntry {
+                    project: row.get(0)?,
+                    file: row.get(1)?,
+                    kind: row.get(2)?,
+                    line: [row.get(3)?, row.get(4)?],
+                    text: row.get(5)?,
+                    parent: row.get(6)?,
                 })
             })?;
             for row in rows {

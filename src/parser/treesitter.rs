@@ -110,6 +110,7 @@ fn walk_texts_generic(node: Node, source: &[u8], file_path: &str, texts: &mut Ve
                 line: node_line_range(node),
                 text,
                 parent: None,
+                project: String::new(),
             });
         }
         return;
@@ -125,6 +126,7 @@ fn walk_texts_generic(node: Node, source: &[u8], file_path: &str, texts: &mut Ve
                 line: node_line_range(node),
                 text,
                 parent: None,
+                project: String::new(),
             });
         }
         return;

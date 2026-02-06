@@ -51,7 +51,7 @@ pub fn run(path: &Path, watch: bool) -> Result<()> {
         );
 
         let db = SearchDb::new().context("failed to create search database")?;
-        db.load(&files, &symbols, &texts)
+        db.load("", &files, &symbols, &texts)
             .context("failed to load index into search database")?;
 
         tracing::info!("search database ready");

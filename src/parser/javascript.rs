@@ -477,6 +477,7 @@ fn extract_js_comment(
         line,
         text,
         parent: parent_ctx.map(String::from),
+        project: String::new(),
     });
 }
 

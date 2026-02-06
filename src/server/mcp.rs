@@ -99,6 +99,7 @@ impl CodeIndexServer {
                 &params.query,
                 params.kind.as_deref(),
                 params.file.as_deref(),
+                None, // project filter - will be added in Phase 8
             )
             .map_err(|e| McpError::internal_error(format!("search_symbols failed: {e}"), None))?;
 
@@ -119,7 +120,7 @@ impl CodeIndexServer {
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .search_files(&params.query, params.lang.as_deref())
+            .search_files(&params.query, params.lang.as_deref(), None)
             .map_err(|e| McpError::internal_error(format!("search_files failed: {e}"), None))?;
 
         let json = serde_json::to_string_pretty(&results)
@@ -145,6 +146,7 @@ impl CodeIndexServer {
                 &params.query,
                 params.kind.as_deref(),
                 params.file.as_deref(),
+                None, // project filter - will be added in Phase 8
             )
             .map_err(|e| McpError::internal_error(format!("search_texts failed: {e}"), None))?;
 
