@@ -157,6 +157,11 @@ impl MountTable {
             .unwrap_or_default()
     }
 
+    /// Check if a path is already mounted (exact match, not prefix).
+    pub fn is_mounted(&self, path: &Path) -> bool {
+        self.mounts.contains_key(path)
+    }
+
     /// Mount a directory in read-write mode (acquires exclusive lock).
     pub fn mount_rw(&mut self, root: impl AsRef<Path>) -> Result<&Mount> {
         let root = root

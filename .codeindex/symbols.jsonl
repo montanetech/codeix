@@ -57,17 +57,20 @@
 {"file":"site/templates/spec.html","name":"el","kind":"variable","line":[475,475],"visibility":"private"}
 {"file":"site/templates/spec.html","name":"observer","kind":"variable","line":[481,489],"visibility":"private"}
 {"file":"site/templates/spec.html","name":"match","kind":"variable","line":[485,485],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"std::io::{IsTerminal, Write}","kind":"import","line":[1,1],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"std::path::Path","kind":"import","line":[2,2],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[3,3],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"anyhow::{Context, Result}","kind":"import","line":[5,5],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"tracing::info","kind":"import","line":[6,6],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"crate::scanner::walker::walk_directory","kind":"import","line":[8,8],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"crate::server::db::SearchDb","kind":"import","line":[9,9],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"crate::watcher::handler::{flush_index_to_disk, process_file_change}","kind":"import","line":[10,10],"visibility":"private"}
-{"file":"src/cli/build.rs","name":"build_index_to_db","kind":"function","line":[14,81],"sig":"pub fn build_index_to_db(path: &Path) -> Result<Arc<Mutex<SearchDb>>>","visibility":"public"}
-{"file":"src/cli/build.rs","name":"build_index","kind":"function","line":[85,110],"sig":"pub fn build_index(path: &Path) -> Result<()>","visibility":"public"}
-{"file":"src/cli/build.rs","name":"run","kind":"function","line":[114,116],"sig":"pub fn run(path: &Path) -> Result<()>","visibility":"public"}
+{"file":"src/cli/build.rs","name":"std::collections::HashMap","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"std::io::{IsTerminal, Write}","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"std::path::{Path, PathBuf}","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"anyhow::{Context, Result}","kind":"import","line":[6,6],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"tracing::info","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"crate::scanner::mount::MountTable","kind":"import","line":[9,9],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"crate::scanner::walker::{WalkEvent, walk}","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"crate::server::db::SearchDb","kind":"import","line":[11,11],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"crate::watcher::handler::{flush_mount_to_disk, process_file_change}","kind":"import","line":[12,12],"visibility":"private"}
+{"file":"src/cli/build.rs","name":"BuildResult","kind":"type_alias","line":[15,15],"visibility":"public"}
+{"file":"src/cli/build.rs","name":"build_index_to_db","kind":"function","line":[23,147],"sig":"pub fn build_index_to_db(path: &Path) -> Result<BuildResult>","visibility":"public"}
+{"file":"src/cli/build.rs","name":"build_index","kind":"function","line":[154,204],"sig":"pub fn build_index(path: &Path) -> Result<()>","visibility":"public"}
+{"file":"src/cli/build.rs","name":"run","kind":"function","line":[208,210],"sig":"pub fn run(path: &Path) -> Result<()>","visibility":"public"}
 {"file":"src/cli/mod.rs","name":"build","kind":"module","line":[1,1],"visibility":"public"}
 {"file":"src/cli/mod.rs","name":"serve","kind":"module","line":[2,2],"visibility":"public"}
 {"file":"src/cli/serve.rs","name":"std::path::Path","kind":"import","line":[1,1],"visibility":"private"}
@@ -75,15 +78,16 @@
 {"file":"src/cli/serve.rs","name":"anyhow::{Context, Result}","kind":"import","line":[4,4],"visibility":"private"}
 {"file":"src/cli/serve.rs","name":"crate::cli::build::build_index_to_db","kind":"import","line":[6,6],"visibility":"private"}
 {"file":"src/cli/serve.rs","name":"crate::index::reader::read_index","kind":"import","line":[7,7],"visibility":"private"}
-{"file":"src/cli/serve.rs","name":"crate::server::db::SearchDb","kind":"import","line":[8,8],"visibility":"private"}
-{"file":"src/cli/serve.rs","name":"crate::server::mcp::start_server","kind":"import","line":[9,9],"visibility":"private"}
-{"file":"src/cli/serve.rs","name":"crate::watcher::handler::{flush_index_to_disk, start_watcher}","kind":"import","line":[10,10],"visibility":"private"}
-{"file":"src/cli/serve.rs","name":"run","kind":"function","line":[14,81],"sig":"pub fn run(path: &Path, watch: bool) -> Result<()>","visibility":"public"}
+{"file":"src/cli/serve.rs","name":"crate::scanner::mount::MountTable","kind":"import","line":[8,8],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::server::db::SearchDb","kind":"import","line":[9,9],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::server::mcp::start_server","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"crate::watcher::handler::{flush_mount_to_disk, start_watcher}","kind":"import","line":[11,11],"visibility":"private"}
+{"file":"src/cli/serve.rs","name":"run","kind":"function","line":[15,107],"sig":"pub fn run(path: &Path, watch: bool) -> Result<()>","visibility":"public"}
 {"file":"src/index/format.rs","name":"serde::{Deserialize, Serialize}","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/index/format.rs","name":"IndexManifest","kind":"struct","line":[5,10],"visibility":"public"}
-{"file":"src/index/format.rs","name":"FileEntry","kind":"struct","line":[14,19],"visibility":"public"}
-{"file":"src/index/format.rs","name":"SymbolEntry","kind":"struct","line":[23,36],"visibility":"public"}
-{"file":"src/index/format.rs","name":"TextEntry","kind":"struct","line":[40,47],"visibility":"public"}
+{"file":"src/index/format.rs","name":"FileEntry","kind":"struct","line":[14,21],"visibility":"public"}
+{"file":"src/index/format.rs","name":"SymbolEntry","kind":"struct","line":[25,40],"visibility":"public"}
+{"file":"src/index/format.rs","name":"TextEntry","kind":"struct","line":[44,53],"visibility":"public"}
 {"file":"src/index/mod.rs","name":"format","kind":"module","line":[1,1],"visibility":"public"}
 {"file":"src/index/mod.rs","name":"reader","kind":"module","line":[2,2],"visibility":"public"}
 {"file":"src/index/mod.rs","name":"writer","kind":"module","line":[3,3],"visibility":"public"}
@@ -196,24 +200,24 @@
 {"file":"src/parser/csharp.rs","name":"extract_field","kind":"function","line":[384,439],"sig":"fn extract_field( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
 {"file":"src/parser/csharp.rs","name":"extract_delegate","kind":"function","line":[441,474],"sig":"fn extract_delegate( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
 {"file":"src/parser/csharp.rs","name":"extract_using","kind":"function","line":[476,524],"sig":"fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>)","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"extract_csharp_comment","kind":"function","line":[526,573],"sig":"fn extract_csharp_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"extract_csharp_visibility","kind":"function","line":[575,600],"sig":"fn extract_csharp_visibility(node: Node, source: &[u8]) -> String","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"has_csharp_modifier","kind":"function","line":[602,615],"sig":"fn has_csharp_modifier(node: Node, source: &[u8], modifier: &str) -> bool","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"tests","kind":"module","line":[618,843],"visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"super::*","kind":"import","line":[619,619],"visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[620,620],"visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"find_sym","kind":"function","line":[622,627],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_class","kind":"function","line":[630,664],"sig":"fn test_csharp_class()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_interface","kind":"function","line":[667,678],"sig":"fn test_csharp_interface()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_struct","kind":"function","line":[681,695],"sig":"fn test_csharp_struct()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_enum","kind":"function","line":[698,713],"sig":"fn test_csharp_enum()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_namespace","kind":"function","line":[716,735],"sig":"fn test_csharp_namespace()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_properties","kind":"function","line":[738,753],"sig":"fn test_csharp_properties()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_constants","kind":"function","line":[756,771],"sig":"fn test_csharp_constants()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_using","kind":"function","line":[774,791],"sig":"fn test_csharp_using()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_delegate","kind":"function","line":[794,801],"sig":"fn test_csharp_delegate()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_visibility","kind":"function","line":[804,825],"sig":"fn test_csharp_visibility()","visibility":"private"}
-{"file":"src/parser/csharp.rs","name":"test_csharp_comments","kind":"function","line":[828,842],"sig":"fn test_csharp_comments()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"extract_csharp_comment","kind":"function","line":[526,574],"sig":"fn extract_csharp_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"extract_csharp_visibility","kind":"function","line":[576,601],"sig":"fn extract_csharp_visibility(node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"has_csharp_modifier","kind":"function","line":[603,616],"sig":"fn has_csharp_modifier(node: Node, source: &[u8], modifier: &str) -> bool","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"tests","kind":"module","line":[619,844],"visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"super::*","kind":"import","line":[620,620],"visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[621,621],"visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"find_sym","kind":"function","line":[623,628],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_class","kind":"function","line":[631,665],"sig":"fn test_csharp_class()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_interface","kind":"function","line":[668,679],"sig":"fn test_csharp_interface()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_struct","kind":"function","line":[682,696],"sig":"fn test_csharp_struct()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_enum","kind":"function","line":[699,714],"sig":"fn test_csharp_enum()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_namespace","kind":"function","line":[717,736],"sig":"fn test_csharp_namespace()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_properties","kind":"function","line":[739,754],"sig":"fn test_csharp_properties()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_constants","kind":"function","line":[757,772],"sig":"fn test_csharp_constants()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_using","kind":"function","line":[775,792],"sig":"fn test_csharp_using()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_delegate","kind":"function","line":[795,802],"sig":"fn test_csharp_delegate()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_visibility","kind":"function","line":[805,826],"sig":"fn test_csharp_visibility()","visibility":"private"}
+{"file":"src/parser/csharp.rs","name":"test_csharp_comments","kind":"function","line":[829,843],"sig":"fn test_csharp_comments()","visibility":"private"}
 {"file":"src/parser/go.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/parser/go.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[5,5],"visibility":"private"}
 {"file":"src/parser/go.rs","name":"crate::parser::helpers::*","kind":"import","line":[6,6],"visibility":"private"}
@@ -252,10 +256,10 @@
 {"file":"src/parser/helpers.rs","name":"strip_block_comment","kind":"function","line":[89,109],"sig":"pub fn strip_block_comment(raw: &str) -> String","visibility":"public"}
 {"file":"src/parser/helpers.rs","name":"strip_string_quotes","kind":"function","line":[112,144],"sig":"pub fn strip_string_quotes(raw: &str) -> String","visibility":"public"}
 {"file":"src/parser/helpers.rs","name":"strip_simple_quotes","kind":"function","line":[146,154],"sig":"fn strip_simple_quotes(s: &str) -> String","visibility":"private"}
-{"file":"src/parser/helpers.rs","name":"extract_comment","kind":"function","line":[157,200],"sig":"pub fn extract_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"public"}
-{"file":"src/parser/helpers.rs","name":"extract_string","kind":"function","line":[203,225],"sig":"pub fn extract_string( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"public"}
-{"file":"src/parser/helpers.rs","name":"push_symbol","kind":"function","line":[229,250],"sig":"pub fn push_symbol( symbols: &mut Vec<SymbolEntry>, file_path: &str, name: String, kind: &str, line: [u32; 2], parent: Option<&str>, sig: Option<String>, alias: Option<String>, visibility: Option<String>, )","visibility":"public"}
-{"file":"src/parser/helpers.rs","name":"extract_signature_to_brace","kind":"function","line":[254,269],"sig":"pub fn extract_signature_to_brace(node: Node, source: &[u8]) -> String","visibility":"public"}
+{"file":"src/parser/helpers.rs","name":"extract_comment","kind":"function","line":[157,201],"sig":"pub fn extract_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"public"}
+{"file":"src/parser/helpers.rs","name":"extract_string","kind":"function","line":[204,227],"sig":"pub fn extract_string( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"public"}
+{"file":"src/parser/helpers.rs","name":"push_symbol","kind":"function","line":[231,253],"sig":"pub fn push_symbol( symbols: &mut Vec<SymbolEntry>, file_path: &str, name: String, kind: &str, line: [u32; 2], parent: Option<&str>, sig: Option<String>, alias: Option<String>, visibility: Option<String>, )","visibility":"public"}
+{"file":"src/parser/helpers.rs","name":"extract_signature_to_brace","kind":"function","line":[257,272],"sig":"pub fn extract_signature_to_brace(node: Node, source: &[u8]) -> String","visibility":"public"}
 {"file":"src/parser/java.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/parser/java.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[5,5],"visibility":"private"}
 {"file":"src/parser/java.rs","name":"crate::parser::helpers::*","kind":"import","line":[6,6],"visibility":"private"}
@@ -294,20 +298,20 @@
 {"file":"src/parser/javascript.rs","name":"extract_method","kind":"function","line":[180,266],"sig":"fn extract_method( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
 {"file":"src/parser/javascript.rs","name":"extract_variable_decl","kind":"function","line":[268,353],"sig":"fn extract_variable_decl( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
 {"file":"src/parser/javascript.rs","name":"extract_import","kind":"function","line":[355,444],"sig":"fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>)","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"extract_js_comment","kind":"function","line":[446,481],"sig":"fn extract_js_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"build_function_signature","kind":"function","line":[483,500],"sig":"fn build_function_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"build_arrow_fn_signature","kind":"function","line":[502,525],"sig":"fn build_arrow_fn_signature(name: &str, value_node: Node, source: &[u8]) -> String","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"build_class_signature","kind":"function","line":[527,542],"sig":"fn build_class_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"tests","kind":"module","line":[545,720],"visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"super::*","kind":"import","line":[546,546],"visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[547,547],"visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"find_sym","kind":"function","line":[549,554],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"test_js_functions","kind":"function","line":[557,582],"sig":"fn test_js_functions()","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"test_js_classes","kind":"function","line":[585,619],"sig":"fn test_js_classes()","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"test_js_variables","kind":"function","line":[622,648],"sig":"fn test_js_variables()","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"test_js_imports","kind":"function","line":[651,673],"sig":"fn test_js_imports()","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"test_js_visibility","kind":"function","line":[676,703],"sig":"fn test_js_visibility()","visibility":"private"}
-{"file":"src/parser/javascript.rs","name":"test_js_comments","kind":"function","line":[706,719],"sig":"fn test_js_comments()","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"extract_js_comment","kind":"function","line":[446,482],"sig":"fn extract_js_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"build_function_signature","kind":"function","line":[484,501],"sig":"fn build_function_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"build_arrow_fn_signature","kind":"function","line":[503,526],"sig":"fn build_arrow_fn_signature(name: &str, value_node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"build_class_signature","kind":"function","line":[528,543],"sig":"fn build_class_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"tests","kind":"module","line":[546,721],"visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"super::*","kind":"import","line":[547,547],"visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[548,548],"visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"find_sym","kind":"function","line":[550,555],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"test_js_functions","kind":"function","line":[558,583],"sig":"fn test_js_functions()","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"test_js_classes","kind":"function","line":[586,620],"sig":"fn test_js_classes()","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"test_js_variables","kind":"function","line":[623,649],"sig":"fn test_js_variables()","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"test_js_imports","kind":"function","line":[652,674],"sig":"fn test_js_imports()","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"test_js_visibility","kind":"function","line":[677,704],"sig":"fn test_js_visibility()","visibility":"private"}
+{"file":"src/parser/javascript.rs","name":"test_js_comments","kind":"function","line":[707,720],"sig":"fn test_js_comments()","visibility":"private"}
 {"file":"src/parser/languages.rs","name":"anyhow::Result","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/parser/languages.rs","name":"tree_sitter::Language","kind":"import","line":[2,2],"visibility":"private"}
 {"file":"src/parser/languages.rs","name":"get_language","kind":"function","line":[8,45],"sig":"pub fn get_language(name: &str) -> Result<Language>","visibility":"public"}
@@ -336,21 +340,21 @@
 {"file":"src/parser/python.rs","name":"extract_import","kind":"function","line":[227,270],"sig":"fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>)","visibility":"private"}
 {"file":"src/parser/python.rs","name":"extract_import_from","kind":"function","line":[272,355],"sig":"fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>)","visibility":"private"}
 {"file":"src/parser/python.rs","name":"extract_assignment","kind":"function","line":[357,403],"sig":"fn extract_assignment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
-{"file":"src/parser/python.rs","name":"extract_docstring","kind":"function","line":[405,427],"sig":"fn extract_docstring( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/python.rs","name":"extract_python_comment","kind":"function","line":[429,437],"sig":"fn extract_python_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/python.rs","name":"detect_python_visibility","kind":"function","line":[439,447],"sig":"fn detect_python_visibility(name: &str) -> String","visibility":"private"}
-{"file":"src/parser/python.rs","name":"build_function_signature","kind":"function","line":[449,464],"sig":"fn build_function_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
-{"file":"src/parser/python.rs","name":"build_class_signature","kind":"function","line":[466,476],"sig":"fn build_class_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
-{"file":"src/parser/python.rs","name":"tests","kind":"module","line":[479,629],"visibility":"private"}
-{"file":"src/parser/python.rs","name":"super::*","kind":"import","line":[480,480],"visibility":"private"}
-{"file":"src/parser/python.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[481,481],"visibility":"private"}
-{"file":"src/parser/python.rs","name":"find_sym","kind":"function","line":[483,488],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
-{"file":"src/parser/python.rs","name":"test_python_functions","kind":"function","line":[491,513],"sig":"fn test_python_functions()","visibility":"private"}
-{"file":"src/parser/python.rs","name":"test_python_classes","kind":"function","line":[516,542],"sig":"fn test_python_classes()","visibility":"private"}
-{"file":"src/parser/python.rs","name":"test_python_imports","kind":"function","line":[545,563],"sig":"fn test_python_imports()","visibility":"private"}
-{"file":"src/parser/python.rs","name":"test_python_variables","kind":"function","line":[566,583],"sig":"fn test_python_variables()","visibility":"private"}
-{"file":"src/parser/python.rs","name":"test_python_visibility","kind":"function","line":[586,613],"sig":"fn test_python_visibility()","visibility":"private"}
-{"file":"src/parser/python.rs","name":"test_python_docstrings","kind":"function","line":[616,628],"sig":"fn test_python_docstrings()","visibility":"private"}
+{"file":"src/parser/python.rs","name":"extract_docstring","kind":"function","line":[405,428],"sig":"fn extract_docstring( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/python.rs","name":"extract_python_comment","kind":"function","line":[430,438],"sig":"fn extract_python_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/python.rs","name":"detect_python_visibility","kind":"function","line":[440,448],"sig":"fn detect_python_visibility(name: &str) -> String","visibility":"private"}
+{"file":"src/parser/python.rs","name":"build_function_signature","kind":"function","line":[450,465],"sig":"fn build_function_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
+{"file":"src/parser/python.rs","name":"build_class_signature","kind":"function","line":[467,477],"sig":"fn build_class_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
+{"file":"src/parser/python.rs","name":"tests","kind":"module","line":[480,630],"visibility":"private"}
+{"file":"src/parser/python.rs","name":"super::*","kind":"import","line":[481,481],"visibility":"private"}
+{"file":"src/parser/python.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[482,482],"visibility":"private"}
+{"file":"src/parser/python.rs","name":"find_sym","kind":"function","line":[484,489],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
+{"file":"src/parser/python.rs","name":"test_python_functions","kind":"function","line":[492,514],"sig":"fn test_python_functions()","visibility":"private"}
+{"file":"src/parser/python.rs","name":"test_python_classes","kind":"function","line":[517,543],"sig":"fn test_python_classes()","visibility":"private"}
+{"file":"src/parser/python.rs","name":"test_python_imports","kind":"function","line":[546,564],"sig":"fn test_python_imports()","visibility":"private"}
+{"file":"src/parser/python.rs","name":"test_python_variables","kind":"function","line":[567,584],"sig":"fn test_python_variables()","visibility":"private"}
+{"file":"src/parser/python.rs","name":"test_python_visibility","kind":"function","line":[587,614],"sig":"fn test_python_visibility()","visibility":"private"}
+{"file":"src/parser/python.rs","name":"test_python_docstrings","kind":"function","line":[617,629],"sig":"fn test_python_docstrings()","visibility":"private"}
 {"file":"src/parser/ruby.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/parser/ruby.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[5,5],"visibility":"private"}
 {"file":"src/parser/ruby.rs","name":"crate::parser::helpers::*","kind":"import","line":[6,6],"visibility":"private"}
@@ -433,9 +437,9 @@
 {"file":"src/parser/treesitter.rs","name":"crate::parser::sfc","kind":"import","line":[7,7],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"parse_file","kind":"function","line":[10,90],"sig":"pub fn parse_file( source: &[u8], language: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
 {"file":"src/parser/treesitter.rs","name":"extract_texts_generic","kind":"function","line":[96,98],"sig":"fn extract_texts_generic(tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>)","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"walk_texts_generic","kind":"function","line":[100,137],"sig":"fn walk_texts_generic(node: Node, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>)","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"merge_consecutive_texts","kind":"function","line":[144,169],"sig":"fn merge_consecutive_texts(texts: Vec<TextEntry>) -> Vec<TextEntry>","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"parse_sfc","kind":"function","line":[177,225],"sig":"fn parse_sfc( source: &[u8], extension: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"walk_texts_generic","kind":"function","line":[100,139],"sig":"fn walk_texts_generic(node: Node, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>)","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"merge_consecutive_texts","kind":"function","line":[146,171],"sig":"fn merge_consecutive_texts(texts: Vec<TextEntry>) -> Vec<TextEntry>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"parse_sfc","kind":"function","line":[179,227],"sig":"fn parse_sfc( source: &[u8], extension: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[7,7],"visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[9,9],"visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"crate::parser::helpers::*","kind":"import","line":[10,10],"visibility":"private"}
@@ -450,76 +454,122 @@
 {"file":"src/parser/typescript.rs","name":"extract_type_alias","kind":"function","line":[545,587],"sig":"fn extract_type_alias( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"extract_enum","kind":"function","line":[589,625],"sig":"fn extract_enum( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"extract_namespace","kind":"function","line":[627,672],"sig":"fn extract_namespace( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, symbols: &mut Vec<SymbolEntry>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"extract_ts_comment","kind":"function","line":[676,710],"sig":"fn extract_ts_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"build_function_signature","kind":"function","line":[712,734],"sig":"fn build_function_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"build_arrow_fn_signature","kind":"function","line":[736,763],"sig":"fn build_arrow_fn_signature(name: &str, value_node: Node, source: &[u8]) -> String","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"build_class_signature","kind":"function","line":[765,786],"sig":"fn build_class_signature(node: Node, source: &[u8], name: &str, is_abstract: bool) -> String","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"tests","kind":"module","line":[789,979],"visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"super::*","kind":"import","line":[790,790],"visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[791,791],"visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"find_sym","kind":"function","line":[793,798],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_functions","kind":"function","line":[801,820],"sig":"fn test_ts_functions()","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_interfaces","kind":"function","line":[823,846],"sig":"fn test_ts_interfaces()","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_type_alias","kind":"function","line":[849,862],"sig":"fn test_ts_type_alias()","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_enum","kind":"function","line":[865,876],"sig":"fn test_ts_enum()","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_classes","kind":"function","line":[879,914],"sig":"fn test_ts_classes()","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_namespace","kind":"function","line":[917,929],"sig":"fn test_ts_namespace()","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_imports","kind":"function","line":[932,950],"sig":"fn test_ts_imports()","visibility":"private"}
-{"file":"src/parser/typescript.rs","name":"test_ts_visibility","kind":"function","line":[953,978],"sig":"fn test_ts_visibility()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"extract_ts_comment","kind":"function","line":[676,711],"sig":"fn extract_ts_comment( node: Node, source: &[u8], file_path: &str, parent_ctx: Option<&str>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"build_function_signature","kind":"function","line":[713,735],"sig":"fn build_function_signature(node: Node, source: &[u8], name: &str) -> String","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"build_arrow_fn_signature","kind":"function","line":[737,764],"sig":"fn build_arrow_fn_signature(name: &str, value_node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"build_class_signature","kind":"function","line":[766,787],"sig":"fn build_class_signature(node: Node, source: &[u8], name: &str, is_abstract: bool) -> String","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"tests","kind":"module","line":[790,980],"visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"super::*","kind":"import","line":[791,791],"visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[792,792],"visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"find_sym","kind":"function","line":[794,799],"sig":"fn find_sym<'a>(symbols: &'a [SymbolEntry], name: &str) -> &'a SymbolEntry","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_functions","kind":"function","line":[802,821],"sig":"fn test_ts_functions()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_interfaces","kind":"function","line":[824,847],"sig":"fn test_ts_interfaces()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_type_alias","kind":"function","line":[850,863],"sig":"fn test_ts_type_alias()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_enum","kind":"function","line":[866,877],"sig":"fn test_ts_enum()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_classes","kind":"function","line":[880,915],"sig":"fn test_ts_classes()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_namespace","kind":"function","line":[918,930],"sig":"fn test_ts_namespace()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_imports","kind":"function","line":[933,951],"sig":"fn test_ts_imports()","visibility":"private"}
+{"file":"src/parser/typescript.rs","name":"test_ts_visibility","kind":"function","line":[954,979],"sig":"fn test_ts_visibility()","visibility":"private"}
 {"file":"src/scanner/hasher.rs","name":"std::path::Path","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/scanner/hasher.rs","name":"anyhow::Result","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/scanner/hasher.rs","name":"hash_file","kind":"function","line":[7,10],"sig":"pub fn hash_file(path: &Path) -> Result<String>","visibility":"public"}
 {"file":"src/scanner/hasher.rs","name":"hash_bytes","kind":"function","line":[14,25],"sig":"pub fn hash_bytes(content: &[u8]) -> String","visibility":"public"}
 {"file":"src/scanner/hasher.rs","name":"std::fmt::Write","kind":"import","line":[21,21],"visibility":"private"}
 {"file":"src/scanner/mod.rs","name":"hasher","kind":"module","line":[1,1],"visibility":"public"}
-{"file":"src/scanner/mod.rs","name":"walker","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/scanner/mod.rs","name":"mount","kind":"module","line":[2,2],"visibility":"public"}
+{"file":"src/scanner/mod.rs","name":"walker","kind":"module","line":[3,3],"visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"std::collections::HashMap","kind":"import","line":[1,1],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"std::fs::File","kind":"import","line":[2,2],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"std::path::{Path, PathBuf}","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"anyhow::{Context, Result}","kind":"import","line":[5,5],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"fs2::FileExt","kind":"import","line":[6,6],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"ignore::gitignore::{Gitignore, GitignoreBuilder}","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"MountMode","kind":"enum","line":[11,16],"visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"Mount","kind":"struct","line":[20,31],"visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"Mount","kind":"impl","line":[33,97],"sig":"impl Mount","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"Mount.new_ro","kind":"method","line":[35,44],"parent":"Mount","sig":"fn new_ro(root: PathBuf) -> Result<Self>","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"Mount.new_rw","kind":"method","line":[47,80],"parent":"Mount","sig":"fn new_rw(root: PathBuf) -> Result<Self>","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"Mount.is_ignored","kind":"method","line":[83,86],"parent":"Mount","sig":"pub fn is_ignored(&self, path: &Path) -> bool","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"Mount.mark_dirty","kind":"method","line":[89,91],"parent":"Mount","sig":"pub fn mark_dirty(&mut self)","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"Mount.clear_dirty","kind":"method","line":[94,96],"parent":"Mount","sig":"pub fn clear_dirty(&mut self)","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"Mount","kind":"trait_impl","line":[99,106],"sig":"impl Drop for Mount","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"Mount.drop","kind":"method","line":[100,105],"parent":"Mount","sig":"fn drop(&mut self)","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"build_gitignore","kind":"function","line":[109,127],"sig":"fn build_gitignore(root: &Path) -> Result<Gitignore>","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"MountTable","kind":"struct","line":[131,135],"visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable","kind":"impl","line":[137,253],"sig":"impl MountTable","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"MountTable.new","kind":"method","line":[139,144],"parent":"MountTable","sig":"pub fn new(workspace_root: PathBuf) -> Self","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.workspace_root","kind":"method","line":[147,149],"parent":"MountTable","sig":"pub fn workspace_root(&self) -> &Path","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.relative_project","kind":"method","line":[153,158],"parent":"MountTable","sig":"pub fn relative_project(&self, project_root: &Path) -> String","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.mount_rw","kind":"method","line":[161,174],"parent":"MountTable","sig":"pub fn mount_rw(&mut self, root: impl AsRef<Path>) -> Result<&Mount>","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.mount_ro","kind":"method","line":[177,190],"parent":"MountTable","sig":"pub fn mount_ro(&mut self, root: impl AsRef<Path>) -> Result<&Mount>","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.find_mount","kind":"method","line":[193,201],"parent":"MountTable","sig":"pub fn find_mount(&self, path: &Path) -> Option<&Mount>","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.find_mount_mut","kind":"method","line":[204,219],"parent":"MountTable","sig":"pub fn find_mount_mut(&mut self, path: &Path) -> Option<&mut Mount>","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.unmount","kind":"method","line":[222,232],"parent":"MountTable","sig":"pub fn unmount(&mut self, root: impl AsRef<Path>) -> Result<()>","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.iter","kind":"method","line":[235,237],"parent":"MountTable","sig":"pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, &Mount)>","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.iter_mut","kind":"method","line":[240,242],"parent":"MountTable","sig":"pub fn iter_mut(&mut self) -> impl Iterator<Item = (&PathBuf, &mut Mount)>","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"MountTable.mark_dirty","kind":"method","line":[245,252],"parent":"MountTable","sig":"pub fn mark_dirty(&mut self, path: &Path) -> bool","visibility":"public"}
+{"file":"src/scanner/mount.rs","name":"tests","kind":"module","line":[256,350],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"super::*","kind":"import","line":[257,257],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"std::fs","kind":"import","line":[258,258],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"tempfile::TempDir","kind":"import","line":[259,259],"visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"test_mount_rw","kind":"function","line":[262,272],"sig":"fn test_mount_rw()","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"test_mount_ro","kind":"function","line":[275,282],"sig":"fn test_mount_ro()","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"test_find_mount_longest_prefix","kind":"function","line":[285,313],"sig":"fn test_find_mount_longest_prefix()","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"test_unmount","kind":"function","line":[316,325],"sig":"fn test_unmount()","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"test_double_mount_fails","kind":"function","line":[328,334],"sig":"fn test_double_mount_fails()","visibility":"private"}
+{"file":"src/scanner/mount.rs","name":"test_mark_dirty","kind":"function","line":[337,349],"sig":"fn test_mark_dirty()","visibility":"private"}
 {"file":"src/scanner/walker.rs","name":"std::path::{Path, PathBuf}","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/scanner/walker.rs","name":"anyhow::Result","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/scanner/walker.rs","name":"ignore::WalkBuilder","kind":"import","line":[4,4],"visibility":"private"}
-{"file":"src/scanner/walker.rs","name":"walk_directory","kind":"function","line":[8,27],"sig":"pub fn walk_directory(root: &Path) -> Result<Vec<PathBuf>>","visibility":"public"}
+{"file":"src/scanner/walker.rs","name":"WalkEvent","kind":"enum","line":[8,13],"visibility":"public"}
+{"file":"src/scanner/walker.rs","name":"walk","kind":"function","line":[20,68],"sig":"pub fn walk(root: &Path) -> impl Iterator<Item = Result<WalkEvent>>","visibility":"public"}
+{"file":"src/scanner/walker.rs","name":"walk_directory","kind":"function","line":[72,91],"sig":"pub fn walk_directory(root: &Path) -> Result<Vec<PathBuf>>","visibility":"public"}
 {"file":"src/server/db.rs","name":"anyhow::{Context, Result}","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/server/db.rs","name":"rusqlite::Connection","kind":"import","line":[2,2],"visibility":"private"}
 {"file":"src/server/db.rs","name":"crate::index::format::{FileEntry, SymbolEntry, TextEntry}","kind":"import","line":[4,4],"visibility":"private"}
 {"file":"src/server/db.rs","name":"SearchDb","kind":"struct","line":[8,10],"visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb","kind":"impl","line":[12,528],"sig":"impl SearchDb","visibility":"private"}
-{"file":"src/server/db.rs","name":"SearchDb.new","kind":"method","line":[14,82],"parent":"SearchDb","sig":"pub fn new() -> Result<Self>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.load","kind":"method","line":[85,147],"parent":"SearchDb","sig":"pub fn load( &self, files: &[FileEntry], symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.search_symbols","kind":"method","line":[150,194],"parent":"SearchDb","sig":"pub fn search_symbols( &self, query: &str, kind: Option<&str>, file: Option<&str>, ) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.search_text","kind":"method","line":[197,236],"parent":"SearchDb","sig":"pub fn search_text( &self, query: &str, kind: Option<&str>, file: Option<&str>, ) -> Result<Vec<TextEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.search_files","kind":"method","line":[239,269],"parent":"SearchDb","sig":"pub fn search_files(&self, query: &str, lang: Option<&str>) -> Result<Vec<FileEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_file_symbols","kind":"method","line":[272,298],"parent":"SearchDb","sig":"pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_symbol_children","kind":"method","line":[301,327],"parent":"SearchDb","sig":"pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_imports","kind":"method","line":[330,356],"parent":"SearchDb","sig":"pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_file_hash","kind":"method","line":[359,369],"parent":"SearchDb","sig":"pub fn get_file_hash(&self, path: &str) -> Result<Option<String>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.remove_file","kind":"method","line":[373,382],"parent":"SearchDb","sig":"pub fn remove_file(&self, path: &str) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.upsert_file","kind":"method","line":[387,442],"parent":"SearchDb","sig":"pub fn upsert_file( &self, file: &FileEntry, symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.rebuild_fts","kind":"method","line":[446,455],"parent":"SearchDb","sig":"pub fn rebuild_fts(&self) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.export_all","kind":"method","line":[458,527],"parent":"SearchDb","sig":"pub fn export_all(&self) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
-{"file":"src/server/db.rs","name":"fts5_quote","kind":"function","line":[532,534],"sig":"fn fts5_quote(s: &str) -> String","visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb","kind":"impl","line":[12,679],"sig":"impl SearchDb","visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb.new","kind":"method","line":[14,92],"parent":"SearchDb","sig":"pub fn new() -> Result<Self>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.load","kind":"method","line":[95,160],"parent":"SearchDb","sig":"pub fn load( &self, project: &str, files: &[FileEntry], symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_symbols","kind":"method","line":[163,212],"parent":"SearchDb","sig":"pub fn search_symbols( &self, query: &str, kind: Option<&str>, file: Option<&str>, project: Option<&str>, ) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_text","kind":"method","line":[215,259],"parent":"SearchDb","sig":"pub fn search_text( &self, query: &str, kind: Option<&str>, file: Option<&str>, project: Option<&str>, ) -> Result<Vec<TextEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_files","kind":"method","line":[262,301],"parent":"SearchDb","sig":"pub fn search_files( &self, query: &str, lang: Option<&str>, project: Option<&str>, ) -> Result<Vec<FileEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_file_symbols","kind":"method","line":[304,331],"parent":"SearchDb","sig":"pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_symbol_children","kind":"method","line":[334,361],"parent":"SearchDb","sig":"pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_imports","kind":"method","line":[364,391],"parent":"SearchDb","sig":"pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_file_hash","kind":"method","line":[394,404],"parent":"SearchDb","sig":"pub fn get_file_hash(&self, project: &str, path: &str) -> Result<Option<String>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.remove_file","kind":"method","line":[408,426],"parent":"SearchDb","sig":"pub fn remove_file(&self, project: &str, path: &str) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.upsert_file","kind":"method","line":[431,497],"parent":"SearchDb","sig":"pub fn upsert_file( &self, project: &str, file: &FileEntry, symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.rebuild_fts","kind":"method","line":[501,510],"parent":"SearchDb","sig":"pub fn rebuild_fts(&self) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.export_all","kind":"method","line":[513,585],"parent":"SearchDb","sig":"pub fn export_all(&self) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.export_for_project","kind":"method","line":[588,665],"parent":"SearchDb","sig":"pub fn export_for_project( &self, project: &str, ) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.list_projects","kind":"method","line":[668,678],"parent":"SearchDb","sig":"pub fn list_projects(&self) -> Result<Vec<String>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"fts5_quote","kind":"function","line":[683,685],"sig":"fn fts5_quote(s: &str) -> String","visibility":"private"}
 {"file":"src/server/mcp.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"anyhow::Result","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"rmcp::{\n    ErrorData as McpError, ServerHandler, ServiceExt,\n    handler::server::{tool::ToolRouter, wrapper::Parameters},\n    model::{CallToolResult, Content, ServerCapabilities, ServerInfo},\n    schemars,\n    schemars::JsonSchema,\n    tool, tool_handler, tool_router,\n    transport::stdio,\n}","kind":"import","line":[4,12],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"serde::Deserialize","kind":"import","line":[13,13],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"super::db::SearchDb","kind":"import","line":[15,15],"visibility":"private"}
-{"file":"src/server/mcp.rs","name":"SearchSymbolsParams","kind":"struct","line":[19,26],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"SearchFilesParams","kind":"struct","line":[29,34],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"SearchTextsParams","kind":"struct","line":[37,44],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"GetFileSymbolsParams","kind":"struct","line":[47,50],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"GetSymbolChildrenParams","kind":"struct","line":[53,58],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"GetImportsParams","kind":"struct","line":[61,64],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"struct","line":[71,74],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[76,83],"sig":"impl CodeIndexServer","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.new","kind":"method","line":[77,82],"parent":"CodeIndexServer","sig":"pub fn new(db: Arc<Mutex<SearchDb>>) -> Self","visibility":"public"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[86,218],"sig":"impl CodeIndexServer","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_symbols","kind":"method","line":[89,109],"parent":"CodeIndexServer","sig":"async fn search_symbols( &self, Parameters(params): Parameters<SearchSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_files","kind":"method","line":[113,129],"parent":"CodeIndexServer","sig":"async fn search_files( &self, Parameters(params): Parameters<SearchFilesParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_texts","kind":"method","line":[135,155],"parent":"CodeIndexServer","sig":"async fn search_texts( &self, Parameters(params): Parameters<SearchTextsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_file_symbols","kind":"method","line":[159,175],"parent":"CodeIndexServer","sig":"async fn get_file_symbols( &self, Parameters(params): Parameters<GetFileSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_symbol_children","kind":"method","line":[179,197],"parent":"CodeIndexServer","sig":"async fn get_symbol_children( &self, Parameters(params): Parameters<GetSymbolChildrenParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_imports","kind":"method","line":[201,217],"parent":"CodeIndexServer","sig":"async fn get_imports( &self, Parameters(params): Parameters<GetImportsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"trait_impl","line":[221,234],"sig":"impl ServerHandler for CodeIndexServer","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_info","kind":"method","line":[222,233],"parent":"CodeIndexServer","sig":"fn get_info(&self) -> ServerInfo","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"start_server","kind":"function","line":[237,248],"sig":"pub async fn start_server(db: Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
+{"file":"src/server/mcp.rs","name":"SearchSymbolsParams","kind":"struct","line":[19,28],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"SearchFilesParams","kind":"struct","line":[31,38],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"SearchTextsParams","kind":"struct","line":[41,50],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"GetFileSymbolsParams","kind":"struct","line":[53,56],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"GetSymbolChildrenParams","kind":"struct","line":[59,64],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"GetImportsParams","kind":"struct","line":[67,70],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"struct","line":[77,80],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[82,89],"sig":"impl CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.new","kind":"method","line":[83,88],"parent":"CodeIndexServer","sig":"pub fn new(db: Arc<Mutex<SearchDb>>) -> Self","visibility":"public"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[92,247],"sig":"impl CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_symbols","kind":"method","line":[95,116],"parent":"CodeIndexServer","sig":"async fn search_symbols( &self, Parameters(params): Parameters<SearchSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_files","kind":"method","line":[120,140],"parent":"CodeIndexServer","sig":"async fn search_files( &self, Parameters(params): Parameters<SearchFilesParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_texts","kind":"method","line":[146,167],"parent":"CodeIndexServer","sig":"async fn search_texts( &self, Parameters(params): Parameters<SearchTextsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_file_symbols","kind":"method","line":[171,187],"parent":"CodeIndexServer","sig":"async fn get_file_symbols( &self, Parameters(params): Parameters<GetFileSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_symbol_children","kind":"method","line":[191,209],"parent":"CodeIndexServer","sig":"async fn get_symbol_children( &self, Parameters(params): Parameters<GetSymbolChildrenParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_imports","kind":"method","line":[213,229],"parent":"CodeIndexServer","sig":"async fn get_imports( &self, Parameters(params): Parameters<GetImportsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.list_projects","kind":"method","line":[233,246],"parent":"CodeIndexServer","sig":"async fn list_projects(&self) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"trait_impl","line":[250,264],"sig":"impl ServerHandler for CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_info","kind":"method","line":[251,263],"parent":"CodeIndexServer","sig":"fn get_info(&self) -> ServerInfo","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"start_server","kind":"function","line":[267,278],"sig":"pub async fn start_server(db: Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
 {"file":"src/server/mod.rs","name":"db","kind":"module","line":[1,1],"visibility":"public"}
 {"file":"src/server/mod.rs","name":"mcp","kind":"module","line":[2,2],"visibility":"public"}
 {"file":"src/watcher/handler.rs","name":"std::collections::{BTreeSet, HashMap}","kind":"import","line":[1,1],"visibility":"private"}
@@ -527,20 +577,40 @@
 {"file":"src/watcher/handler.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"std::time::{Duration, Instant}","kind":"import","line":[4,4],"visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"anyhow::{Context, Result}","kind":"import","line":[6,6],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"ignore::gitignore::{Gitignore, GitignoreBuilder}","kind":"import","line":[7,7],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"notify::{Config, Event, EventKindMask, RecommendedWatcher, RecursiveMode, Watcher}","kind":"import","line":[8,8],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"crate::index::format::{FileEntry, IndexManifest}","kind":"import","line":[10,10],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"crate::index::writer::write_index","kind":"import","line":[11,11],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"crate::parser::languages::detect_language","kind":"import","line":[12,12],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[13,13],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"crate::scanner::hasher::hash_bytes","kind":"import","line":[14,14],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"notify::event::{CreateKind, EventKind, RemoveKind}","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::index::format::{FileEntry, IndexManifest}","kind":"import","line":[9,9],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::index::writer::write_index","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::parser::languages::detect_language","kind":"import","line":[11,11],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::parser::treesitter::parse_file","kind":"import","line":[12,12],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::scanner::hasher::hash_bytes","kind":"import","line":[13,13],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::scanner::mount::{MountMode, MountTable}","kind":"import","line":[14,14],"visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"crate::server::db::SearchDb","kind":"import","line":[15,15],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"DEBOUNCE_DELAY","kind":"constant","line":[17,17],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"FLUSH_DELAY","kind":"constant","line":[18,18],"visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"start_watcher","kind":"function","line":[22,111],"sig":"pub fn start_watcher(root: PathBuf, db: Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
-{"file":"src/watcher/handler.rs","name":"handle_events","kind":"function","line":[114,189],"sig":"fn handle_events( paths: &[PathBuf], root: &Path, db: &Arc<Mutex<SearchDb>>, gitignore: &Gitignore, ) -> Result<()>","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"process_file_change","kind":"function","line":[192,258],"sig":"pub fn process_file_change( abs_path: &Path, rel_path: &str, db: &Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"public"}
-{"file":"src/watcher/handler.rs","name":"flush_index_to_disk","kind":"function","line":[261,301],"sig":"pub fn flush_index_to_disk(root: &Path, db: &Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
-{"file":"src/watcher/handler.rs","name":"load_gitignore","kind":"function","line":[304,313],"sig":"fn load_gitignore(root: &Path) -> Result<Gitignore>","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"count_lines","kind":"function","line":[316,327],"sig":"fn count_lines(content: &[u8]) -> u32","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"crate::watcher::GitignoreWatcher","kind":"import","line":[16,16],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"DEBOUNCE_DELAY","kind":"constant","line":[18,18],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"FLUSH_DELAY","kind":"constant","line":[19,19],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"start_watcher","kind":"function","line":[26,103],"sig":"pub fn start_watcher( root: PathBuf, mount_table: Arc<Mutex<MountTable>>, db: Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"on_project_discovery","kind":"function","line":[107,134],"sig":"pub fn on_project_discovery( project_root: &Path, mount_table: &Arc<Mutex<MountTable>>, db: &Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"index_project_files","kind":"function","line":[137,188],"sig":"fn index_project_files( project_root: &Path, mount_table: &Arc<Mutex<MountTable>>, db: &Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"ignore::WalkBuilder","kind":"import","line":[142,142],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"handle_events","kind":"function","line":[191,330],"sig":"fn handle_events( events: &[(PathBuf, EventKind)], mount_table: &Arc<Mutex<MountTable>>, db: &Arc<Mutex<SearchDb>>, watcher: &mut GitignoreWatcher, ) -> Result<()>","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"process_file_change","kind":"function","line":[333,401],"sig":"pub fn process_file_change( abs_path: &Path, rel_path: &str, project: &str, db: &Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"flush_dirty_mounts","kind":"function","line":[404,431],"sig":"fn flush_dirty_mounts( mount_table: &Arc<Mutex<MountTable>>, db: &Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"flush_mount_to_disk","kind":"function","line":[434,487],"sig":"pub fn flush_mount_to_disk( mount_root: &Path, mount_table: &MountTable, db: &Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"flush_index_to_disk","kind":"function","line":[491,531],"sig":"pub fn flush_index_to_disk(root: &Path, db: &Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/handler.rs","name":"count_lines","kind":"function","line":[534,545],"sig":"fn count_lines(content: &[u8]) -> u32","visibility":"private"}
 {"file":"src/watcher/mod.rs","name":"handler","kind":"module","line":[1,1],"visibility":"public"}
+{"file":"src/watcher/mod.rs","name":"std::collections::HashSet","kind":"import","line":[3,3],"visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"std::path::{Path, PathBuf}","kind":"import","line":[4,4],"visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"std::sync::mpsc::Sender","kind":"import","line":[5,5],"visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"anyhow::{Context, Result}","kind":"import","line":[7,7],"visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"ignore::WalkBuilder","kind":"import","line":[8,8],"visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"ignore::gitignore::Gitignore","kind":"import","line":[9,9],"visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher}","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher","kind":"struct","line":[14,17],"visibility":"public"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher","kind":"impl","line":[19,111],"sig":"impl GitignoreWatcher","visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher.new","kind":"method","line":[22,65],"parent":"GitignoreWatcher","sig":"pub fn new(root: &Path, tx: Sender<Result<Event, notify::Error>>) -> Result<Self>","visibility":"public"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher.watch_dir","kind":"method","line":[68,76],"parent":"GitignoreWatcher","sig":"fn watch_dir(&mut self, path: &Path) -> Result<()>","visibility":"private"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher.on_dir_created","kind":"method","line":[79,88],"parent":"GitignoreWatcher","sig":"pub fn on_dir_created(&mut self, path: &Path, gitignore: &Gitignore) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher.watch_dir_if_valid","kind":"method","line":[92,98],"parent":"GitignoreWatcher","sig":"pub fn watch_dir_if_valid(&mut self, path: &Path) -> Result<()>","visibility":"public"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher.on_dir_removed","kind":"method","line":[101,105],"parent":"GitignoreWatcher","sig":"pub fn on_dir_removed(&mut self, path: &Path)","visibility":"public"}
+{"file":"src/watcher/mod.rs","name":"GitignoreWatcher.watched_count","kind":"method","line":[108,110],"parent":"GitignoreWatcher","sig":"pub fn watched_count(&self) -> usize","visibility":"public"}

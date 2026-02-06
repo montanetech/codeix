@@ -1,109 +1,94 @@
-use std::io::{IsTerminal, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
 use tracing::info;
 
-use crate::scanner::walker::walk_directory;
+use crate::scanner::mount::MountTable;
 use crate::server::db::SearchDb;
-use crate::watcher::handler::{flush_index_to_disk, process_file_change};
+use crate::watcher::handler::{flush_mount_to_disk, on_project_discovery};
+
+/// Result type for build_index_to_db: (MountTable, SearchDb)
+pub type BuildResult = (Arc<Mutex<MountTable>>, Arc<Mutex<SearchDb>>);
 
 /// Build the index into a database without flushing to disk.
-/// Returns the populated database for immediate use.
-pub fn build_index_to_db(path: &Path) -> Result<Arc<Mutex<SearchDb>>> {
+/// Returns MountTable + SearchDb for both build (flush to disk) and serve (keep in memory).
+///
+/// Uses `on_project_discovery` which:
+/// 1. Loads from .codeindex/ if it exists
+/// 2. Otherwise indexes files (stopping at subproject boundaries)
+/// 3. Recursively handles discovered subprojects
+pub fn build_index_to_db(path: &Path) -> Result<BuildResult> {
     let root = path
         .canonicalize()
         .with_context(|| format!("cannot resolve path: {}", path.display()))?;
 
-    // Derive project name from directory name
-    let name = root
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown");
+    info!("building index at {}", root.display());
 
-    info!("building index for '{}' at {}", name, root.display());
+    // Create mount table and database
+    let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
+    let db = Arc::new(Mutex::new(
+        SearchDb::new().context("failed to create search database")?,
+    ));
 
-    // Create empty database
-    let db = SearchDb::new().context("failed to create search database")?;
-    let db = Arc::new(Mutex::new(db));
+    // Process root project (will recursively discover and handle subprojects)
+    on_project_discovery(&root, &mount_table, &db).context("failed to process root project")?;
 
-    // Walk directory to find all files
-    let all_paths = walk_directory(&root)?;
-    let total = all_paths.len();
-    info!("found {} files", total);
-
-    let show_progress = std::io::stderr().is_terminal();
-    let mut count = 0usize;
-
-    // Process each file through the same path as the watcher
-    for abs_path in &all_paths {
-        // Compute relative path (forward slashes, no leading ./)
-        let rel_path = abs_path
-            .strip_prefix(&root)
-            .unwrap_or(abs_path)
-            .to_string_lossy()
-            .replace('\\', "/");
-
-        // Skip .codeindex/ directory itself
-        if rel_path.starts_with(".codeindex/") || rel_path == ".codeindex" {
-            continue;
-        }
-
-        count += 1;
-
-        if show_progress {
-            eprint!("\r  indexing [{count}/{total}] {rel_path}");
-            // Clear any trailing characters from previous longer line
-            eprint!("\x1b[K");
-            let _ = std::io::stderr().flush();
-        }
-
-        // Process file using shared indexing logic
-        if let Err(e) = process_file_change(abs_path, &rel_path, &db) {
-            // Log errors but continue with other files
-            tracing::warn!("failed to process {}: {}", rel_path, e);
-        }
-    }
-
-    if show_progress {
-        eprintln!();
-    }
-
-    // Single FTS rebuild after all files
-    let db_guard = db
-        .lock()
-        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    db_guard.rebuild_fts()?;
-    drop(db_guard);
-
-    Ok(db)
+    Ok((mount_table, db))
 }
 
 /// Build the index: scan the directory tree, parse files with tree-sitter,
 /// and write the `.codeindex/` output.
+///
+/// Discovers .git/ boundaries and creates separate .codeindex/ for each
+/// project found. Root is always treated as a project (with or without .git/).
 pub fn build_index(path: &Path) -> Result<()> {
-    let root = path
-        .canonicalize()
-        .with_context(|| format!("cannot resolve path: {}", path.display()))?;
+    let (mount_table, db) = build_index_to_db(path)?;
 
-    let db = build_index_to_db(path)?;
-
-    // Flush to disk using shared logic
-    flush_index_to_disk(&root, &db).context("failed to flush index to disk")?;
-
-    // Log final stats
-    let db_guard = db
+    // Flush each dirty mount to disk
+    let mt = mount_table
         .lock()
-        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    let (files, symbols, texts) = db_guard.export_all()?;
-    drop(db_guard);
+        .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
+
+    let mut total_files = 0usize;
+    let mut total_symbols = 0usize;
+    let mut total_texts = 0usize;
+
+    for (root, mount) in mt.iter() {
+        if mount.dirty {
+            flush_mount_to_disk(root, &mt, &db)
+                .with_context(|| format!("failed to flush index to disk for {}", root.display()))?;
+
+            // Get stats for this mount (use relative project path)
+            let project_str = mt.relative_project(root);
+            let db_guard = db
+                .lock()
+                .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+            let (files, symbols, texts) = db_guard.export_for_project(&project_str)?;
+            drop(db_guard);
+
+            let name = root
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+
+            info!(
+                "wrote .codeindex/ for '{}': {} files, {} symbols, {} texts",
+                name,
+                files.len(),
+                symbols.len(),
+                texts.len()
+            );
+
+            total_files += files.len();
+            total_symbols += symbols.len();
+            total_texts += texts.len();
+        }
+    }
 
     info!(
-        "wrote .codeindex/: {} files, {} symbols, {} texts",
-        files.len(),
-        symbols.len(),
-        texts.len()
+        "total: {} files, {} symbols, {} texts",
+        total_files, total_symbols, total_texts
     );
 
     Ok(())
