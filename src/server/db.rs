@@ -7,11 +7,24 @@ use crate::index::format::{FileEntry, SymbolEntry, TextEntry};
 /// over the code index.
 pub struct SearchDb {
     conn: Connection,
+    /// Whether FTS5 virtual tables are enabled. Disabled in build mode to save memory.
+    fts_enabled: bool,
 }
 
 impl SearchDb {
-    /// Create a new in-memory database and initialize the FTS5 schema.
+    /// Create a new in-memory database with FTS5 enabled (for serve mode).
     pub fn new() -> Result<Self> {
+        Self::new_internal(true)
+    }
+
+    /// Create a new in-memory database without FTS5 (for build mode).
+    /// This significantly reduces memory usage for large repositories.
+    pub fn new_no_fts() -> Result<Self> {
+        Self::new_internal(false)
+    }
+
+    /// Internal constructor with configurable FTS support.
+    fn new_internal(fts_enabled: bool) -> Result<Self> {
         let conn = Connection::open_in_memory()?;
 
         // Content tables (store the actual data for retrieval)
@@ -49,33 +62,6 @@ impl SearchDb {
                 parent     TEXT
             );
 
-            -- FTS5 virtual tables for full-text search
-            CREATE VIRTUAL TABLE files_fts USING fts5(
-                project,
-                path,
-                lang,
-                content='files',
-                content_rowid='rowid'
-            );
-
-            CREATE VIRTUAL TABLE symbols_fts USING fts5(
-                project,
-                name,
-                file,
-                kind,
-                content='symbols',
-                content_rowid='rowid'
-            );
-
-            CREATE VIRTUAL TABLE texts_fts USING fts5(
-                project,
-                text,
-                file,
-                kind,
-                content='texts',
-                content_rowid='rowid'
-            );
-
             -- Indexes for exact lookups
             CREATE INDEX idx_symbols_project_file ON symbols(project, file);
             CREATE INDEX idx_symbols_project_file_parent ON symbols(project, file, parent);
@@ -88,7 +74,41 @@ impl SearchDb {
         )
         .context("failed to create database schema")?;
 
-        Ok(Self { conn })
+        // FTS5 virtual tables for full-text search (only when enabled)
+        if fts_enabled {
+            conn.execute_batch(
+                "
+                CREATE VIRTUAL TABLE files_fts USING fts5(
+                    project,
+                    path,
+                    lang,
+                    content='files',
+                    content_rowid='rowid'
+                );
+
+                CREATE VIRTUAL TABLE symbols_fts USING fts5(
+                    project,
+                    name,
+                    file,
+                    kind,
+                    content='symbols',
+                    content_rowid='rowid'
+                );
+
+                CREATE VIRTUAL TABLE texts_fts USING fts5(
+                    project,
+                    text,
+                    file,
+                    kind,
+                    content='texts',
+                    content_rowid='rowid'
+                );
+                ",
+            )
+            .context("failed to create FTS5 tables")?;
+        }
+
+        Ok(Self { conn, fts_enabled })
     }
 
     /// Load index data into the database for a specific project.
@@ -146,14 +166,16 @@ impl SearchDb {
             }
         }
 
-        // Populate FTS5 indexes from content tables
-        tx.execute_batch(
-            "
-            INSERT INTO files_fts(files_fts) VALUES('rebuild');
-            INSERT INTO symbols_fts(symbols_fts) VALUES('rebuild');
-            INSERT INTO texts_fts(texts_fts) VALUES('rebuild');
-            ",
-        )?;
+        // Populate FTS5 indexes from content tables (only when FTS enabled)
+        if self.fts_enabled {
+            tx.execute_batch(
+                "
+                INSERT INTO files_fts(files_fts) VALUES('rebuild');
+                INSERT INTO symbols_fts(symbols_fts) VALUES('rebuild');
+                INSERT INTO texts_fts(texts_fts) VALUES('rebuild');
+                ",
+            )?;
+        }
 
         tx.commit()?;
         Ok(())
@@ -498,7 +520,13 @@ impl SearchDb {
 
     /// Rebuild all FTS5 indexes.
     /// Call this after batch upsert/remove operations.
+    /// Rebuild all FTS5 indexes.
+    /// Call this after batch upsert/remove operations.
+    /// No-op when FTS is disabled (build mode).
     pub fn rebuild_fts(&self) -> Result<()> {
+        if !self.fts_enabled {
+            return Ok(());
+        }
         self.conn.execute_batch(
             "
             INSERT INTO files_fts(files_fts) VALUES('rebuild');

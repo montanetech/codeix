@@ -18,7 +18,10 @@ pub type BuildResult = (Arc<Mutex<MountTable>>, Arc<Mutex<SearchDb>>);
 /// 1. Loads from .codeindex/ if it exists
 /// 2. Otherwise indexes files (stopping at subproject boundaries)
 /// 3. Recursively handles discovered subprojects
-pub fn build_index_to_db(path: &Path) -> Result<BuildResult> {
+///
+/// When `enable_fts` is true, creates FTS5 tables for search (serve mode).
+/// When false, skips FTS to reduce memory on large repos (build mode).
+pub fn build_index_to_db(path: &Path, enable_fts: bool) -> Result<BuildResult> {
     let root = path
         .canonicalize()
         .with_context(|| format!("cannot resolve path: {}", path.display()))?;
@@ -27,9 +30,11 @@ pub fn build_index_to_db(path: &Path) -> Result<BuildResult> {
 
     // Create mount table and database
     let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
-    let db = Arc::new(Mutex::new(
-        SearchDb::new().context("failed to create search database")?,
-    ));
+    let db = Arc::new(Mutex::new(if enable_fts {
+        SearchDb::new().context("failed to create search database")?
+    } else {
+        SearchDb::new_no_fts().context("failed to create search database")?
+    }));
 
     // Process root project (will recursively discover and handle subprojects)
     on_project_discovery(&root, &mount_table, &db).context("failed to process root project")?;
@@ -43,7 +48,8 @@ pub fn build_index_to_db(path: &Path) -> Result<BuildResult> {
 /// Discovers .git/ boundaries and creates separate .codeindex/ for each
 /// project found. Root is always treated as a project (with or without .git/).
 pub fn build_index(path: &Path) -> Result<()> {
-    let (mount_table, db) = build_index_to_db(path)?;
+    // Build mode: disable FTS to reduce memory on large repos
+    let (mount_table, db) = build_index_to_db(path, false)?;
 
     // Flush each dirty mount to disk
     let mt = mount_table
