@@ -111,14 +111,14 @@
 {"file":"src/lib.rs","kind":"string","line":[32,32],"text":"target/ files should be ignored via matched_path_or_any_parents"}
 {"file":"src/lib.rs","kind":"string","line":[46,46],"text":"target files: {:?}"}
 {"file":"src/lib.rs","kind":"string","line":[49,49],"text":"target/ should be ignored by walker"}
-{"file":"src/main.rs","kind":"string","line":[8,8],"text":"Portable, composable code index"}
-{"file":"src/main.rs","kind":"docstring","line":[16,16],"text":"Build the .codeindex/ for discovered projects"}
-{"file":"src/main.rs","kind":"docstring","line":[18,18],"text":"Root directory to scan (defaults to current dir)"}
-{"file":"src/main.rs","kind":"docstring","line":[22,22],"text":"Start the MCP server (default when no subcommand given)"}
-{"file":"src/main.rs","kind":"docstring","line":[24,24],"text":"Root directory (defaults to current dir)"}
-{"file":"src/main.rs","kind":"docstring","line":[27,27],"text":"Disable file watching"}
-{"file":"src/main.rs","kind":"comment","line":[42,42],"text":"Interactive: no subcommand given, print help and exit"}
-{"file":"src/main.rs","kind":"comment","line":[46,46],"text":"Piped stdin (e.g. MCP client): default to serve"}
+{"file":"src/main.rs","kind":"string","line":[10,10],"text":"Portable, composable code index\\n\\nhttps://codeix.dev"}
+{"file":"src/main.rs","kind":"docstring","line":[19,19],"text":"Build the .codeindex/ for discovered projects"}
+{"file":"src/main.rs","kind":"docstring","line":[21,21],"text":"Root directory to scan (defaults to current dir)"}
+{"file":"src/main.rs","kind":"docstring","line":[25,25],"text":"Start the MCP server (default when no subcommand given)"}
+{"file":"src/main.rs","kind":"docstring","line":[27,27],"text":"Root directory (defaults to current dir)"}
+{"file":"src/main.rs","kind":"docstring","line":[30,30],"text":"Disable file watching"}
+{"file":"src/main.rs","kind":"comment","line":[45,45],"text":"Interactive: no subcommand given, print help and exit"}
+{"file":"src/main.rs","kind":"comment","line":[49,49],"text":"Piped stdin (e.g. MCP client): default to serve"}
 {"file":"src/parser/c_lang.rs","kind":"docstring","line":[1,1],"text":"C symbol and text extraction."}
 {"file":"src/parser/c_lang.rs","kind":"comment","line":[91,91],"text":"Check for static (file-scoped)"}
 {"file":"src/parser/c_lang.rs","kind":"comment","line":[117,118],"text":"Top-level declarations: variables, function prototypes, extern declarations\nSkip if inside a function body (we only want top-level)"}

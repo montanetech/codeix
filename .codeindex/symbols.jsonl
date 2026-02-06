@@ -120,9 +120,9 @@
 {"file":"src/main.rs","name":"std::path::Path","kind":"import","line":[2,2],"visibility":"private"}
 {"file":"src/main.rs","name":"anyhow::Result","kind":"import","line":[4,4],"visibility":"private"}
 {"file":"src/main.rs","name":"clap::{Parser, Subcommand}","kind":"import","line":[5,5],"visibility":"private"}
-{"file":"src/main.rs","name":"Cli","kind":"struct","line":[9,12],"visibility":"private"}
-{"file":"src/main.rs","name":"Commands","kind":"enum","line":[15,31],"visibility":"private"}
-{"file":"src/main.rs","name":"main","kind":"function","line":[33,64],"sig":"fn main() -> Result<()>","visibility":"private"}
+{"file":"src/main.rs","name":"Cli","kind":"struct","line":[12,15],"visibility":"private"}
+{"file":"src/main.rs","name":"Commands","kind":"enum","line":[18,34],"visibility":"private"}
+{"file":"src/main.rs","name":"main","kind":"function","line":[36,67],"sig":"fn main() -> Result<()>","visibility":"private"}
 {"file":"src/parser/c_lang.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/parser/c_lang.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[5,5],"visibility":"private"}
 {"file":"src/parser/c_lang.rs","name":"crate::parser::helpers::*","kind":"import","line":[6,6],"visibility":"private"}

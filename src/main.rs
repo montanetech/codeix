@@ -5,7 +5,10 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "codeix", about = "Portable, composable code index")]
+#[command(
+    name = "codeix",
+    about = "Portable, composable code index\n\nhttps://codeix.dev"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
