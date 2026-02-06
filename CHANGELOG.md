@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.8](https://github.com/montanetech/codeix/compare/v0.1.7...v0.1.8) (2026-02-06)
+
+
+### Features
+
+* add codeix.dev website ([0967e32](https://github.com/montanetech/codeix/commit/0967e3246c2cc5142d7b67167a0aba2d7a37f732))
+
+
+### Bug Fixes
+
+* upgrade notify to 9.0.0-rc.1 with EventKindMask::CORE ([4924dac](https://github.com/montanetech/codeix/commit/4924dace1d48897f73cb3ba7e72cba9aca65ca0f))
+* use matched_path_or_any_parents for gitignore checks ([6a2eaf3](https://github.com/montanetech/codeix/commit/6a2eaf34ca1ed3edd7bcca4c4cac13425126cd19))
+
 ## [0.1.7](https://github.com/montanetech/codeix/compare/v0.1.6...v0.1.7) (2026-02-05)
 
 
