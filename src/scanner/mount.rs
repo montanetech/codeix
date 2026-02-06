@@ -195,9 +195,16 @@ impl MountTable {
     }
 
     /// Find the mount that contains a given path (longest prefix match).
+    /// Canonicalizes the path first to handle symlinks.
     pub fn find_mount(&self, path: &Path) -> Option<&Mount> {
         let path = path.canonicalize().ok()?;
+        self.find_mount_canonical(&path)
+    }
 
+    /// Find the mount that contains a given path (longest prefix match).
+    /// Assumes the path is already canonical - use for hot paths to avoid
+    /// repeated canonicalization overhead.
+    pub fn find_mount_canonical(&self, path: &Path) -> Option<&Mount> {
         self.mounts
             .iter()
             .filter(|(root, _)| path.starts_with(root))
@@ -206,12 +213,19 @@ impl MountTable {
     }
 
     /// Find the mount that contains a given path (mutable, longest prefix match).
+    /// Canonicalizes the path first to handle symlinks.
     pub fn find_mount_mut(&mut self, path: &Path) -> Option<&mut Mount> {
         let path = match path.canonicalize() {
             Ok(p) => p,
             Err(_) => return None,
         };
+        self.find_mount_mut_canonical(&path)
+    }
 
+    /// Find the mount that contains a given path (mutable, longest prefix match).
+    /// Assumes the path is already canonical - use for hot paths to avoid
+    /// repeated canonicalization overhead.
+    pub fn find_mount_mut_canonical(&mut self, path: &Path) -> Option<&mut Mount> {
         // Find the key with longest prefix match
         let key = self
             .mounts
@@ -249,6 +263,16 @@ impl MountTable {
     /// Mark a path's mount as dirty.
     pub fn mark_dirty(&mut self, path: &Path) -> bool {
         if let Some(mount) = self.find_mount_mut(path) {
+            mount.mark_dirty();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Mark a path's mount as dirty (assumes path is already canonical).
+    pub fn mark_dirty_canonical(&mut self, path: &Path) -> bool {
+        if let Some(mount) = self.find_mount_mut_canonical(path) {
             mount.mark_dirty();
             true
         } else {

@@ -249,6 +249,7 @@ fn index_project_files(
 
     // Track discovered subprojects to skip their files
     let mut subprojects: HashSet<PathBuf> = HashSet::new();
+    let mut file_count = 0u32;
 
     for entry in WalkBuilder::new(project_root)
         .hidden(true) // Skip hidden files, we'll check for .git manually
@@ -301,10 +302,24 @@ fn index_project_files(
             continue;
         }
 
+        file_count += 1;
+        if file_count.is_multiple_of(100) {
+            tracing::info!(
+                "processed {} files so far for project '{}'",
+                file_count,
+                project_str
+            );
+        }
         if let Err(e) = process_file_change(abs_path, &rel_path, &project_str, db) {
             tracing::warn!("failed to index {}: {}", rel_path, e);
         }
     }
+
+    tracing::info!(
+        "finished walking project '{}': {} files total",
+        project_str,
+        file_count
+    );
 
     // Rebuild FTS after batch indexing
     let db_guard = db
@@ -350,11 +365,17 @@ fn handle_events(
                     continue;
                 }
 
+                // Canonicalize once for this path
+                let canonical = match path.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                };
+
                 // Add watch for new directory if not ignored
                 let mt = mount_table
                     .lock()
                     .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
-                if let Some(mount) = mt.find_mount(path)
+                if let Some(mount) = mt.find_mount_canonical(&canonical)
                     && !mount.is_ignored(path)
                     && !path
                         .file_name()
@@ -373,12 +394,23 @@ fn handle_events(
             _ => {}
         }
 
+        // Early filter: skip .codeindex/ paths before expensive canonicalize()
+        if path.components().any(|c| c.as_os_str() == ".codeindex") {
+            continue;
+        }
+
+        // Canonicalize once for this path (avoids repeated readlink syscalls)
+        let canonical = match path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => continue, // File may have been deleted
+        };
+
         // Find the mount for this path
         let mt = mount_table
             .lock()
             .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
 
-        let Some(mount) = mt.find_mount(path) else {
+        let Some(mount) = mt.find_mount_canonical(&canonical) else {
             continue; // Not under any mount
         };
 
@@ -392,7 +424,7 @@ fn handle_events(
         }
 
         // Compute relative path
-        let rel_path = match path.strip_prefix(&mount_root) {
+        let rel_path = match canonical.strip_prefix(&mount_root) {
             Ok(p) => p.to_string_lossy().replace('\\', "/"),
             Err(_) => continue,
         };
@@ -408,7 +440,7 @@ fn handle_events(
         }
 
         // Skip directories
-        if path.is_dir() {
+        if canonical.is_dir() {
             continue;
         }
 
@@ -420,7 +452,7 @@ fn handle_events(
             mt.relative_project(&mount_root)
         };
 
-        // Check if file still exists
+        // Check if file still exists (use original path for exists check)
         if !path.exists() {
             // File was deleted
             tracing::debug!("file deleted: {} (project: {})", rel_path, project_str);
@@ -430,25 +462,28 @@ fn handle_events(
             if let Err(e) = db_guard.remove_file(&project_str, &rel_path) {
                 tracing::warn!("failed to remove file {}: {}", rel_path, e);
             }
-            // Mark mount as dirty
-            mount_table.lock().ok().map(|mut mt| mt.mark_dirty(path));
-            continue;
-        }
-
-        // File was created or modified
-        changed_files.push((path.to_path_buf(), rel_path, project_str));
-    }
-
-    // Process changed files
-    for (abs_path, rel_path, project) in &changed_files {
-        if let Err(e) = process_file_change(abs_path, rel_path, project, db) {
-            tracing::warn!("failed to process file {}: {}", rel_path, e);
-        } else {
-            // Mark mount as dirty on successful change
+            // Mark mount as dirty (use canonical path)
             mount_table
                 .lock()
                 .ok()
-                .map(|mut mt| mt.mark_dirty(abs_path));
+                .map(|mut mt| mt.mark_dirty_canonical(&canonical));
+            continue;
+        }
+
+        // File was created or modified (store canonical path)
+        changed_files.push((canonical, rel_path, project_str));
+    }
+
+    // Process changed files
+    for (canonical_path, rel_path, project) in &changed_files {
+        if let Err(e) = process_file_change(canonical_path, rel_path, project, db) {
+            tracing::warn!("failed to process file {}: {}", rel_path, e);
+        } else {
+            // Mark mount as dirty on successful change (path is already canonical)
+            mount_table
+                .lock()
+                .ok()
+                .map(|mut mt| mt.mark_dirty_canonical(canonical_path));
         }
     }
 
@@ -485,11 +520,16 @@ pub fn process_file_change(
         && old_hash == new_hash
     {
         // No change, skip
+        tracing::trace!(
+            "skipping unchanged file: {} (project: {})",
+            rel_path,
+            project
+        );
         return Ok(());
     }
     drop(db_guard);
 
-    tracing::debug!("indexing file: {} (project: {})", rel_path, project);
+    tracing::info!("indexing file: {} (project: {})", rel_path, project);
 
     // Count lines
     let line_count = count_lines(&content);
