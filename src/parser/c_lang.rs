@@ -116,10 +116,10 @@ fn extract_declaration(
 ) {
     // Top-level declarations: variables, function prototypes, extern declarations
     // Skip if inside a function body (we only want top-level)
-    if let Some(p) = node.parent() {
-        if p.kind() == "compound_statement" || p.kind() == "case_statement" {
-            return;
-        }
+    if let Some(p) = node.parent()
+        && (p.kind() == "compound_statement" || p.kind() == "case_statement")
+    {
+        return;
     }
 
     let line = node_line_range(node);
@@ -298,22 +298,22 @@ fn extract_enum(
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            if child.kind() == "enumerator" {
-                if let Some(name_node) = find_child_by_field(child, "name") {
-                    let const_name = node_text(name_node, source);
-                    let const_line = node_line_range(child);
-                    push_symbol(
-                        symbols,
-                        file_path,
-                        format!("{name}.{const_name}"),
-                        "constant",
-                        const_line,
-                        Some(&name),
-                        None,
-                        None,
-                        Some("public".to_string()),
-                    );
-                }
+            if child.kind() == "enumerator"
+                && let Some(name_node) = find_child_by_field(child, "name")
+            {
+                let const_name = node_text(name_node, source);
+                let const_line = node_line_range(child);
+                push_symbol(
+                    symbols,
+                    file_path,
+                    format!("{name}.{const_name}"),
+                    "constant",
+                    const_line,
+                    Some(&name),
+                    None,
+                    None,
+                    Some("public".to_string()),
+                );
             }
         }
     }

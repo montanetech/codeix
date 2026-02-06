@@ -198,37 +198,37 @@ fn extract_type_spec(
 
     // For structs, extract fields
     if let Some(type_n) = type_node {
-        if type_n.kind() == "struct_type" {
-            if let Some(field_list) = find_child_by_field(type_n, "fields").or_else(|| {
+        if type_n.kind() == "struct_type"
+            && let Some(field_list) = find_child_by_field(type_n, "fields").or_else(|| {
                 let mut c = type_n.walk();
                 type_n
                     .children(&mut c)
                     .find(|n| n.kind() == "field_declaration_list")
-            }) {
-                let mut cursor = field_list.walk();
-                for child in field_list.children(&mut cursor) {
-                    if child.kind() == "field_declaration" {
-                        if let Some(field_name_node) = find_child_by_field(child, "name") {
-                            let field_name = node_text(field_name_node, source);
-                            let field_line = node_line_range(child);
-                            let field_vis = go_visibility(&field_name);
-                            push_symbol(
-                                symbols,
-                                file_path,
-                                format!("{name}.{field_name}"),
-                                "property",
-                                field_line,
-                                Some(&name),
-                                None,
-                                None,
-                                Some(field_vis),
-                            );
-                        }
-                    }
-                    // Extract comments inside struct
-                    if child.kind() == "comment" {
-                        extract_go_comment(child, source, file_path, Some(&name), texts);
-                    }
+            })
+        {
+            let mut cursor = field_list.walk();
+            for child in field_list.children(&mut cursor) {
+                if child.kind() == "field_declaration"
+                    && let Some(field_name_node) = find_child_by_field(child, "name")
+                {
+                    let field_name = node_text(field_name_node, source);
+                    let field_line = node_line_range(child);
+                    let field_vis = go_visibility(&field_name);
+                    push_symbol(
+                        symbols,
+                        file_path,
+                        format!("{name}.{field_name}"),
+                        "property",
+                        field_line,
+                        Some(&name),
+                        None,
+                        None,
+                        Some(field_vis),
+                    );
+                }
+                // Extract comments inside struct
+                if child.kind() == "comment" {
+                    extract_go_comment(child, source, file_path, Some(&name), texts);
                 }
             }
         }
@@ -236,24 +236,24 @@ fn extract_type_spec(
         if type_n.kind() == "interface_type" {
             let mut cursor = type_n.walk();
             for child in type_n.children(&mut cursor) {
-                if child.kind() == "method_spec" {
-                    if let Some(method_name_node) = find_child_by_field(child, "name") {
-                        let method_name = node_text(method_name_node, source);
-                        let method_line = node_line_range(child);
-                        let method_vis = go_visibility(&method_name);
-                        let method_sig = collapse_whitespace(node_text(child, source).trim());
-                        push_symbol(
-                            symbols,
-                            file_path,
-                            format!("{name}.{method_name}"),
-                            "method",
-                            method_line,
-                            Some(&name),
-                            Some(method_sig),
-                            None,
-                            Some(method_vis),
-                        );
-                    }
+                if child.kind() == "method_spec"
+                    && let Some(method_name_node) = find_child_by_field(child, "name")
+                {
+                    let method_name = node_text(method_name_node, source);
+                    let method_line = node_line_range(child);
+                    let method_vis = go_visibility(&method_name);
+                    let method_sig = collapse_whitespace(node_text(child, source).trim());
+                    push_symbol(
+                        symbols,
+                        file_path,
+                        format!("{name}.{method_name}"),
+                        "method",
+                        method_line,
+                        Some(&name),
+                        Some(method_sig),
+                        None,
+                        Some(method_vis),
+                    );
                 }
             }
         }

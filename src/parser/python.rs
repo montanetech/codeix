@@ -135,15 +135,15 @@ fn extract_function(
         let mut first = true;
         for child in body.children(&mut cursor) {
             if first && child.kind() == "expression_statement" {
-                if let Some(str_node) = child.child(0) {
-                    if str_node.kind() == "string" || str_node.kind() == "concatenated_string" {
-                        let ctx_name = if parent_ctx.is_some() {
-                            format!("{}.{}", parent_ctx.unwrap(), name)
-                        } else {
-                            name.clone()
-                        };
-                        extract_docstring(str_node, source, file_path, Some(&ctx_name), texts);
-                    }
+                if let Some(str_node) = child.child(0)
+                    && (str_node.kind() == "string" || str_node.kind() == "concatenated_string")
+                {
+                    let ctx_name = if let Some(ctx) = parent_ctx {
+                        format!("{}.{}", ctx, name)
+                    } else {
+                        name.clone()
+                    };
+                    extract_docstring(str_node, source, file_path, Some(&ctx_name), texts);
                 }
                 first = false;
                 continue;
@@ -151,8 +151,8 @@ fn extract_function(
             first = false;
             // Don't recurse deeply into function bodies for symbols,
             // but do recurse for nested classes/functions
-            let ctx_name = if parent_ctx.is_some() {
-                format!("{}.{}", parent_ctx.unwrap(), name)
+            let ctx_name = if let Some(ctx) = parent_ctx {
+                format!("{}.{}", ctx, name)
             } else {
                 name.clone()
             };
@@ -210,10 +210,10 @@ fn extract_class(
         for child in body.children(&mut cursor) {
             // Check for class docstring
             if first && child.kind() == "expression_statement" {
-                if let Some(str_node) = child.child(0) {
-                    if str_node.kind() == "string" || str_node.kind() == "concatenated_string" {
-                        extract_docstring(str_node, source, file_path, Some(&full_name), texts);
-                    }
+                if let Some(str_node) = child.child(0)
+                    && (str_node.kind() == "string" || str_node.kind() == "concatenated_string")
+                {
+                    extract_docstring(str_node, source, file_path, Some(&full_name), texts);
                 }
                 first = false;
                 continue;

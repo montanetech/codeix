@@ -238,28 +238,28 @@ fn extract_field(
     // Find declarators
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        if child.kind() == "variable_declarator" {
-            if let Some(name_node) = find_child_by_field(child, "name") {
-                let name = node_text(name_node, source);
+        if child.kind() == "variable_declarator"
+            && let Some(name_node) = find_child_by_field(child, "name")
+        {
+            let name = node_text(name_node, source);
 
-                let full_name = if let Some(parent) = parent_ctx {
-                    format!("{parent}.{name}")
-                } else {
-                    name
-                };
+            let full_name = if let Some(parent) = parent_ctx {
+                format!("{parent}.{name}")
+            } else {
+                name
+            };
 
-                push_symbol(
-                    symbols,
-                    file_path,
-                    full_name,
-                    kind,
-                    line,
-                    parent_ctx,
-                    None,
-                    None,
-                    Some(visibility.clone()),
-                );
-            }
+            push_symbol(
+                symbols,
+                file_path,
+                full_name,
+                kind,
+                line,
+                parent_ctx,
+                None,
+                None,
+                Some(visibility.clone()),
+            );
         }
     }
 }

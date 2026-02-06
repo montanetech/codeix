@@ -167,10 +167,10 @@ fn extract_declaration(
     symbols: &mut Vec<SymbolEntry>,
 ) {
     // Skip declarations inside function bodies
-    if let Some(p) = node.parent() {
-        if p.kind() == "compound_statement" || p.kind() == "case_statement" {
-            return;
-        }
+    if let Some(p) = node.parent()
+        && (p.kind() == "compound_statement" || p.kind() == "case_statement")
+    {
+        return;
     }
 
     let line = node_line_range(node);
@@ -394,22 +394,22 @@ fn extract_enum(
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            if child.kind() == "enumerator" {
-                if let Some(name_node) = find_child_by_field(child, "name") {
-                    let const_name = node_text(name_node, source);
-                    let const_line = node_line_range(child);
-                    push_symbol(
-                        symbols,
-                        file_path,
-                        format!("{full_name}.{const_name}"),
-                        "constant",
-                        const_line,
-                        Some(&full_name),
-                        None,
-                        None,
-                        Some("public".to_string()),
-                    );
-                }
+            if child.kind() == "enumerator"
+                && let Some(name_node) = find_child_by_field(child, "name")
+            {
+                let const_name = node_text(name_node, source);
+                let const_line = node_line_range(child);
+                push_symbol(
+                    symbols,
+                    file_path,
+                    format!("{full_name}.{const_name}"),
+                    "constant",
+                    const_line,
+                    Some(&full_name),
+                    None,
+                    None,
+                    Some("public".to_string()),
+                );
             }
         }
     }

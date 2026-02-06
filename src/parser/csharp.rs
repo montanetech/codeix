@@ -196,22 +196,22 @@ fn extract_enum(
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            if child.kind() == "enum_member_declaration" {
-                if let Some(name_node) = find_child_by_field(child, "name") {
-                    let member_name = node_text(name_node, source);
-                    let member_line = node_line_range(child);
-                    push_symbol(
-                        symbols,
-                        file_path,
-                        format!("{full_name}.{member_name}"),
-                        "constant",
-                        member_line,
-                        Some(&full_name),
-                        None,
-                        None,
-                        Some("public".to_string()),
-                    );
-                }
+            if child.kind() == "enum_member_declaration"
+                && let Some(name_node) = find_child_by_field(child, "name")
+            {
+                let member_name = node_text(name_node, source);
+                let member_line = node_line_range(child);
+                push_symbol(
+                    symbols,
+                    file_path,
+                    format!("{full_name}.{member_name}"),
+                    "constant",
+                    member_line,
+                    Some(&full_name),
+                    None,
+                    None,
+                    Some("public".to_string()),
+                );
             }
         }
     }
@@ -407,31 +407,31 @@ fn extract_field(
         if child.kind() == "variable_declaration" {
             let mut decl_cursor = child.walk();
             for decl_child in child.children(&mut decl_cursor) {
-                if decl_child.kind() == "variable_declarator" {
-                    if let Some(name_node) = find_child_by_field(decl_child, "name").or_else(|| {
+                if decl_child.kind() == "variable_declarator"
+                    && let Some(name_node) = find_child_by_field(decl_child, "name").or_else(|| {
                         let mut c = decl_child.walk();
                         decl_child
                             .children(&mut c)
                             .find(|n| n.kind() == "identifier")
-                    }) {
-                        let name = node_text(name_node, source);
-                        let full_name = if let Some(parent) = parent_ctx {
-                            format!("{parent}.{name}")
-                        } else {
-                            name
-                        };
-                        push_symbol(
-                            symbols,
-                            file_path,
-                            full_name,
-                            kind,
-                            line,
-                            parent_ctx,
-                            None,
-                            None,
-                            Some(visibility.clone()),
-                        );
-                    }
+                    })
+                {
+                    let name = node_text(name_node, source);
+                    let full_name = if let Some(parent) = parent_ctx {
+                        format!("{parent}.{name}")
+                    } else {
+                        name
+                    };
+                    push_symbol(
+                        symbols,
+                        file_path,
+                        full_name,
+                        kind,
+                        line,
+                        parent_ctx,
+                        None,
+                        None,
+                        Some(visibility.clone()),
+                    );
                 }
             }
         }

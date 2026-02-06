@@ -118,8 +118,8 @@ fn extract_method(
 
     // Recurse for nested definitions
     if let Some(body) = find_child_by_field(node, "body") {
-        let ctx = if parent_ctx.is_some() {
-            format!("{}.{}", parent_ctx.unwrap(), name)
+        let ctx = if let Some(p) = parent_ctx {
+            format!("{}.{}", p, name)
         } else {
             name
         };
@@ -176,8 +176,8 @@ fn extract_singleton_method(
 
     // Recurse for nested definitions
     if let Some(body) = find_child_by_field(node, "body") {
-        let ctx = if parent_ctx.is_some() {
-            format!("{}.{}", parent_ctx.unwrap(), name)
+        let ctx = if let Some(p) = parent_ctx {
+            format!("{}.{}", p, name)
         } else {
             name
         };
