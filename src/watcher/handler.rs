@@ -142,8 +142,11 @@ fn handle_events(
             continue;
         }
 
-        // Skip if gitignored
-        if gitignore.matched(&rel_path, path.is_dir()).is_ignore() {
+        // Skip if gitignored (use matched_path_or_any_parents to check parent dirs like target/)
+        if gitignore
+            .matched_path_or_any_parents(&rel_path, path.is_dir())
+            .is_ignore()
+        {
             continue;
         }
 

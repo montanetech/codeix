@@ -3,6 +3,9 @@
   "name": "codeindex",
   "root": ".",
   "languages": [
+    "html",
+    "javascript",
+    "python",
     "rust"
   ]
 }
