@@ -4,6 +4,7 @@ use tree_sitter::{Node, Tree};
 
 use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
+use crate::parser::treesitter::MAX_DEPTH;
 
 pub fn extract(
     tree: &Tree,
@@ -13,7 +14,7 @@ pub fn extract(
     texts: &mut Vec<TextEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts);
+    walk_node(root, source, file_path, None, symbols, texts, 0);
 }
 
 fn walk_node(
@@ -23,7 +24,13 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
+    // Prevent stack overflow on deeply nested code
+    if depth > MAX_DEPTH {
+        return;
+    }
+
     let kind = node.kind();
 
     match kind {
@@ -55,7 +62,7 @@ fn walk_node(
             extract_use(node, source, file_path, symbols);
         }
         "impl_item" => {
-            extract_impl(node, source, file_path, symbols, texts);
+            extract_impl(node, source, file_path, symbols, texts, depth);
             return; // impl is handled recursively inside extract_impl
         }
         "line_comment" | "block_comment" => {
@@ -72,7 +79,15 @@ fn walk_node(
     // Recurse into children
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        walk_node(child, source, file_path, parent_ctx, symbols, texts);
+        walk_node(
+            child,
+            source,
+            file_path,
+            parent_ctx,
+            symbols,
+            texts,
+            depth + 1,
+        );
     }
 }
 
@@ -152,6 +167,7 @@ fn extract_impl(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let impl_type_name = extract_impl_type_name(node, source);
     let line = node_line_range(node);
@@ -219,6 +235,7 @@ fn extract_impl(
                         Some(&impl_type_name),
                         symbols,
                         texts,
+                        depth + 1,
                     );
                 }
             }

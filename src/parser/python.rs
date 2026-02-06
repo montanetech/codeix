@@ -4,6 +4,7 @@ use tree_sitter::{Node, Tree};
 
 use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
+use crate::parser::treesitter::MAX_DEPTH;
 
 pub fn extract(
     tree: &Tree,
@@ -13,7 +14,7 @@ pub fn extract(
     texts: &mut Vec<TextEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts);
+    walk_node(root, source, file_path, None, symbols, texts, 0);
 }
 
 fn walk_node(
@@ -23,16 +24,22 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
+    // Prevent stack overflow on deeply nested code
+    if depth > MAX_DEPTH {
+        return;
+    }
+
     let kind = node.kind();
 
     match kind {
         "function_definition" => {
-            extract_function(node, source, file_path, parent_ctx, symbols, texts);
+            extract_function(node, source, file_path, parent_ctx, symbols, texts, depth);
             return; // handled recursively
         }
         "class_definition" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts);
+            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
             return; // handled recursively
         }
         "import_statement" => {
@@ -45,7 +52,15 @@ fn walk_node(
             // Recurse into the definition inside the decorator
             let mut cursor = node.walk();
             for child in node.children(&mut cursor) {
-                walk_node(child, source, file_path, parent_ctx, symbols, texts);
+                walk_node(
+                    child,
+                    source,
+                    file_path,
+                    parent_ctx,
+                    symbols,
+                    texts,
+                    depth + 1,
+                );
             }
             return;
         }
@@ -78,7 +93,15 @@ fn walk_node(
     // Recurse into children
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        walk_node(child, source, file_path, parent_ctx, symbols, texts);
+        walk_node(
+            child,
+            source,
+            file_path,
+            parent_ctx,
+            symbols,
+            texts,
+            depth + 1,
+        );
     }
 }
 
@@ -89,6 +112,7 @@ fn extract_function(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -158,7 +182,15 @@ fn extract_function(
             };
             match child.kind() {
                 "function_definition" | "class_definition" | "decorated_definition" => {
-                    walk_node(child, source, file_path, Some(&ctx_name), symbols, texts);
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        Some(&ctx_name),
+                        symbols,
+                        texts,
+                        depth + 1,
+                    );
                 }
                 _ => {}
             }
@@ -173,6 +205,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -219,7 +252,15 @@ fn extract_class(
                 continue;
             }
             first = false;
-            walk_node(child, source, file_path, Some(&full_name), symbols, texts);
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                depth + 1,
+            );
         }
     }
 }
