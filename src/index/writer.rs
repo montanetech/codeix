@@ -7,6 +7,10 @@ use anyhow::Result;
 use super::format::{FileEntry, IndexManifest, SymbolEntry, TextEntry};
 
 /// Write a complete `.codeindex/` directory to disk.
+///
+/// Note: Data is expected to be pre-sorted from the database export
+/// (files by path, symbols/texts by file then line). This avoids
+/// memory-intensive copies for large repositories.
 pub fn write_index(
     output_dir: &Path,
     manifest: &IndexManifest,
@@ -22,20 +26,10 @@ pub fn write_index(
     let json = serde_json::to_string_pretty(manifest)?;
     fs::write(&index_path, json.as_bytes())?;
 
-    // Write files.jsonl — sorted by path
-    let mut sorted_files = files.to_vec();
-    sorted_files.sort_by(|a, b| a.path.cmp(&b.path));
-    write_jsonl(&output_dir.join("files.jsonl"), &sorted_files)?;
-
-    // Write symbols.jsonl — sorted by file, then line[0]
-    let mut sorted_symbols = symbols.to_vec();
-    sorted_symbols.sort_by(|a, b| a.file.cmp(&b.file).then(a.line[0].cmp(&b.line[0])));
-    write_jsonl(&output_dir.join("symbols.jsonl"), &sorted_symbols)?;
-
-    // Write texts.jsonl — sorted by file, then line[0]
-    let mut sorted_texts = texts.to_vec();
-    sorted_texts.sort_by(|a, b| a.file.cmp(&b.file).then(a.line[0].cmp(&b.line[0])));
-    write_jsonl(&output_dir.join("texts.jsonl"), &sorted_texts)?;
+    // Write JSONL files directly - data is pre-sorted from DB export
+    write_jsonl(&output_dir.join("files.jsonl"), files)?;
+    write_jsonl(&output_dir.join("symbols.jsonl"), symbols)?;
+    write_jsonl(&output_dir.join("texts.jsonl"), texts)?;
 
     Ok(())
 }
