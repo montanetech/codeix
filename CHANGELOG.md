@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Database schema changed with new project column. Existing indexes need to be rebuilt.
+
+### Features
+
+* **db:** add project column to schema ([de8a54f](https://github.com/montanetech/codeix/commit/de8a54f3842387d7470242290dd63031d81e0233))
+* **handler:** add subproject discovery with MountTable integration ([6b1b610](https://github.com/montanetech/codeix/commit/6b1b610834feb9791ba5e44f29e12e405258ba0f))
+* **mcp:** add list_projects tool and project filter to search tools ([df19cb4](https://github.com/montanetech/codeix/commit/df19cb4fd61b088164549bc7d6e9cf7cdb9dd1f0))
+* multi-repo mount table with subproject discovery ([5daebed](https://github.com/montanetech/codeix/commit/5daebedc9cb2186376e9fc881a4c684abd4c00d4))
+* multi-repo support with MountTable ([1ab01f6](https://github.com/montanetech/codeix/commit/1ab01f68159ed29e77e0f61f06d4a6f186ea19c2))
+* **scanner:** add MountTable with flock locking ([a70f833](https://github.com/montanetech/codeix/commit/a70f833963689a3c66a68d7601b001fb36f120af))
+
+
+### Performance Improvements
+
+* reduce readlink syscalls in hot paths ([27582e6](https://github.com/montanetech/codeix/commit/27582e6e18322899be23face76dece937d7134a3))
+
 ## [0.1.8](https://github.com/montanetech/codeix/compare/v0.1.7...v0.1.8) (2026-02-06)
 
 
