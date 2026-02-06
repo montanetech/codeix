@@ -17,14 +17,18 @@ use super::db::SearchDb;
 // Parameter structs for each tool
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchSymbolsParams {
-    /// Search query for symbol names
-    pub query: String,
+    /// Search query for symbol names. If omitted, lists all symbols matching the filters.
+    pub query: Option<String>,
     /// Filter by symbol kind (e.g. function, struct, class, method)
     pub kind: Option<String>,
-    /// Filter by file path
+    /// Filter by file path. Supports glob patterns with * (e.g. "src/utils/*.py")
     pub file: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     pub project: Option<String>,
+    /// Maximum number of results to return (default: 100)
+    pub limit: Option<u32>,
+    /// Number of results to skip for pagination (default: 0)
+    pub offset: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -90,8 +94,10 @@ impl CodeIndexServer {
 
 #[tool_router]
 impl CodeIndexServer {
-    /// Search symbols by name using FTS5 full-text search (BM25-ranked).
-    #[tool(description = "Search symbols by name with optional kind/file filters")]
+    /// Search or list symbols. With query: FTS5 search (BM25-ranked). Without query: list all matching filters.
+    #[tool(
+        description = "Search or list symbols. Provide query for full-text search, or omit to list all symbols matching filters. File filter supports glob patterns (e.g. 'src/*.py')"
+    )]
     async fn search_symbols(
         &self,
         Parameters(params): Parameters<SearchSymbolsParams>,
@@ -100,12 +106,16 @@ impl CodeIndexServer {
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+        let limit = params.limit.unwrap_or(100);
+        let offset = params.offset.unwrap_or(0);
         let results = db
             .search_symbols(
-                &params.query,
+                params.query.as_deref(),
                 params.kind.as_deref(),
                 params.file.as_deref(),
                 params.project.as_deref(),
+                limit,
+                offset,
             )
             .map_err(|e| McpError::internal_error(format!("search_symbols failed: {e}"), None))?;
 
