@@ -499,7 +499,7 @@ import java.io.File;";
 
         // Check at least one import is extracted
         let imports: Vec<_> = symbols.iter().filter(|s| s.kind == "import").collect();
-        assert!(imports.len() >= 1);
+        assert!(!imports.is_empty());
 
         // Check if we have any java.util imports
         let has_util = symbols
