@@ -8,3 +8,8 @@ npm/node_modules/
 python/dist/
 python/*.egg-info/
 python/codeix/__pycache__/
+
+# Python common
+__pycache__/
+*.pyc
+*.pyo

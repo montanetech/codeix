@@ -1,0 +1,122 @@
+[
+  {
+    "id": "symbol-search",
+    "category": "symbol",
+    "question": "I want to add async validation to my zod schema. Where is parseAsync implemented and how does it differ from safeParse?",
+    "project": "zod"
+  },
+  {
+    "id": "class-children",
+    "category": "symbol",
+    "question": "In FizzBuzzEnterpriseEdition, find the FizzBuzzEnterpriseEdition class and list all its methods.",
+    "project": "FizzBuzzEnterpriseEdition"
+  },
+  {
+    "id": "imports-trace",
+    "category": "imports",
+    "question": "In tokio, find where 'spawn' is defined and list 3 files that import it.",
+    "project": "tokio"
+  },
+  {
+    "id": "text-search-deprecated",
+    "category": "text",
+    "question": "Find all comments or docstrings mentioning 'deprecated' in Newtonsoft.Json.",
+    "project": "Newtonsoft.Json"
+  },
+  {
+    "id": "text-search-todo",
+    "category": "text",
+    "question": "Find all TODO comments in the flask project.",
+    "project": "flask"
+  },
+  {
+    "id": "symbol-by-name",
+    "category": "symbol",
+    "question": "Find the 'Engine' class in gin. What file is it in and what are its fields/methods?",
+    "project": "gin"
+  },
+  {
+    "id": "crypto-function",
+    "category": "symbol",
+    "question": "Find the crypto_secretbox function in libsodium. What file defines it?",
+    "project": "libsodium"
+  },
+  {
+    "id": "class-hierarchy",
+    "category": "symbol",
+    "question": "I need to add a new divisibility check in FizzBuzzEnterpriseEdition. How does IsEvenlyDivisibleStrategy work and what factory creates it?",
+    "project": "FizzBuzzEnterpriseEdition"
+  },
+  {
+    "id": "entry-point",
+    "category": "discovery",
+    "question": "Find the main entry point of the gin project. What function starts the HTTP server?",
+    "project": "gin"
+  },
+  {
+    "id": "architecture",
+    "category": "discovery",
+    "question": "Describe the module structure of the flask project. What are the main subpackages and what do they do?",
+    "project": "flask"
+  },
+  {
+    "id": "middleware",
+    "category": "discovery",
+    "question": "How does gin implement middleware? Find the middleware chain and explain how requests flow through it.",
+    "project": "gin"
+  },
+  {
+    "id": "error-handling",
+    "category": "discovery",
+    "question": "How does tokio handle errors in async tasks? Find the error propagation mechanism.",
+    "project": "tokio"
+  },
+  {
+    "id": "test-organization",
+    "category": "discovery",
+    "question": "How are tests organized in the faker project? What testing patterns are used?",
+    "project": "faker"
+  },
+  {
+    "id": "content-search",
+    "category": "discovery",
+    "question": "I want to add a custom authentication middleware to gin. How does BasicAuth middleware work and how do I register it with RouterGroup.Use()?",
+    "project": "gin"
+  },
+  {
+    "id": "leveldb-caching",
+    "category": "modification",
+    "question": "I want to increase the LRU cache size in leveldb. Where is NewLRUCache defined and what files would I need to modify to add a new cache eviction policy?",
+    "project": "leveldb"
+  },
+  {
+    "id": "leveldb-compaction-debug",
+    "category": "debugging",
+    "question": "My leveldb database is slow during writes. How does the compaction process work and where should I look to debug compaction issues?",
+    "project": "leveldb"
+  },
+  {
+    "id": "zls-diagnostics",
+    "category": "modification",
+    "question": "I want to add a new diagnostic warning to zls. How does the diagnostics system work and what files handle diagnostic generation?",
+    "project": "zls"
+  },
+  {
+    "id": "zls-completion",
+    "category": "discovery",
+    "question": "How does zls implement code completion? Trace the flow from LSP request to completion results.",
+    "project": "zls"
+  },
+  {
+    "id": "newtonsoft-custom-converter",
+    "category": "modification",
+    "question": "I need to add a custom JSON converter for a DateTime format in Newtonsoft.Json. Where are converters registered and how does the serialization pipeline invoke them?",
+    "project": "Newtonsoft.Json"
+  },
+  {
+    "id": "flask-route-debug",
+    "category": "debugging",
+    "question": "My Flask route is returning 500 errors. How does Flask handle exceptions in routes and where is the error handling pipeline defined?",
+    "project": "flask"
+  }
+]

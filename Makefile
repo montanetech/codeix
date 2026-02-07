@@ -1,5 +1,10 @@
-.PHONY: site site-serve site-clean
+.PHONY: build site site-serve site-clean bench bench-speed bench-quality bench-value
 
+# Build
+build:
+	cargo build --release
+
+# Site
 site: site-prep
 	cd site && zola build
 
@@ -14,3 +19,19 @@ site-prep:
 
 site-clean:
 	rm -rf site/public site/static/schemas site/static/spec site/content/spec/_index.md
+
+# Benchmarks
+bench:
+	@echo "Usage: make bench-speed | bench-quality | bench-value"
+	@echo "  bench-speed    - Quantitative indexing speed benchmark"
+	@echo "  bench-quality  - A/B: prod codeix vs dev codeix"
+	@echo "  bench-value    - A/B: codeix vs raw Claude"
+
+bench-speed: build
+	python -m scripts.bench index-speed
+
+bench-quality: build
+	python -m scripts.bench search-quality
+
+bench-value: build
+	python -m scripts.bench search-value
