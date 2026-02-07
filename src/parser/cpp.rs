@@ -8,6 +8,90 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// C++-specific stopwords (C keywords + C++ keywords, types, etc.)
+const CPP_STOPWORDS: &[&str] = &[
+    // C keywords
+    "goto",
+    "sizeof",
+    "typedef",
+    "union",
+    "extern",
+    "volatile",
+    "register",
+    "auto",
+    "inline",
+    // C++ keywords
+    "virtual",
+    "override",
+    "final",
+    "delete",
+    "template",
+    "typename",
+    "namespace",
+    "using",
+    "noexcept",
+    "constexpr",
+    "mutable",
+    "explicit",
+    "friend",
+    "operator",
+    "nullptr",
+    "dynamic_cast",
+    "static_cast",
+    "reinterpret_cast",
+    "const_cast",
+    // Primitive types
+    "int",
+    "char",
+    "short",
+    "long",
+    "float",
+    "double",
+    "signed",
+    "unsigned",
+    "bool",
+    // STL common
+    "std",
+    "string",
+    "vector",
+    "map",
+    "set",
+    "list",
+    "pair",
+    "unique_ptr",
+    "shared_ptr",
+    "cout",
+    "cin",
+    "endl",
+    "cerr",
+    // Common patterns
+    "argc",
+    "argv",
+    "main",
+    "ret",
+    "len",
+    "ptr",
+    "buf",
+    "iter",
+];
+
+/// Filter C++-specific stopwords from extracted tokens.
+fn filter_cpp_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !CPP_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            // Filter uppercase constants
+            .filter(|tok| !tok.chars().all(|c| c.is_uppercase() || c == '_'))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -149,7 +233,7 @@ fn extract_function(
     }
 
     let line = node_line_range(node);
-    let sig = extract_signature_to_brace(node, source);
+    let _sig = extract_signature_to_brace(node, source);
 
     let kind = if parent_ctx.is_some() {
         "method"
@@ -174,6 +258,10 @@ fn extract_function(
         }
     };
 
+    // Extract tokens from function body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_cpp_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -181,7 +269,7 @@ fn extract_function(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -221,7 +309,7 @@ fn extract_declaration(
             "function_declarator" => {
                 let name = extract_declarator_name(child, source);
                 if !name.is_empty() {
-                    let sig = collapse_whitespace(node_text(node, source).trim());
+                    let _sig = collapse_whitespace(node_text(node, source).trim());
                     let full_name = if let Some(parent) = parent_ctx {
                         format!("{parent}.{name}")
                     } else {
@@ -232,6 +320,7 @@ fn extract_declaration(
                     } else {
                         "function"
                     };
+                    // Declarations don't have bodies
                     push_symbol(
                         symbols,
                         file_path,
@@ -239,7 +328,7 @@ fn extract_declaration(
                         kind,
                         line,
                         parent_ctx,
-                        Some(sig),
+                        None,
                         None,
                         Some(visibility.clone()),
                     );
@@ -728,7 +817,7 @@ static void helper() {
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
-        assert!(add.sig.as_ref().unwrap().contains("int add"));
+        // Token extraction is enabled (may be None if body has no tokens after filtering)
         assert_eq!(add.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "helper");

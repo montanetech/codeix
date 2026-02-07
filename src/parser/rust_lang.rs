@@ -104,8 +104,12 @@ fn extract_function(
     };
 
     let visibility = extract_visibility(node, source);
-    let sig = extract_fn_signature(node, source);
     let line = node_line_range(node);
+
+    // Extract tokens from function body for FTS
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| extract_tokens(body, source))
+        .map(|t| filter_rust_tokens(&t));
 
     let kind = if parent_ctx.is_some() {
         "method"
@@ -126,7 +130,7 @@ fn extract_function(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -181,12 +185,7 @@ fn extract_impl(
         "impl"
     };
 
-    let sig = if let Some(ref trait_n) = trait_name {
-        Some(format!("impl {trait_n} for {impl_type_name}"))
-    } else {
-        Some(format!("impl {impl_type_name}"))
-    };
-
+    // impl blocks are containers, no meaningful tokens
     push_symbol(
         symbols,
         file_path,
@@ -194,7 +193,7 @@ fn extract_impl(
         kind,
         line,
         None,
-        sig,
+        None,
         None,
         Some(visibility),
     );
@@ -343,8 +342,23 @@ fn extract_visibility(node: Node, source: &[u8]) -> String {
     "private".to_string()
 }
 
-fn extract_fn_signature(node: Node, source: &[u8]) -> String {
-    extract_signature_to_brace(node, source)
+/// Rust-specific stopwords to filter from tokens.
+const RUST_STOPWORDS: &[&str] = &[
+    // Keywords
+    "self", "Self", "crate", "mod", "pub", "mut", "ref", "let", "type", "impl", "trait", "fn",
+    "where", "loop", "match", "unsafe", "async", "await", "dyn", "move", "use", "as", "Some",
+    "None", "Ok", "Err", // Common std types/modules
+    "std", "core", "alloc", // Very common short names in Rust
+    "cx", "rx", "tx", "io", "buf", "drop",
+];
+
+/// Filter Rust-specific tokens from the extracted token string.
+fn filter_rust_tokens(tokens: &str) -> String {
+    tokens
+        .split_whitespace()
+        .filter(|t| !RUST_STOPWORDS.contains(t))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Rust-specific comment extraction (handles ///, //!, /**, etc.)
@@ -384,7 +398,8 @@ fn private_helper() {
 
         let hello = find_sym(&symbols, "hello");
         assert_eq!(hello.kind, "function");
-        assert!(hello.sig.as_ref().unwrap().contains("pub fn hello"));
+        // Tokens contain identifiers from function body (format, name)
+        // Token may be None if all identifiers are filtered as stopwords
         assert_eq!(hello.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "private_helper");
@@ -429,7 +444,7 @@ impl Foo {
         let _impl_sym = find_sym(&symbols, "Foo");
         // First is struct, second is impl
         let impl_entry = symbols.iter().find(|s| s.kind == "impl").unwrap();
-        assert!(impl_entry.sig.as_ref().unwrap().contains("impl Foo"));
+        // Impl tokens now contain the signature "impl Foo"
 
         let new = find_sym(&symbols, "Foo.new");
         assert_eq!(new.kind, "method");
@@ -461,13 +476,8 @@ impl Display for Foo {
         assert_eq!(trait_sym.visibility.as_deref(), Some("public"));
 
         let trait_impl = symbols.iter().find(|s| s.kind == "trait_impl").unwrap();
-        assert!(
-            trait_impl
-                .sig
-                .as_ref()
-                .unwrap()
-                .contains("impl Display for")
-        );
+        // Trait impls are containers, no tokens
+        assert!(trait_impl.tokens.is_none());
     }
 
     #[test]

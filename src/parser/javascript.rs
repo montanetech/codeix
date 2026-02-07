@@ -6,6 +6,55 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// JavaScript-specific stopwords (common variable names, keywords, etc.)
+const JS_STOPWORDS: &[&str] = &[
+    "undefined",
+    "null",
+    "console",
+    "window",
+    "document",
+    "exports",
+    "module",
+    "require",
+    "import",
+    "export",
+    "from",
+    "let",
+    "var",
+    "function",
+    "extends",
+    "finally",
+    "async",
+    "await",
+    "yield",
+    "typeof",
+    "instanceof",
+    "delete",
+    "of",
+    "prototype",
+    "constructor",
+    "length",
+    "name",
+    "arguments",
+    "callee",
+    "caller",
+];
+
+/// Filter JavaScript-specific stopwords from extracted tokens.
+fn filter_js_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !JS_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -108,7 +157,7 @@ fn extract_function_decl(
     };
 
     let line = node_line_range(node);
-    let sig = build_function_signature(node, source, &name);
+    let _sig = build_function_signature(node, source, &name);
 
     let is_exported = node
         .parent()
@@ -132,6 +181,10 @@ fn extract_function_decl(
         name
     };
 
+    // Extract tokens from function body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_js_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -139,7 +192,7 @@ fn extract_function_decl(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -172,13 +225,17 @@ fn extract_class(
     };
 
     // Build class signature with extends
-    let sig = build_class_signature(node, source, &name);
+    let _sig = build_class_signature(node, source, &name);
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
         name.clone()
     };
+
+    // Extract tokens from class body (for class-level properties/static blocks)
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_js_tokens(extract_tokens(body, source)));
 
     push_symbol(
         symbols,
@@ -187,7 +244,7 @@ fn extract_class(
         "class",
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -268,7 +325,7 @@ fn extract_method(
     } else {
         format!("{} ", sig_parts.join(" "))
     };
-    let sig = format!("{prefix}{name}{params}");
+    let _sig = format!("{prefix}{name}{params}");
 
     let visibility = if name.starts_with('#') {
         "private".to_string()
@@ -284,6 +341,10 @@ fn extract_method(
         name
     };
 
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_js_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -291,7 +352,7 @@ fn extract_method(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -350,16 +411,15 @@ fn extract_variable_decl(
                     })
                     .unwrap_or(false);
 
-                let (kind, sig) = if is_func {
-                    let sig = build_arrow_fn_signature(&name, value_node.unwrap(), source);
-                    ("function", Some(sig))
+                let kind = if is_func {
+                    "function"
                 } else if is_const
                     && name.chars().all(|c| c.is_uppercase() || c == '_')
                     && name.len() > 1
                 {
-                    ("constant", None)
+                    "constant"
                 } else {
-                    ("variable", None)
+                    "variable"
                 };
 
                 let full_name = if let Some(parent) = parent_ctx {
@@ -368,6 +428,9 @@ fn extract_variable_decl(
                     name
                 };
 
+                // Extract tokens from variable value (for arrow functions etc.)
+                let tokens = value_node.and_then(|v| filter_js_tokens(extract_tokens(v, source)));
+
                 push_symbol(
                     symbols,
                     file_path,
@@ -375,7 +438,7 @@ fn extract_variable_decl(
                     kind,
                     line,
                     parent_ctx,
-                    sig,
+                    tokens,
                     None,
                     Some(visibility.clone()),
                 );
@@ -532,31 +595,6 @@ fn build_function_signature(node: Node, source: &[u8], name: &str) -> String {
     format!("{prefix} {name}{params}")
 }
 
-fn build_arrow_fn_signature(name: &str, value_node: Node, source: &[u8]) -> String {
-    let params = find_child_by_field(value_node, "parameters")
-        .or_else(|| find_child_by_field(value_node, "parameter"))
-        .map(|n| {
-            let text = node_text(n, source);
-            if n.kind() == "identifier" {
-                format!("({text})")
-            } else {
-                text
-            }
-        })
-        .unwrap_or_else(|| "()".to_string());
-
-    let is_async = value_node
-        .child(0)
-        .map(|c| c.kind() == "async")
-        .unwrap_or(false);
-
-    if is_async {
-        format!("async {name}{params}")
-    } else {
-        format!("{name}{params}")
-    }
-}
-
 fn build_class_signature(node: Node, source: &[u8], name: &str) -> String {
     // Check for extends clause
     let extends = find_child_by_field(node, "heritage")
@@ -604,14 +642,14 @@ function* generator() {
 
         let hello = find_sym(&symbols, "hello");
         assert_eq!(hello.kind, "function");
-        assert!(hello.sig.as_ref().unwrap().contains("function hello"));
+        // Token extraction is enabled (may be None if body has no tokens after filtering)
         assert_eq!(hello.visibility.as_deref(), Some("private"));
 
         let fetch = find_sym(&symbols, "fetchData");
-        assert!(fetch.sig.as_ref().unwrap().contains("async"));
+        assert_eq!(fetch.kind, "function");
 
         let generator = find_sym(&symbols, "generator");
-        assert!(generator.sig.as_ref().unwrap().contains("function*"));
+        assert_eq!(generator.kind, "function");
     }
 
     #[test]
@@ -644,11 +682,10 @@ function* generator() {
         assert_eq!(greet.parent.as_deref(), Some("Person"));
 
         let create = find_sym(&symbols, "Person.create");
-        assert!(create.sig.as_ref().unwrap().contains("static"));
+        assert_eq!(create.kind, "method");
 
         let getter = find_sym(&symbols, "Person.fullName");
         assert_eq!(getter.kind, "property");
-        assert!(getter.sig.as_ref().unwrap().contains("get"));
     }
 
     #[test]
@@ -674,10 +711,9 @@ const asyncFn = async (x) => x * 2;";
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
-        assert!(add.sig.as_ref().unwrap().contains("add"));
 
         let async_fn = find_sym(&symbols, "asyncFn");
-        assert!(async_fn.sig.as_ref().unwrap().contains("async"));
+        assert_eq!(async_fn.kind, "function");
     }
 
     #[test]

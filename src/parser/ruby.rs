@@ -6,6 +6,92 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// Ruby-specific stopwords (keywords, common patterns)
+const RUBY_STOPWORDS: &[&str] = &[
+    // Keywords
+    "def",
+    "end",
+    "module",
+    "elsif",
+    "unless",
+    "when",
+    "until",
+    "begin",
+    "rescue",
+    "ensure",
+    "raise",
+    "yield",
+    "next",
+    "redo",
+    "retry",
+    "self",
+    "nil",
+    "and",
+    "or",
+    "not",
+    "then",
+    "alias",
+    "defined",
+    "undef",
+    // Common patterns
+    "attr",
+    "attr_reader",
+    "attr_writer",
+    "attr_accessor",
+    "include",
+    "extend",
+    "require",
+    "require_relative",
+    "initialize",
+    "puts",
+    "print",
+    "gets",
+    "p",
+    // Common variable patterns
+    "args",
+    "opts",
+    "options",
+    "block",
+    "proc",
+    "lambda",
+    // Very common methods (too generic)
+    "each",
+    "map",
+    "select",
+    "reject",
+    "find",
+    "first",
+    "last",
+    "length",
+    "size",
+    "empty",
+    "to_s",
+    "to_i",
+    "to_a",
+    "to_h",
+    "join",
+    "split",
+    "fetch",
+    "sample",
+];
+
+/// Filter Ruby-specific stopwords from extracted tokens.
+fn filter_ruby_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !RUBY_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            // Filter uppercase constants (ALL_CAPS)
+            .filter(|tok| !tok.chars().all(|c| c.is_uppercase() || c == '_'))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -106,7 +192,7 @@ fn extract_method(
         .map(|n| node_text(n, source))
         .unwrap_or_default();
 
-    let sig = format!("def {name}{params}");
+    let _sig = format!("def {name}{params}");
 
     let kind = if parent_ctx.is_some() {
         "method"
@@ -120,6 +206,10 @@ fn extract_method(
         name.clone()
     };
 
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ruby_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -127,7 +217,7 @@ fn extract_method(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -179,13 +269,17 @@ fn extract_singleton_method(
         .map(|n| node_text(n, source))
         .unwrap_or_default();
 
-    let sig = format!("def self.{name}{params}");
+    let _sig = format!("def self.{name}{params}");
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
         name.clone()
     };
+
+    // Extract tokens from singleton method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ruby_tokens(extract_tokens(body, source)));
 
     push_symbol(
         symbols,
@@ -194,7 +288,7 @@ fn extract_singleton_method(
         "method",
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some("public".to_string()),
     );
@@ -247,13 +341,17 @@ fn extract_class(
         .map(|n| format!(" < {}", node_text(n, source)))
         .unwrap_or_default();
 
-    let sig = format!("class {name}{superclass}");
+    let _sig = format!("class {name}{superclass}");
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
         name.clone()
     };
+
+    // Extract tokens from class body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ruby_tokens(extract_tokens(body, source)));
 
     push_symbol(
         symbols,
@@ -262,7 +360,7 @@ fn extract_class(
         "class",
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some("public".to_string()),
     );
@@ -501,7 +599,8 @@ end";
 
         let hello = find_sym(&symbols, "hello");
         assert_eq!(hello.kind, "function");
-        assert!(hello.sig.as_ref().unwrap().contains("def hello"));
+        // Token extraction extracts identifiers from method body
+        // Token may be None if all identifiers are filtered as stopwords
         assert_eq!(hello.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "_private_helper");
@@ -527,14 +626,13 @@ end";
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
-        assert!(person.sig.as_ref().unwrap().contains("class Person"));
 
         let init = find_sym(&symbols, "Person.initialize");
         assert_eq!(init.kind, "method");
         assert_eq!(init.parent.as_deref(), Some("Person"));
 
         let create = find_sym(&symbols, "Person.create");
-        assert!(create.sig.as_ref().unwrap().contains("def self.create"));
+        assert_eq!(create.kind, "method");
     }
 
     #[test]
@@ -628,7 +726,6 @@ end";
 
         let dog = find_sym(&symbols, "Dog");
         assert_eq!(dog.kind, "class");
-        assert!(dog.sig.as_ref().unwrap().contains("< Animal"));
 
         let bark = find_sym(&symbols, "Dog.bark");
         assert_eq!(bark.kind, "method");
@@ -645,7 +742,6 @@ end";
 
         let format = find_sym(&symbols, "Utils.format");
         assert_eq!(format.kind, "method");
-        assert!(format.sig.as_ref().unwrap().contains("def self.format"));
     }
 
     #[test]

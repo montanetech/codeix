@@ -6,6 +6,75 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// Java-specific stopwords (keywords and common patterns)
+const JAVA_STOPWORDS: &[&str] = &[
+    // Keywords
+    "null",
+    "interface",
+    "extends",
+    "implements",
+    "abstract",
+    "final",
+    "finally",
+    "throws",
+    "synchronized",
+    "volatile",
+    "transient",
+    "native",
+    "strictfp",
+    "instanceof",
+    "import",
+    "package",
+    // Primitive types
+    "int",
+    "long",
+    "short",
+    "byte",
+    "float",
+    "double",
+    "boolean",
+    "char",
+    // Common class names (typically imported)
+    "String",
+    "Integer",
+    "Long",
+    "Double",
+    "Float",
+    "Boolean",
+    "Object",
+    "System",
+    "Exception",
+    "RuntimeException",
+    "Override",
+    "Deprecated",
+    "List",
+    "Map",
+    "Set",
+    "ArrayList",
+    "HashMap",
+    "HashSet",
+    // Common variable patterns
+    "args",
+    "main",
+];
+
+/// Filter Java-specific stopwords from extracted tokens.
+fn filter_java_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !JAVA_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            // Also filter out uppercase-only tokens (likely type names)
+            .filter(|tok| !tok.chars().all(|c| c.is_uppercase() || c == '_'))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -139,13 +208,17 @@ fn extract_class(
     let visibility = extract_java_visibility(node, source);
 
     // Build signature
-    let sig = build_class_signature(node, source, &name, kind);
+    let _sig = build_class_signature(node, source, &name, kind);
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
         name.clone()
     };
+
+    // Extract tokens from class body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_java_tokens(extract_tokens(body, source)));
 
     push_symbol(
         symbols,
@@ -154,7 +227,7 @@ fn extract_class(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -190,13 +263,17 @@ fn extract_method(
 
     let line = node_line_range(node);
     let visibility = extract_java_visibility(node, source);
-    let sig = extract_signature_to_brace(node, source);
+    let _sig = extract_signature_to_brace(node, source);
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
         name
     };
+
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_java_tokens(extract_tokens(body, source)));
 
     push_symbol(
         symbols,
@@ -205,7 +282,7 @@ fn extract_method(
         "method",
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -225,13 +302,17 @@ fn extract_constructor(
 
     let line = node_line_range(node);
     let visibility = extract_java_visibility(node, source);
-    let sig = extract_signature_to_brace(node, source);
+    let _sig = extract_signature_to_brace(node, source);
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
         name
     };
+
+    // Extract tokens from constructor body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_java_tokens(extract_tokens(body, source)));
 
     push_symbol(
         symbols,
@@ -240,7 +321,7 @@ fn extract_constructor(
         "constructor",
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -429,7 +510,8 @@ mod tests {
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
         assert_eq!(person.visibility.as_deref(), Some("public"));
-        assert!(person.sig.as_ref().unwrap().contains("class Person"));
+        // Token extraction extracts identifiers from class body
+        // Token may be None if all identifiers are filtered as stopwords
 
         let name = find_sym(&symbols, "Person.name");
         assert_eq!(name.kind, "property");
@@ -511,7 +593,6 @@ mod tests {
 
         let add = find_sym(&symbols, "Calculator.add");
         assert_eq!(add.kind, "method");
-        assert!(add.sig.as_ref().unwrap().contains("int add"));
         assert_eq!(add.visibility.as_deref(), Some("public"));
 
         let divide = find_sym(&symbols, "Calculator.divide");

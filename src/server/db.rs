@@ -47,7 +47,7 @@ impl SearchDb {
                 line_start INTEGER NOT NULL,
                 line_end   INTEGER NOT NULL,
                 parent     TEXT,
-                sig        TEXT,
+                tokens     TEXT,
                 alias      TEXT,
                 visibility TEXT
             );
@@ -89,6 +89,7 @@ impl SearchDb {
                 CREATE VIRTUAL TABLE symbols_fts USING fts5(
                     project,
                     name,
+                    tokens,
                     file,
                     kind,
                     content='symbols',
@@ -134,7 +135,7 @@ impl SearchDb {
         // Insert symbols
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO symbols (project, file, name, kind, line_start, line_end, parent, sig, alias, visibility)
+                "INSERT INTO symbols (project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )?;
             for s in symbols {
@@ -146,7 +147,7 @@ impl SearchDb {
                     s.line[0],
                     s.line[1],
                     s.parent,
-                    s.sig,
+                    s.tokens,
                     s.alias,
                     s.visibility,
                 ])?;
@@ -234,7 +235,7 @@ impl SearchDb {
 
         let mut stmt = self.conn.prepare(
             "SELECT s.project, s.file, s.name, s.kind, s.line_start, s.line_end,
-                    s.parent, s.sig, s.alias, s.visibility
+                    s.parent, s.tokens, s.alias, s.visibility
              FROM symbols_fts f
              JOIN symbols s ON s.rowid = f.rowid
              WHERE symbols_fts MATCH ?1
@@ -250,7 +251,7 @@ impl SearchDb {
                 kind: row.get(3)?,
                 line: [row.get(4)?, row.get(5)?],
                 parent: row.get(6)?,
-                sig: row.get(7)?,
+                tokens: row.get(7)?,
                 alias: row.get(8)?,
                 visibility: row.get(9)?,
             })
@@ -313,7 +314,7 @@ impl SearchDb {
 
         let sql = format!(
             "SELECT project, file, name, kind, line_start, line_end,
-                    parent, sig, alias, visibility
+                    parent, tokens, alias, visibility
              FROM symbols
              {}
              ORDER BY file, line_start
@@ -336,7 +337,7 @@ impl SearchDb {
                 kind: row.get(3)?,
                 line: [row.get(4)?, row.get(5)?],
                 parent: row.get(6)?,
-                sig: row.get(7)?,
+                tokens: row.get(7)?,
                 alias: row.get(8)?,
                 visibility: row.get(9)?,
             })
@@ -441,7 +442,7 @@ impl SearchDb {
     /// Get all symbols in a file, ordered by start line.
     pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
+            "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
              FROM symbols
              WHERE file = ?1
              ORDER BY line_start",
@@ -455,7 +456,7 @@ impl SearchDb {
                 kind: row.get(3)?,
                 line: [row.get(4)?, row.get(5)?],
                 parent: row.get(6)?,
-                sig: row.get(7)?,
+                tokens: row.get(7)?,
                 alias: row.get(8)?,
                 visibility: row.get(9)?,
             })
@@ -471,7 +472,7 @@ impl SearchDb {
     /// Get direct children of a symbol in a file.
     pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
+            "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
              FROM symbols
              WHERE file = ?1 AND parent = ?2
              ORDER BY line_start",
@@ -485,7 +486,7 @@ impl SearchDb {
                 kind: row.get(3)?,
                 line: [row.get(4)?, row.get(5)?],
                 parent: row.get(6)?,
-                sig: row.get(7)?,
+                tokens: row.get(7)?,
                 alias: row.get(8)?,
                 visibility: row.get(9)?,
             })
@@ -501,7 +502,7 @@ impl SearchDb {
     /// Get all imports for a file (symbols with kind "import").
     pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
+            "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
              FROM symbols
              WHERE file = ?1 AND kind = 'import'
              ORDER BY line_start",
@@ -515,7 +516,7 @@ impl SearchDb {
                 kind: row.get(3)?,
                 line: [row.get(4)?, row.get(5)?],
                 parent: row.get(6)?,
-                sig: row.get(7)?,
+                tokens: row.get(7)?,
                 alias: row.get(8)?,
                 visibility: row.get(9)?,
             })
@@ -598,7 +599,7 @@ impl SearchDb {
         // Insert symbols
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO symbols (project, file, name, kind, line_start, line_end, parent, sig, alias, visibility)
+                "INSERT INTO symbols (project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )?;
             for s in symbols {
@@ -610,7 +611,7 @@ impl SearchDb {
                     s.line[0],
                     s.line[1],
                     s.parent,
-                    s.sig,
+                    s.tokens,
                     s.alias,
                     s.visibility,
                 ])?;
@@ -681,7 +682,7 @@ impl SearchDb {
         // Export symbols
         {
             let mut stmt = self.conn.prepare(
-                "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
+                "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
                  FROM symbols
                  ORDER BY project, file, line_start",
             )?;
@@ -693,7 +694,7 @@ impl SearchDb {
                     kind: row.get(3)?,
                     line: [row.get(4)?, row.get(5)?],
                     parent: row.get(6)?,
-                    sig: row.get(7)?,
+                    tokens: row.get(7)?,
                     alias: row.get(8)?,
                     visibility: row.get(9)?,
                 })
@@ -759,7 +760,7 @@ impl SearchDb {
         // Export symbols
         {
             let mut stmt = self.conn.prepare(
-                "SELECT project, file, name, kind, line_start, line_end, parent, sig, alias, visibility
+                "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
                  FROM symbols
                  WHERE project = ?1
                  ORDER BY file, line_start",
@@ -772,7 +773,7 @@ impl SearchDb {
                     kind: row.get(3)?,
                     line: [row.get(4)?, row.get(5)?],
                     parent: row.get(6)?,
-                    sig: row.get(7)?,
+                    tokens: row.get(7)?,
                     alias: row.get(8)?,
                     visibility: row.get(9)?,
                 })

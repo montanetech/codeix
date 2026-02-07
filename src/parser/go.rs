@@ -91,7 +91,11 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
 
     let line = node_line_range(node);
     let visibility = go_visibility(&name);
-    let sig = extract_signature_to_brace(node, source);
+
+    // Extract tokens from function body for FTS
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| extract_tokens(body, source))
+        .map(|t| filter_go_tokens(&t));
 
     push_symbol(
         symbols,
@@ -100,7 +104,7 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
         "function",
         line,
         None,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -130,7 +134,11 @@ fn extract_method(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
 
     let line = node_line_range(node);
     let visibility = go_visibility(&name);
-    let sig = extract_signature_to_brace(node, source);
+
+    // Extract tokens from method body for FTS
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| extract_tokens(body, source))
+        .map(|t| filter_go_tokens(&t));
 
     let full_name = if receiver.is_empty() {
         name
@@ -151,7 +159,7 @@ fn extract_method(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
         "method",
         line,
         parent,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -432,6 +440,57 @@ fn go_visibility(name: &str) -> String {
     }
 }
 
+/// Go-specific stopwords to filter from tokens.
+const GO_STOPWORDS: &[&str] = &[
+    // Keywords and builtins
+    "nil",
+    "iota",
+    "func",
+    "var",
+    "type",
+    "interface",
+    "map",
+    "chan",
+    "range",
+    "defer",
+    "go",
+    "select",
+    "goto",
+    "package",
+    "import",
+    // Common short names
+    "err",
+    "ctx",
+    "ok",
+    "n",
+    "i",
+    "j",
+    "k",
+    // Builtins
+    "make",
+    "len",
+    "cap",
+    "append",
+    "copy",
+    "delete",
+    "close",
+    "panic",
+    "recover",
+    "print",
+    "println",
+    // Test framework
+    "require",
+];
+
+/// Filter Go-specific tokens from the extracted token string.
+fn filter_go_tokens(tokens: &str) -> String {
+    tokens
+        .split_whitespace()
+        .filter(|t| !GO_STOPWORDS.contains(t))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -459,7 +518,8 @@ func privateHelper() {
 
         let hello = find_sym(&symbols, "Hello");
         assert_eq!(hello.kind, "function");
-        assert!(hello.sig.as_ref().unwrap().contains("func Hello"));
+        // Tokens contain identifiers from function body
+        // Token may be None if all identifiers are filtered as stopwords
         assert_eq!(hello.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "privateHelper");
