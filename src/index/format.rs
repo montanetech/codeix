@@ -57,3 +57,22 @@ pub struct TextEntry {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub project: String,
 }
+
+/// One line in `references.jsonl` — a reference to a symbol (call, import, type, etc.).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReferenceEntry {
+    /// File containing this reference
+    pub file: String,
+    /// Symbol being referenced (e.g. "os.path.join", "MyClass", "fetch")
+    pub name: String,
+    /// Kind of reference: "call", "import", "type_annotation", "instantiation", "definition"
+    pub kind: String,
+    /// Line range [start, end] where this reference appears (1-based)
+    pub line: [u32; 2],
+    /// Optional: enclosing symbol where this reference appears (e.g. "MyClass.method")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caller: Option<String>,
+    /// Project path (relative from workspace root, empty for root project)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub project: String,
+}
