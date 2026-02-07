@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use rusqlite::Connection;
 
-use crate::index::format::{FileEntry, SymbolEntry, TextEntry};
+use crate::index::format::{FileEntry, ReferenceEntry, SymbolEntry, TextEntry};
 
 /// An in-memory SQLite database with FTS5 virtual tables for fast text search
 /// over the code index.
@@ -64,6 +64,16 @@ impl SearchDb {
                 parent     TEXT
             );
 
+            CREATE TABLE refs (
+                project       TEXT NOT NULL,
+                file          TEXT NOT NULL,
+                name          TEXT NOT NULL,
+                kind          TEXT NOT NULL,
+                line_start    INTEGER NOT NULL,
+                line_end      INTEGER NOT NULL,
+                caller        TEXT
+            );
+
             -- Indexes for exact lookups
             CREATE INDEX idx_symbols_project_file ON symbols(project, file);
             CREATE INDEX idx_symbols_project_file_parent ON symbols(project, file, parent);
@@ -72,6 +82,12 @@ impl SearchDb {
             CREATE INDEX idx_files_project ON files(project);
             CREATE INDEX idx_symbols_project ON symbols(project);
             CREATE INDEX idx_texts_project ON texts(project);
+
+            -- Indexes for reference queries
+            CREATE INDEX idx_refs_project_name ON refs(project, name);
+            CREATE INDEX idx_refs_project_caller ON refs(project, caller);
+            CREATE INDEX idx_refs_project_file ON refs(project, file);
+            CREATE INDEX idx_refs_project_name_kind ON refs(project, name, kind);
             ",
         )
         .context("failed to create database schema")?;
@@ -108,6 +124,16 @@ impl SearchDb {
                     content='texts',
                     content_rowid='rowid'
                 );
+
+                CREATE VIRTUAL TABLE refs_fts USING fts5(
+                    project,
+                    name,
+                    kind,
+                    file,
+                    caller,
+                    content='refs',
+                    content_rowid='rowid'
+                );
                 ",
             )
             .context("failed to create FTS5 tables")?;
@@ -123,6 +149,7 @@ impl SearchDb {
         files: &[FileEntry],
         symbols: &[SymbolEntry],
         texts: &[TextEntry],
+        references: &[ReferenceEntry],
     ) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
 
@@ -179,6 +206,19 @@ impl SearchDb {
             }
         }
 
+        // Insert references
+        {
+            let mut stmt = tx.prepare(
+                "INSERT INTO refs (project, file, name, kind, line_start, line_end, caller)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            )?;
+            for r in references {
+                stmt.execute(rusqlite::params![
+                    project, r.file, r.name, r.kind, r.line[0], r.line[1], r.caller,
+                ])?;
+            }
+        }
+
         // Populate FTS5 indexes from content tables (only when FTS enabled)
         if self.fts_enabled {
             tx.execute_batch(
@@ -186,6 +226,7 @@ impl SearchDb {
                 INSERT INTO files_fts(files_fts) VALUES('rebuild');
                 INSERT INTO symbols_fts(symbols_fts) VALUES('rebuild');
                 INSERT INTO texts_fts(texts_fts) VALUES('rebuild');
+                INSERT INTO refs_fts(refs_fts) VALUES('rebuild');
                 ",
             )?;
         }
@@ -549,6 +590,153 @@ impl SearchDb {
         Ok(results)
     }
 
+    /// Get all references TO a symbol (who calls/uses this symbol).
+    /// Returns references sorted by file, then line.
+    pub fn get_callers(
+        &self,
+        name: &str,
+        kind: Option<&str>,
+        project: Option<&str>,
+    ) -> Result<Vec<ReferenceEntry>> {
+        let mut conditions = vec!["name = ?".to_string()];
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(name.to_string())];
+
+        if let Some(k) = kind {
+            conditions.push("kind = ?".to_string());
+            params.push(Box::new(k.to_string()));
+        }
+        if let Some(p) = project {
+            conditions.push("project = ?".to_string());
+            params.push(Box::new(p.to_string()));
+        }
+
+        let sql = format!(
+            "SELECT project, file, name, kind, line_start, line_end, caller
+             FROM refs
+             WHERE {}
+             ORDER BY file, line_start",
+            conditions.join(" AND ")
+        );
+
+        let mut stmt = self.conn.prepare(&sql)?;
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+
+        let rows = stmt.query_map(rusqlite::params_from_iter(param_refs), |row| {
+            Ok(ReferenceEntry {
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                caller: row.get(6)?,
+            })
+        })?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
+
+    /// Get all references FROM a symbol (what does this symbol call/use).
+    /// Returns references sorted by file, then line.
+    pub fn get_callees(
+        &self,
+        caller: &str,
+        kind: Option<&str>,
+        project: Option<&str>,
+    ) -> Result<Vec<ReferenceEntry>> {
+        let mut conditions = vec!["caller = ?".to_string()];
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(caller.to_string())];
+
+        if let Some(k) = kind {
+            conditions.push("kind = ?".to_string());
+            params.push(Box::new(k.to_string()));
+        }
+        if let Some(p) = project {
+            conditions.push("project = ?".to_string());
+            params.push(Box::new(p.to_string()));
+        }
+
+        let sql = format!(
+            "SELECT project, file, name, kind, line_start, line_end, caller
+             FROM refs
+             WHERE {}
+             ORDER BY file, line_start",
+            conditions.join(" AND ")
+        );
+
+        let mut stmt = self.conn.prepare(&sql)?;
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+
+        let rows = stmt.query_map(rusqlite::params_from_iter(param_refs), |row| {
+            Ok(ReferenceEntry {
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                caller: row.get(6)?,
+            })
+        })?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
+
+    /// Search references by name using FTS5 (BM25-ranked).
+    pub fn search_references(
+        &self,
+        query: &str,
+        kind: Option<&str>,
+        file: Option<&str>,
+        project: Option<&str>,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<ReferenceEntry>> {
+        let mut fts_parts = vec![format!("name : {}", fts5_quote(query))];
+        if let Some(k) = kind {
+            fts_parts.push(format!("kind : {}", fts5_quote(k)));
+        }
+        if let Some(f) = file {
+            fts_parts.push(format!("file : {}", fts5_quote(f)));
+        }
+        if let Some(p) = project {
+            fts_parts.push(format!("project : {}", fts5_quote(p)));
+        }
+        let fts_query = fts_parts.join(" AND ");
+
+        let mut stmt = self.conn.prepare(
+            "SELECT r.project, r.file, r.name, r.kind, r.line_start, r.line_end, r.caller
+             FROM refs_fts f
+             JOIN refs r ON r.rowid = f.rowid
+             WHERE refs_fts MATCH ?1
+             ORDER BY rank
+             LIMIT ?2 OFFSET ?3",
+        )?;
+
+        let rows = stmt.query_map(rusqlite::params![&fts_query, limit, offset], |row| {
+            Ok(ReferenceEntry {
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                caller: row.get(6)?,
+            })
+        })?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
+
     /// Get the hash of a file from the DB (for change detection).
     pub fn get_file_hash(&self, project: &str, path: &str) -> Result<Option<String>> {
         let mut stmt = self
@@ -562,7 +750,7 @@ impl SearchDb {
         }
     }
 
-    /// Remove all data for a file (from files, symbols, texts tables).
+    /// Remove all data for a file (from files, symbols, texts, refs tables).
     /// Does not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.
     pub fn remove_file(&self, project: &str, path: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
@@ -579,12 +767,16 @@ impl SearchDb {
             "DELETE FROM texts WHERE project = ?1 AND file = ?2",
             rusqlite::params![project, path],
         )?;
+        tx.execute(
+            "DELETE FROM refs WHERE project = ?1 AND file = ?2",
+            rusqlite::params![project, path],
+        )?;
 
         tx.commit()?;
         Ok(())
     }
 
-    /// Upsert a single file and its symbols/texts.
+    /// Upsert a single file and its symbols/texts/references.
     /// Removes old data for this path first, then inserts new data.
     /// Does not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.
     pub fn upsert_file(
@@ -593,6 +785,7 @@ impl SearchDb {
         file: &FileEntry,
         symbols: &[SymbolEntry],
         texts: &[TextEntry],
+        references: &[ReferenceEntry],
     ) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
 
@@ -607,6 +800,10 @@ impl SearchDb {
         )?;
         tx.execute(
             "DELETE FROM texts WHERE project = ?1 AND file = ?2",
+            rusqlite::params![project, &file.path],
+        )?;
+        tx.execute(
+            "DELETE FROM refs WHERE project = ?1 AND file = ?2",
             rusqlite::params![project, &file.path],
         )?;
 
@@ -651,6 +848,19 @@ impl SearchDb {
             }
         }
 
+        // Insert references
+        {
+            let mut stmt = tx.prepare(
+                "INSERT INTO refs (project, file, name, kind, line_start, line_end, caller)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            )?;
+            for r in references {
+                stmt.execute(rusqlite::params![
+                    project, r.file, r.name, r.kind, r.line[0], r.line[1], r.caller,
+                ])?;
+            }
+        }
+
         tx.commit()?;
         Ok(())
     }
@@ -667,16 +877,26 @@ impl SearchDb {
             INSERT INTO files_fts(files_fts) VALUES('rebuild');
             INSERT INTO symbols_fts(symbols_fts) VALUES('rebuild');
             INSERT INTO texts_fts(texts_fts) VALUES('rebuild');
+            INSERT INTO refs_fts(refs_fts) VALUES('rebuild');
             ",
         )?;
         Ok(())
     }
 
     /// Export all data from DB back to vecs (for flushing to disk).
-    pub fn export_all(&self) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)> {
+    #[allow(clippy::type_complexity)]
+    pub fn export_all(
+        &self,
+    ) -> Result<(
+        Vec<FileEntry>,
+        Vec<SymbolEntry>,
+        Vec<TextEntry>,
+        Vec<ReferenceEntry>,
+    )> {
         let mut files = Vec::new();
         let mut symbols = Vec::new();
         let mut texts = Vec::new();
+        let mut references = Vec::new();
 
         // Export files
         {
@@ -746,17 +966,46 @@ impl SearchDb {
             }
         }
 
-        Ok((files, symbols, texts))
+        // Export references
+        {
+            let mut stmt = self.conn.prepare(
+                "SELECT project, file, name, kind, line_start, line_end, caller
+                 FROM refs
+                 ORDER BY project, file, line_start",
+            )?;
+            let rows = stmt.query_map([], |row| {
+                Ok(ReferenceEntry {
+                    project: row.get(0)?,
+                    file: row.get(1)?,
+                    name: row.get(2)?,
+                    kind: row.get(3)?,
+                    line: [row.get(4)?, row.get(5)?],
+                    caller: row.get(6)?,
+                })
+            })?;
+            for row in rows {
+                references.push(row?);
+            }
+        }
+
+        Ok((files, symbols, texts, references))
     }
 
     /// Export data for a specific project from DB back to vecs (for flushing to disk).
+    #[allow(clippy::type_complexity)]
     pub fn export_for_project(
         &self,
         project: &str,
-    ) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)> {
+    ) -> Result<(
+        Vec<FileEntry>,
+        Vec<SymbolEntry>,
+        Vec<TextEntry>,
+        Vec<ReferenceEntry>,
+    )> {
         let mut files = Vec::new();
         let mut symbols = Vec::new();
         let mut texts = Vec::new();
+        let mut references = Vec::new();
 
         // Export files
         {
@@ -828,7 +1077,30 @@ impl SearchDb {
             }
         }
 
-        Ok((files, symbols, texts))
+        // Export references
+        {
+            let mut stmt = self.conn.prepare(
+                "SELECT project, file, name, kind, line_start, line_end, caller
+                 FROM refs
+                 WHERE project = ?1
+                 ORDER BY file, line_start",
+            )?;
+            let rows = stmt.query_map([project], |row| {
+                Ok(ReferenceEntry {
+                    project: row.get(0)?,
+                    file: row.get(1)?,
+                    name: row.get(2)?,
+                    kind: row.get(3)?,
+                    line: [row.get(4)?, row.get(5)?],
+                    caller: row.get(6)?,
+                })
+            })?;
+            for row in rows {
+                references.push(row?);
+            }
+        }
+
+        Ok((files, symbols, texts, references))
     }
 
     /// List all unique projects in the database.
