@@ -514,7 +514,7 @@ func Hello(name string) string {
 func privateHelper() {
     println(\"private\")
 }";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let hello = find_sym(&symbols, "Hello");
         assert_eq!(hello.kind, "function");
@@ -539,7 +539,7 @@ func (p *Person) Greet() string {
 }
 
 func (p Person) privateMethod() {}";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "struct");
@@ -562,7 +562,7 @@ type Point struct {
     Y int
     z int
 }";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let point = find_sym(&symbols, "Point");
         assert_eq!(point.kind, "struct");
@@ -583,7 +583,7 @@ type Reader interface {
     Read() (int, error)
     close()
 }";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let reader = find_sym(&symbols, "Reader");
         assert_eq!(reader.kind, "interface");
@@ -603,7 +603,7 @@ var privateVar = 200
 
 const MaxSize = 1000
 const minSize = 10";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let global = find_sym(&symbols, "GlobalVar");
         assert_eq!(global.kind, "variable");
@@ -626,7 +626,7 @@ import (
     \"os\"
     io \"io/ioutil\"
 )";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let fmt = symbols.iter().find(|s| s.name == "fmt").unwrap();
         assert_eq!(fmt.kind, "import");
@@ -644,7 +644,7 @@ import (
 
 type UserID int
 type Handler func(string) error";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let user_id = find_sym(&symbols, "UserID");
         assert_eq!(user_id.kind, "type_alias");
@@ -658,7 +658,7 @@ type Handler func(string) error";
         let source = b"package mypackage
 
 func Foo() {}";
-        let (symbols, _texts) = parse_file(source, "go", "test.go").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "go", "test.go").unwrap();
 
         let pkg = symbols.iter().find(|s| s.kind == "module").unwrap();
         assert_eq!(pkg.name, "mypackage");
@@ -672,7 +672,7 @@ func Foo() {}";
 func Helper() {}
 
 /* Block comment */";
-        let (_symbols, texts) = parse_file(source, "go", "test.go").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "go", "test.go").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
     }
 }

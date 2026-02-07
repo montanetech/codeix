@@ -916,7 +916,7 @@ mod tests {
 async function fetch(): Promise<Data> {
     return await api.get();
 }";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
         assert_eq!(symbols.len(), 2);
 
         let greet = find_sym(&symbols, "greet");
@@ -938,7 +938,7 @@ async function fetch(): Promise<Data> {
 interface Private {
     data: any;
 }";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
 
         let user = find_sym(&symbols, "User");
         assert_eq!(user.kind, "interface");
@@ -956,7 +956,7 @@ interface Private {
     fn test_ts_type_alias() {
         let source = b"export type Result<T> = Success<T> | Error;
 type ID = string | number;";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
 
         let result = find_sym(&symbols, "Result");
         assert_eq!(result.kind, "type_alias");
@@ -974,7 +974,7 @@ type ID = string | number;";
     Inactive,
     Pending
 }";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
 
         let status = find_sym(&symbols, "Status");
         assert_eq!(status.kind, "enum");
@@ -1003,7 +1003,7 @@ export class Worker extends Base {
         this.doWork();
     }
 }";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
 
         let base = find_sym(&symbols, "Base");
         assert_eq!(base.kind, "class");
@@ -1023,7 +1023,7 @@ export class Worker extends Base {
         let source = b"export namespace Utils {
     export function helper(): void {}
 }";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
 
         let utils = find_sym(&symbols, "Utils");
         assert_eq!(utils.kind, "module");
@@ -1039,7 +1039,7 @@ export class Worker extends Base {
 import { Component, useState } from 'react';
 import * as Utils from './utils';
 import type { User } from './types';";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
 
         let react = symbols.iter().find(|s| s.name == "react").unwrap();
         assert_eq!(react.alias.as_deref(), Some("React"));
@@ -1061,7 +1061,7 @@ import type { User } from './types';";
     private privateMethod(): void {}
     protected protectedMethod(): void {}
 }";
-        let (symbols, _texts) = parse_file(source, "typescript", "test.ts").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "typescript", "test.ts").unwrap();
 
         let public = symbols
             .iter()

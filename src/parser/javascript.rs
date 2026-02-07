@@ -637,7 +637,7 @@ async function fetchData() {
 function* generator() {
     yield 1;
 }";
-        let (symbols, _texts) = parse_file(source, "javascript", "test.js").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
         assert_eq!(symbols.len(), 3);
 
         let hello = find_sym(&symbols, "hello");
@@ -671,7 +671,7 @@ function* generator() {
         return this.name;
     }
 }";
-        let (symbols, _texts) = parse_file(source, "javascript", "test.js").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
@@ -698,7 +698,7 @@ export const API_KEY = 'secret';
 
 const add = (a, b) => a + b;
 const asyncFn = async (x) => x * 2;";
-        let (symbols, _texts) = parse_file(source, "javascript", "test.js").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
 
         let max = find_sym(&symbols, "MAX_SIZE");
         assert_eq!(max.kind, "constant");
@@ -722,7 +722,7 @@ const asyncFn = async (x) => x * 2;";
 import { useState, useEffect } from 'react';
 import * as Utils from './utils';
 import { render as renderDOM } from 'react-dom';";
-        let (symbols, _texts) = parse_file(source, "javascript", "test.js").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
 
         let react = symbols.iter().find(|s| s.name == "react").unwrap();
         assert_eq!(react.kind, "import");
@@ -750,7 +750,7 @@ import { render as renderDOM } from 'react-dom';";
 
     #privateMethod() {}
 }";
-        let (symbols, _texts) = parse_file(source, "javascript", "test.js").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
 
         let public = symbols
             .iter()
@@ -782,7 +782,7 @@ function documented() {}
 function helper() {}
 
 /* Block comment */";
-        let (_symbols, texts) = parse_file(source, "javascript", "test.js").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
         assert!(texts.iter().any(|t| t.kind == "docstring"));
         assert!(texts.iter().any(|t| t.kind == "comment"));
     }

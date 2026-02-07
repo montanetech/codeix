@@ -143,21 +143,28 @@ pub fn on_project_discovery(
     let index_dir = project_root.join(".codeindex");
     if index_dir.is_dir() {
         match read_index(&index_dir) {
-            Ok((manifest, idx_files, idx_symbols, idx_texts)) => {
+            Ok((manifest, idx_files, idx_symbols, idx_texts, idx_refs)) => {
                 let db_guard = db
                     .lock()
                     .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
                 db_guard
-                    .load(&project_str, &idx_files, &idx_symbols, &idx_texts)
+                    .load(
+                        &project_str,
+                        &idx_files,
+                        &idx_symbols,
+                        &idx_texts,
+                        &idx_refs,
+                    )
                     .with_context(|| format!("failed to load index for '{}'", project_name))?;
                 drop(db_guard);
 
                 tracing::info!(
-                    "loaded '{}' from .codeindex/: {} files, {} symbols, {} texts",
+                    "loaded '{}' from .codeindex/: {} files, {} symbols, {} texts, {} refs",
                     manifest.name,
                     idx_files.len(),
                     idx_symbols.len(),
-                    idx_texts.len()
+                    idx_texts.len(),
+                    idx_refs.len()
                 );
 
                 // Still need to discover subprojects (they might not be in .codeindex/)
@@ -544,15 +551,17 @@ pub fn process_file_change(
 
     let mut symbols = Vec::new();
     let mut texts = Vec::new();
+    let mut references = Vec::new();
     let mut title = None;
     let mut description = None;
 
-    // Parse source files for symbols and texts
+    // Parse source files for symbols, texts, and references
     if let Some(ref lang_name) = lang {
         match parse_file(&content, lang_name, rel_path) {
-            Ok((file_symbols, file_texts)) => {
+            Ok((file_symbols, file_texts, file_refs)) => {
                 symbols = file_symbols;
                 texts = file_texts;
+                references = file_refs;
             }
             Err(e) => {
                 tracing::warn!("failed to parse {}: {}", rel_path, e);
@@ -579,7 +588,7 @@ pub fn process_file_change(
     let db_guard = db
         .lock()
         .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    db_guard.upsert_file(project, &file_entry, &symbols, &texts)?;
+    db_guard.upsert_file(project, &file_entry, &symbols, &texts, &references)?;
 
     Ok(())
 }
@@ -626,7 +635,8 @@ pub fn flush_mount_to_disk(
     let db_guard = db
         .lock()
         .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    let (mut files, mut symbols, mut texts) = db_guard.export_for_project(&project_str)?;
+    let (mut files, mut symbols, mut texts, mut refs) =
+        db_guard.export_for_project(&project_str)?;
     drop(db_guard);
 
     // Clear project field for disk export - the .codeindex/ location implies the project
@@ -638,6 +648,9 @@ pub fn flush_mount_to_disk(
     }
     for t in &mut texts {
         t.project = String::new();
+    }
+    for r in &mut refs {
+        r.project = String::new();
     }
 
     if files.is_empty() {
@@ -668,14 +681,15 @@ pub fn flush_mount_to_disk(
     };
 
     let output_dir = mount_root.join(".codeindex");
-    write_index(&output_dir, &manifest, &files, &symbols, &texts)?;
+    write_index(&output_dir, &manifest, &files, &symbols, &texts, &refs)?;
 
     tracing::debug!(
-        "flushed index to disk for {}: {} files, {} symbols, {} texts",
+        "flushed index to disk for {}: {} files, {} symbols, {} texts, {} refs",
         mount_root.display(),
         files.len(),
         symbols.len(),
-        texts.len()
+        texts.len(),
+        refs.len()
     );
 
     Ok(())
@@ -687,7 +701,7 @@ pub fn flush_index_to_disk(root: &Path, db: &Arc<Mutex<SearchDb>>) -> Result<()>
     let db_guard = db
         .lock()
         .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    let (files, symbols, texts) = db_guard.export_all()?;
+    let (files, symbols, texts, refs) = db_guard.export_all()?;
     drop(db_guard);
 
     // Collect languages
@@ -713,13 +727,14 @@ pub fn flush_index_to_disk(root: &Path, db: &Arc<Mutex<SearchDb>>) -> Result<()>
     };
 
     let output_dir = root.join(".codeindex");
-    write_index(&output_dir, &manifest, &files, &symbols, &texts)?;
+    write_index(&output_dir, &manifest, &files, &symbols, &texts, &refs)?;
 
     tracing::debug!(
-        "flushed index to disk: {} files, {} symbols, {} texts",
+        "flushed index to disk: {} files, {} symbols, {} texts, {} refs",
         files.len(),
         symbols.len(),
-        texts.len()
+        texts.len(),
+        refs.len()
     );
 
     Ok(())

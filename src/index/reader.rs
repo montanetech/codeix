@@ -4,7 +4,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use super::format::{FileEntry, IndexManifest, SymbolEntry, TextEntry};
+use super::format::{FileEntry, IndexManifest, ReferenceEntry, SymbolEntry, TextEntry};
 
 /// Convenience alias for the tuple returned by `read_index`.
 pub type IndexData = (
@@ -12,10 +12,11 @@ pub type IndexData = (
     Vec<FileEntry>,
     Vec<SymbolEntry>,
     Vec<TextEntry>,
+    Vec<ReferenceEntry>,
 );
 
 /// Read an existing `.codeindex/` directory from disk.
-/// Returns the manifest, files, symbols, and texts.
+/// Returns the manifest, files, symbols, texts, and references.
 pub fn read_index(path: &Path) -> Result<IndexData> {
     let manifest: IndexManifest = {
         let data =
@@ -30,7 +31,10 @@ pub fn read_index(path: &Path) -> Result<IndexData> {
 
     let texts = read_jsonl(&path.join("texts.jsonl")).context("failed to read texts.jsonl")?;
 
-    Ok((manifest, files, symbols, texts))
+    // References are optional for backward compatibility with older indexes
+    let references = read_jsonl(&path.join("references.jsonl")).unwrap_or_else(|_| Vec::new());
+
+    Ok((manifest, files, symbols, texts, references))
 }
 
 /// Read a JSONL file into a Vec of deserialized items.

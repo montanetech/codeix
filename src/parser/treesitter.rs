@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tree_sitter::{Parser, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::languages::get_language;
 use crate::parser::sfc;
@@ -9,12 +9,12 @@ use crate::parser::sfc;
 /// Maximum recursion depth for AST traversal to prevent stack overflow on deeply nested code.
 pub const MAX_DEPTH: usize = 150;
 
-/// Parse a single file using tree-sitter and extract symbols and text blocks.
+/// Parse a single file using tree-sitter and extract symbols, text blocks, and references.
 pub fn parse_file(
     source: &[u8],
     language: &str,
     file_path: &str,
-) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)> {
+) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>, Vec<ReferenceEntry>)> {
     // SFC preprocessing: extract script blocks from Vue/Svelte/Astro files
     let sfc_ext = match language {
         "html" => Some("html"),
@@ -31,7 +31,8 @@ pub fn parse_file(
     // Markdown uses a custom two-pass parser (tree-sitter-md with MarkdownParser)
     #[cfg(feature = "lang-markdown")]
     if language == "markdown" {
-        return crate::parser::markdown::parse_and_extract(source, file_path);
+        let (symbols, texts) = crate::parser::markdown::parse_and_extract(source, file_path)?;
+        return Ok((symbols, texts, Vec::new()));
     }
 
     let lang = get_language(language)?;
@@ -44,6 +45,7 @@ pub fn parse_file(
 
     let mut symbols = Vec::new();
     let mut texts = Vec::new();
+    let mut references = Vec::new();
 
     match language {
         #[cfg(feature = "lang-rust")]
@@ -52,9 +54,14 @@ pub fn parse_file(
         }
 
         #[cfg(feature = "lang-python")]
-        "python" => {
-            crate::parser::python::extract(&tree, source, file_path, &mut symbols, &mut texts)
-        }
+        "python" => crate::parser::python::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-javascript")]
         "javascript" => {
@@ -95,7 +102,7 @@ pub fn parse_file(
     // Merge consecutive doc comments (/// lines) into single entries
     texts = merge_consecutive_texts(texts);
 
-    Ok((symbols, texts))
+    Ok((symbols, texts, references))
 }
 
 // ---------------------------------------------------------------------------
@@ -192,30 +199,32 @@ fn parse_sfc(
     source: &[u8],
     extension: &str,
     file_path: &str,
-) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)> {
+) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>, Vec<ReferenceEntry>)> {
     let blocks = sfc::extract_script_blocks(source, extension);
 
     if blocks.is_empty() {
-        return Ok((Vec::new(), Vec::new()));
+        return Ok((Vec::new(), Vec::new(), Vec::new()));
     }
 
     let mut all_symbols = Vec::new();
     let mut all_texts = Vec::new();
+    let mut all_refs = Vec::new();
 
     for block in &blocks {
         // Parse each script block with the detected language
-        let (mut symbols, mut texts) = match parse_file(&block.content, block.lang, file_path) {
-            Ok(result) => result,
-            Err(e) => {
-                tracing::warn!(
-                    "failed to parse {} script block in {}: {}",
-                    block.lang,
-                    file_path,
-                    e
-                );
-                continue;
-            }
-        };
+        let (mut symbols, mut texts, mut refs) =
+            match parse_file(&block.content, block.lang, file_path) {
+                Ok(result) => result,
+                Err(e) => {
+                    tracing::warn!(
+                        "failed to parse {} script block in {}: {}",
+                        block.lang,
+                        file_path,
+                        e
+                    );
+                    continue;
+                }
+            };
 
         // Adjust line numbers: add the block's start_line offset (minus 1 because
         // the parser already counts from line 1)
@@ -229,11 +238,16 @@ fn parse_sfc(
                 txt.line[0] += offset;
                 txt.line[1] += offset;
             }
+            for r in &mut refs {
+                r.line[0] += offset;
+                r.line[1] += offset;
+            }
         }
 
         all_symbols.extend(symbols);
         all_texts.extend(texts);
+        all_refs.extend(refs);
     }
 
-    Ok((all_symbols, all_texts))
+    Ok((all_symbols, all_texts, all_refs))
 }

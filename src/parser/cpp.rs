@@ -813,7 +813,7 @@ mod tests {
 static void helper() {
     std::cout << \"helper\";
 }";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
@@ -840,7 +840,7 @@ private:
 protected:
     void helper() {}
 };";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
@@ -865,7 +865,7 @@ protected:
 private:
     void hidden() {}
 };";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let point = find_sym(&symbols, "Point");
         assert_eq!(point.kind, "struct");
@@ -887,7 +887,7 @@ private:
         void run() {}
     };
 }";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let utils = find_sym(&symbols, "utils");
         assert_eq!(utils.kind, "module");
@@ -914,7 +914,7 @@ enum class Status {
     OK,
     ERROR
 };";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let color = find_sym(&symbols, "Color");
         assert_eq!(color.kind, "enum");
@@ -938,7 +938,7 @@ template<typename T>
 T max(T a, T b) {
     return (a > b) ? a : b;
 }";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let container = find_sym(&symbols, "Container");
         assert_eq!(container.kind, "class");
@@ -955,7 +955,7 @@ T max(T a, T b) {
         let source = b"using namespace std;
 using std::string;
 using MyInt = int;";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let ns = symbols
             .iter()
@@ -974,7 +974,7 @@ using MyInt = int;";
     fn test_cpp_includes() {
         let source = b"#include <iostream>
 #include \"myheader.h\"";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         let iostream = symbols.iter().find(|s| s.name == "iostream").unwrap();
         assert_eq!(iostream.kind, "import");
@@ -988,7 +988,7 @@ using MyInt = int;";
         let source = b"namespace MyNamespace {
     void helper() {}
 }";
-        let (symbols, _texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
 
         // Named namespace should be extracted
         let ns = find_sym(&symbols, "MyNamespace");
@@ -1004,7 +1004,7 @@ using MyInt = int;";
         let source = b"/* Block comment */
 // Single line comment
 class Foo {};";
-        let (_symbols, texts) = parse_file(source, "cpp", "test.cpp").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
     }
 }

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use super::format::{FileEntry, IndexManifest, SymbolEntry, TextEntry};
+use super::format::{FileEntry, IndexManifest, ReferenceEntry, SymbolEntry, TextEntry};
 
 /// Write a complete `.codeindex/` directory to disk.
 ///
@@ -17,6 +17,7 @@ pub fn write_index(
     files: &[FileEntry],
     symbols: &[SymbolEntry],
     texts: &[TextEntry],
+    references: &[ReferenceEntry],
 ) -> Result<()> {
     // Create the output directory
     fs::create_dir_all(output_dir)?;
@@ -30,6 +31,7 @@ pub fn write_index(
     write_jsonl(&output_dir.join("files.jsonl"), files)?;
     write_jsonl(&output_dir.join("symbols.jsonl"), symbols)?;
     write_jsonl(&output_dir.join("texts.jsonl"), texts)?;
+    write_jsonl(&output_dir.join("references.jsonl"), references)?;
 
     Ok(())
 }

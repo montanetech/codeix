@@ -810,7 +810,7 @@ mod tests {
 
     private void Helper() {}
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
@@ -837,7 +837,7 @@ mod tests {
     void Run();
     int Calculate(int x);
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let runnable = find_sym(&symbols, "IRunnable");
         assert_eq!(runnable.kind, "interface");
@@ -851,7 +851,7 @@ mod tests {
     public int X;
     public int Y;
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let point = find_sym(&symbols, "Point");
         assert_eq!(point.kind, "struct");
@@ -869,7 +869,7 @@ mod tests {
     Inactive,
     Pending
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let status = find_sym(&symbols, "Status");
         assert_eq!(status.kind, "enum");
@@ -888,7 +888,7 @@ mod tests {
         public void Run() {}
     }
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let utils = find_sym(&symbols, "MyApp.Utils");
         assert_eq!(utils.kind, "module");
@@ -908,7 +908,7 @@ mod tests {
     public string Name { get; set; }
     private int version;
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let name = find_sym(&symbols, "Config.Name");
         assert_eq!(name.kind, "property");
@@ -926,7 +926,7 @@ mod tests {
     public const int MAX_SIZE = 100;
     private static readonly string Version = \"1.0\";
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let max = find_sym(&symbols, "Constants.MAX_SIZE");
         assert_eq!(max.kind, "constant");
@@ -942,7 +942,7 @@ mod tests {
         let source = b"using System;
 using System.Collections.Generic;
 using System.Linq;";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let system = symbols.iter().find(|s| s.name == "System").unwrap();
         assert_eq!(system.kind, "import");
@@ -960,7 +960,7 @@ using System.Linq;";
     #[test]
     fn test_csharp_delegate() {
         let source = b"public delegate void EventHandler(object sender);";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let handler = find_sym(&symbols, "EventHandler");
         assert_eq!(handler.kind, "type_alias");
@@ -976,7 +976,7 @@ using System.Linq;";
     protected void ProtectedMethod() {}
     internal void InternalMethod() {}
 }";
-        let (symbols, _texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
 
         let public = find_sym(&symbols, "Foo.PublicMethod");
         assert_eq!(public.visibility.as_deref(), Some("public"));
@@ -1000,7 +1000,7 @@ public class Documented {}
 
 // Single line
 /* Block comment */";
-        let (_symbols, texts) = parse_file(source, "csharp", "test.cs").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "csharp", "test.cs").unwrap();
         assert!(
             texts
                 .iter()

@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -12,11 +12,13 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -24,6 +26,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -35,18 +38,22 @@ fn walk_node(
 
     match kind {
         "function_definition" => {
-            extract_function(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_function(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return; // handled recursively
         }
         "class_definition" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_class(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return; // handled recursively
         }
         "import_statement" => {
-            extract_import(node, source, file_path, symbols);
+            extract_import(node, source, file_path, symbols, references);
         }
         "import_from_statement" => {
-            extract_import_from(node, source, file_path, symbols);
+            extract_import_from(node, source, file_path, symbols, references);
         }
         "decorated_definition" => {
             // Recurse into the definition inside the decorator
@@ -59,6 +66,7 @@ fn walk_node(
                     parent_ctx,
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
@@ -78,6 +86,9 @@ fn walk_node(
                     _ => {}
                 }
             }
+        }
+        "call" => {
+            extract_call(node, source, file_path, parent_ctx, references);
         }
         "comment" => {
             extract_python_comment(node, source, file_path, parent_ctx, texts);
@@ -100,11 +111,13 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_function(
     node: Node,
     source: &[u8],
@@ -112,6 +125,7 @@ fn extract_function(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -145,7 +159,7 @@ fn extract_function(
     push_symbol(
         symbols,
         file_path,
-        full_name,
+        full_name.clone(),
         kind,
         line,
         parent_ctx,
@@ -154,52 +168,39 @@ fn extract_function(
         Some(visibility),
     );
 
-    // Recurse into function body for nested definitions
+    // Recurse into function body for nested definitions and references
     if let Some(body) = find_child_by_field(node, "body") {
         // Check for docstring as first statement
         let mut cursor = body.walk();
         let mut first = true;
         for child in body.children(&mut cursor) {
-            if first && child.kind() == "expression_statement" {
-                if let Some(str_node) = child.child(0)
-                    && (str_node.kind() == "string" || str_node.kind() == "concatenated_string")
-                {
-                    let ctx_name = if let Some(ctx) = parent_ctx {
-                        format!("{}.{}", ctx, name)
-                    } else {
-                        name.clone()
-                    };
-                    extract_docstring(str_node, source, file_path, Some(&ctx_name), texts);
-                }
+            // Check if first statement is a docstring
+            if first
+                && child.kind() == "expression_statement"
+                && let Some(str_node) = child.child(0)
+                && (str_node.kind() == "string" || str_node.kind() == "concatenated_string")
+            {
+                extract_docstring(str_node, source, file_path, Some(&full_name), texts);
                 first = false;
-                continue;
+                continue; // Skip docstring, don't process as regular code
             }
             first = false;
-            // Don't recurse deeply into function bodies for symbols,
-            // but do recurse for nested classes/functions
-            let ctx_name = if let Some(ctx) = parent_ctx {
-                format!("{}.{}", ctx, name)
-            } else {
-                name.clone()
-            };
-            match child.kind() {
-                "function_definition" | "class_definition" | "decorated_definition" => {
-                    walk_node(
-                        child,
-                        source,
-                        file_path,
-                        Some(&ctx_name),
-                        symbols,
-                        texts,
-                        depth + 1,
-                    );
-                }
-                _ => {}
-            }
+            // Recurse into function body to find calls and nested definitions
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                references,
+                depth + 1,
+            );
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_class(
     node: Node,
     source: &[u8],
@@ -207,6 +208,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -263,13 +265,20 @@ fn extract_class(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
     }
 }
 
-fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_import(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // `import foo, bar` or `import foo as bar`
@@ -281,7 +290,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                 push_symbol(
                     symbols,
                     file_path,
-                    name,
+                    name.clone(),
                     "import",
                     line,
                     None,
@@ -289,6 +298,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                     None,
                     Some("private".to_string()),
                 );
+                // Also record as import reference
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name,
+                    kind: "import".to_string(),
+                    line,
+                    caller: None,
+                    project: String::new(),
+                });
             }
             "aliased_import" => {
                 let name_node = find_child_by_field(child, "name");
@@ -299,7 +317,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                     push_symbol(
                         symbols,
                         file_path,
-                        name,
+                        name.clone(),
                         "import",
                         line,
                         None,
@@ -307,6 +325,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                         alias,
                         Some("private".to_string()),
                     );
+                    // Also record as import reference
+                    references.push(ReferenceEntry {
+                        file: file_path.to_string(),
+                        name,
+                        kind: "import".to_string(),
+                        line,
+                        caller: None,
+                        project: String::new(),
+                    });
                 }
             }
             _ => {}
@@ -314,7 +341,13 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
     }
 }
 
-fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_import_from(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // Get module name: `from X import ...`
@@ -343,7 +376,7 @@ fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut
                 push_symbol(
                     symbols,
                     file_path,
-                    full_import,
+                    full_import.clone(),
                     "import",
                     line,
                     None,
@@ -351,6 +384,15 @@ fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut
                     None,
                     Some("private".to_string()),
                 );
+                // Also record as import reference
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name: full_import,
+                    kind: "import".to_string(),
+                    line,
+                    caller: None,
+                    project: String::new(),
+                });
             }
             "aliased_import" => {
                 let name_node = find_child_by_field(child, "name");
@@ -366,7 +408,7 @@ fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut
                     push_symbol(
                         symbols,
                         file_path,
-                        full_import,
+                        full_import.clone(),
                         "import",
                         line,
                         None,
@@ -374,6 +416,15 @@ fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut
                         alias,
                         Some("private".to_string()),
                     );
+                    // Also record as import reference
+                    references.push(ReferenceEntry {
+                        file: file_path.to_string(),
+                        name: full_import,
+                        kind: "import".to_string(),
+                        line,
+                        caller: None,
+                        project: String::new(),
+                    });
                 }
             }
             "wildcard_import" => {
@@ -385,7 +436,7 @@ fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut
                 push_symbol(
                     symbols,
                     file_path,
-                    full_import,
+                    full_import.clone(),
                     "import",
                     line,
                     None,
@@ -393,6 +444,15 @@ fn extract_import_from(node: Node, source: &[u8], file_path: &str, symbols: &mut
                     None,
                     Some("private".to_string()),
                 );
+                // Also record as import reference
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name: full_import,
+                    kind: "import".to_string(),
+                    line,
+                    caller: None,
+                    project: String::new(),
+                });
             }
             _ => {}
         }
@@ -445,6 +505,108 @@ fn extract_assignment(
         None,
         Some(visibility),
     );
+}
+
+/// Extract a function call as a reference.
+/// Handles: simple calls (foo()), method calls (obj.method()), chained calls (a.b.c()).
+fn extract_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let line = node_line_range(node);
+
+    // The "function" field contains the callable expression
+    let Some(func) = find_child_by_field(node, "function") else {
+        return;
+    };
+
+    // Extract the name of the called function
+    let name = match func.kind() {
+        "identifier" => {
+            // Simple call: foo()
+            node_text(func, source)
+        }
+        "attribute" => {
+            // Method call: obj.method() or chained: a.b.c()
+            // We capture the full attribute chain
+            node_text(func, source)
+        }
+        _ => {
+            // Complex expression like lambda calls, subscript calls, etc.
+            // Skip these as they're hard to resolve statically
+            return;
+        }
+    };
+
+    // Skip builtins and common patterns that aren't useful references
+    if is_builtin_call(&name) {
+        return;
+    }
+
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Check if a call is to a Python builtin that we want to skip.
+fn is_builtin_call(name: &str) -> bool {
+    // Get the base name (first part for attribute chains)
+    let base = name.split('.').next().unwrap_or(name);
+
+    matches!(
+        base,
+        "print"
+            | "len"
+            | "str"
+            | "int"
+            | "float"
+            | "bool"
+            | "list"
+            | "dict"
+            | "set"
+            | "tuple"
+            | "range"
+            | "enumerate"
+            | "zip"
+            | "map"
+            | "filter"
+            | "sorted"
+            | "reversed"
+            | "any"
+            | "all"
+            | "min"
+            | "max"
+            | "sum"
+            | "abs"
+            | "round"
+            | "type"
+            | "isinstance"
+            | "issubclass"
+            | "hasattr"
+            | "getattr"
+            | "setattr"
+            | "delattr"
+            | "open"
+            | "input"
+            | "repr"
+            | "format"
+            | "id"
+            | "hash"
+            | "iter"
+            | "next"
+            | "super"
+            | "property"
+            | "staticmethod"
+            | "classmethod"
+    )
 }
 
 fn extract_docstring(
@@ -528,7 +690,7 @@ def _private():
 
 async def fetch_data():
     return None";
-        let (symbols, _texts) = parse_file(source, "python", "test.py").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "python", "test.py").unwrap();
         assert_eq!(symbols.len(), 3);
 
         let hello = find_sym(&symbols, "hello");
@@ -558,7 +720,7 @@ async def fetch_data():
 
 class _Private:
     pass";
-        let (symbols, _texts) = parse_file(source, "python", "test.py").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "python", "test.py").unwrap();
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
@@ -585,7 +747,7 @@ class _Private:
 import sys as system
 from pathlib import Path
 from typing import List, Dict as D";
-        let (symbols, _texts) = parse_file(source, "python", "test.py").unwrap();
+        let (symbols, _texts, refs) = parse_file(source, "python", "test.py").unwrap();
 
         let os = find_sym(&symbols, "os");
         assert_eq!(os.kind, "import");
@@ -598,6 +760,14 @@ from typing import List, Dict as D";
 
         let dict = symbols.iter().find(|s| s.name == "typing.Dict").unwrap();
         assert_eq!(dict.alias.as_deref(), Some("D"));
+
+        // Check import references were created
+        assert!(refs.iter().any(|r| r.name == "os" && r.kind == "import"));
+        assert!(refs.iter().any(|r| r.name == "sys" && r.kind == "import"));
+        assert!(
+            refs.iter()
+                .any(|r| r.name == "pathlib.Path" && r.kind == "import")
+        );
     }
 
     #[test]
@@ -608,7 +778,7 @@ debug_mode = True
 class Config:
     def __init__(self):
         self.version = '1.0'";
-        let (symbols, _texts) = parse_file(source, "python", "test.py").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "python", "test.py").unwrap();
 
         let max_size = find_sym(&symbols, "MAX_SIZE");
         assert_eq!(max_size.kind, "constant");
@@ -634,7 +804,7 @@ def __private():
 class Foo:
     def __special__(self):
         pass";
-        let (symbols, _texts) = parse_file(source, "python", "test.py").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "python", "test.py").unwrap();
 
         let public = find_sym(&symbols, "public_fn");
         assert_eq!(public.visibility.as_deref(), Some("public"));
@@ -661,7 +831,37 @@ def foo():
 class Bar:
     \"\"\"Class docstring\"\"\"
     pass";
-        let (_symbols, texts) = parse_file(source, "python", "test.py").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "python", "test.py").unwrap();
         assert!(texts.iter().any(|t| t.kind == "docstring"));
+    }
+
+    #[test]
+    fn test_python_call_references() {
+        let source = b"def caller():
+    result = some_function()
+    obj.method_call()
+    nested.deep.call()
+
+def some_function():
+    pass";
+        let (_symbols, _texts, refs) = parse_file(source, "python", "test.py").unwrap();
+
+        // Check call references were created with caller context
+        let call_refs: Vec<_> = refs.iter().filter(|r| r.kind == "call").collect();
+        assert!(
+            call_refs
+                .iter()
+                .any(|r| r.name == "some_function" && r.caller.as_deref() == Some("caller"))
+        );
+        assert!(
+            call_refs
+                .iter()
+                .any(|r| r.name == "obj.method_call" && r.caller.as_deref() == Some("caller"))
+        );
+        assert!(
+            call_refs
+                .iter()
+                .any(|r| r.name == "nested.deep.call" && r.caller.as_deref() == Some("caller"))
+        );
     }
 }

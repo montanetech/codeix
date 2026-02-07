@@ -70,7 +70,7 @@ pub fn build_index(path: &Path) -> Result<()> {
             let db_guard = db
                 .lock()
                 .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-            let (files, symbols, texts) = db_guard.export_for_project(&project_str)?;
+            let (files, symbols, texts, _refs) = db_guard.export_for_project(&project_str)?;
             drop(db_guard);
 
             let name = root
