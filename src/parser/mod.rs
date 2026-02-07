@@ -1,5 +1,6 @@
 pub mod helpers;
 pub mod languages;
+pub mod metadata;
 pub mod sfc;
 pub mod treesitter;
 
