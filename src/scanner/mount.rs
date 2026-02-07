@@ -157,6 +157,23 @@ impl MountTable {
             .unwrap_or_default()
     }
 
+    /// Get the absolute path for a relative project path.
+    /// Returns None if the project is not mounted.
+    pub fn project_root(&self, relative_path: &str) -> Option<PathBuf> {
+        let abs_path = if relative_path.is_empty() {
+            self.workspace_root.clone()
+        } else {
+            self.workspace_root.join(relative_path)
+        };
+        // Verify the project is actually mounted
+        let canonical = abs_path.canonicalize().ok()?;
+        if self.mounts.contains_key(&canonical) {
+            Some(canonical)
+        } else {
+            None
+        }
+    }
+
     /// Check if a path is already mounted (exact match, not prefix).
     pub fn is_mounted(&self, path: &Path) -> bool {
         self.mounts.contains_key(path)

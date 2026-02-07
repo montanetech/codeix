@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use super::db::SearchDb;
 use super::snippet::SnippetExtractor;
 use crate::index::format::SymbolEntry;
+use crate::scanner::manifest::{self, ProjectMetadata};
 use crate::scanner::mount::MountTable;
 
 // Parameter structs for each tool
@@ -98,6 +99,7 @@ struct SymbolWithSnippet {
 #[derive(Clone)]
 pub struct CodeIndexServer {
     db: Arc<Mutex<SearchDb>>,
+    mount_table: Arc<Mutex<MountTable>>,
     snippet_extractor: SnippetExtractor,
     tool_router: ToolRouter<Self>,
 }
@@ -112,6 +114,7 @@ impl CodeIndexServer {
 
         Self {
             db,
+            mount_table,
             snippet_extractor: SnippetExtractor::new(workspace_root),
             tool_router: Self::tool_router(),
         }
@@ -312,22 +315,69 @@ impl CodeIndexServer {
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    /// List all indexed projects.
-    #[tool(description = "List all indexed projects")]
+    /// List all indexed projects with metadata from package manifests.
+    #[tool(
+        description = "List all indexed projects with metadata extracted from package manifests (package.json, Cargo.toml, pyproject.toml, go.mod, pom.xml, *.gemspec). Returns name, description, and list of manifest files found."
+    )]
     async fn list_projects(&self) -> Result<CallToolResult, McpError> {
         let db = self
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
-        let results = db
+        let project_paths = db
             .list_projects()
             .map_err(|e| McpError::internal_error(format!("list_projects failed: {e}"), None))?;
+        drop(db);
+
+        let mt = self.mount_table.lock().map_err(|e| {
+            McpError::internal_error(format!("mount table lock poisoned: {e}"), None)
+        })?;
+
+        // For each project path, get its root and extract metadata
+        let results: Vec<ProjectInfo> = project_paths
+            .into_iter()
+            .map(|path| {
+                let metadata = match mt.project_root(&path) {
+                    Some(project_root) => manifest::extract_metadata(&project_root),
+                    None => {
+                        // Project in DB but not mounted - use path as name, no manifest files
+                        let name = if path.is_empty() {
+                            mt.workspace_root()
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("root")
+                                .to_string()
+                        } else {
+                            path.split('/').next_back().unwrap_or(&path).to_string()
+                        };
+                        ProjectMetadata {
+                            name,
+                            description: None,
+                            manifest_files: Vec::new(),
+                        }
+                    }
+                };
+                ProjectInfo { path, metadata }
+            })
+            .collect();
+
+        drop(mt);
 
         let json = serde_json::to_string_pretty(&results)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
+}
+
+/// Project info returned by list_projects, combining path with manifest metadata.
+#[derive(Debug, Serialize)]
+struct ProjectInfo {
+    /// Relative path from workspace root (empty string for root project)
+    path: String,
+    /// Metadata extracted from package manifests
+    #[serde(flatten)]
+    metadata: ProjectMetadata,
 }
 
 #[tool_handler]
