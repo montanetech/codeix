@@ -10,6 +10,7 @@ use crate::index::format::{FileEntry, IndexManifest};
 use crate::index::reader::read_index;
 use crate::index::writer::write_index;
 use crate::parser::languages::detect_language;
+use crate::parser::metadata::extract_file_metadata;
 use crate::parser::treesitter::parse_file;
 use crate::scanner::hasher::hash_bytes;
 use crate::scanner::mount::{MountMode, MountTable};
@@ -543,6 +544,8 @@ pub fn process_file_change(
 
     let mut symbols = Vec::new();
     let mut texts = Vec::new();
+    let mut title = None;
+    let mut description = None;
 
     // Parse source files for symbols and texts
     if let Some(ref lang_name) = lang {
@@ -555,6 +558,11 @@ pub fn process_file_change(
                 tracing::warn!("failed to parse {}: {}", rel_path, e);
             }
         }
+
+        // Extract file metadata (title and description)
+        let metadata = extract_file_metadata(&content, lang_name);
+        title = metadata.title;
+        description = metadata.description;
     }
 
     let file_entry = FileEntry {
@@ -563,6 +571,8 @@ pub fn process_file_change(
         hash: new_hash,
         lines: line_count,
         project: project.to_string(),
+        title,
+        description,
     };
 
     // Upsert into database

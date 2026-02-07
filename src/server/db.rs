@@ -31,11 +31,13 @@ impl SearchDb {
         conn.execute_batch(
             "
             CREATE TABLE files (
-                project    TEXT NOT NULL,
-                path    TEXT NOT NULL,
-                lang    TEXT,
-                hash    TEXT NOT NULL,
-                lines   INTEGER NOT NULL,
+                project     TEXT NOT NULL,
+                path        TEXT NOT NULL,
+                lang        TEXT,
+                hash        TEXT NOT NULL,
+                lines       INTEGER NOT NULL,
+                title       TEXT,
+                description TEXT,
                 PRIMARY KEY (project, path)
             );
 
@@ -82,6 +84,8 @@ impl SearchDb {
                     project,
                     path,
                     lang,
+                    title,
+                    description,
                     content='files',
                     content_rowid='rowid'
                 );
@@ -125,10 +129,18 @@ impl SearchDb {
         // Insert files
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO files (project, path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4, ?5)",
+                "INSERT INTO files (project, path, lang, hash, lines, title, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             )?;
             for f in files {
-                stmt.execute(rusqlite::params![project, f.path, f.lang, f.hash, f.lines])?;
+                stmt.execute(rusqlite::params![
+                    project,
+                    f.path,
+                    f.lang,
+                    f.hash,
+                    f.lines,
+                    f.title,
+                    f.description
+                ])?;
             }
         }
 
@@ -397,14 +409,20 @@ impl SearchDb {
         Ok(results)
     }
 
-    /// FTS5 search on file paths, with optional language and project filters.
+    /// FTS5 search on file paths, titles, and descriptions, with optional language and project filters.
     pub fn search_files(
         &self,
         query: &str,
         lang: Option<&str>,
         project: Option<&str>,
     ) -> Result<Vec<FileEntry>> {
-        let mut fts_parts = vec![format!("path : {}", fts5_quote(query))];
+        // Search across path, title, and description fields
+        let mut fts_parts = vec![format!(
+            "(path : {} OR title : {} OR description : {})",
+            fts5_quote(query),
+            fts5_quote(query),
+            fts5_quote(query)
+        )];
         if let Some(l) = lang {
             fts_parts.push(format!("lang : {}", fts5_quote(l)));
         }
@@ -414,7 +432,7 @@ impl SearchDb {
         let fts_query = fts_parts.join(" AND ");
 
         let mut stmt = self.conn.prepare(
-            "SELECT fl.project, fl.path, fl.lang, fl.hash, fl.lines
+            "SELECT fl.project, fl.path, fl.lang, fl.hash, fl.lines, fl.title, fl.description
              FROM files_fts f
              JOIN files fl ON fl.rowid = f.rowid
              WHERE files_fts MATCH ?1
@@ -429,6 +447,8 @@ impl SearchDb {
                 lang: row.get(2)?,
                 hash: row.get(3)?,
                 lines: row.get(4)?,
+                title: row.get(5)?,
+                description: row.get(6)?,
             })
         })?;
 
@@ -592,8 +612,8 @@ impl SearchDb {
 
         // Insert file
         tx.execute(
-            "INSERT INTO files (project, path, lang, hash, lines) VALUES (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![project, file.path, file.lang, file.hash, file.lines],
+            "INSERT INTO files (project, path, lang, hash, lines, title, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![project, file.path, file.lang, file.hash, file.lines, file.title, file.description],
         )?;
 
         // Insert symbols
@@ -637,8 +657,6 @@ impl SearchDb {
 
     /// Rebuild all FTS5 indexes.
     /// Call this after batch upsert/remove operations.
-    /// Rebuild all FTS5 indexes.
-    /// Call this after batch upsert/remove operations.
     /// No-op when FTS is disabled (build mode).
     pub fn rebuild_fts(&self) -> Result<()> {
         if !self.fts_enabled {
@@ -663,7 +681,7 @@ impl SearchDb {
         // Export files
         {
             let mut stmt = self.conn.prepare(
-                "SELECT project, path, lang, hash, lines FROM files ORDER BY project, path",
+                "SELECT project, path, lang, hash, lines, title, description FROM files ORDER BY project, path",
             )?;
             let rows = stmt.query_map([], |row| {
                 Ok(FileEntry {
@@ -672,6 +690,8 @@ impl SearchDb {
                     lang: row.get(2)?,
                     hash: row.get(3)?,
                     lines: row.get(4)?,
+                    title: row.get(5)?,
+                    description: row.get(6)?,
                 })
             })?;
             for row in rows {
@@ -741,7 +761,7 @@ impl SearchDb {
         // Export files
         {
             let mut stmt = self.conn.prepare(
-                "SELECT project, path, lang, hash, lines FROM files WHERE project = ?1 ORDER BY path",
+                "SELECT project, path, lang, hash, lines, title, description FROM files WHERE project = ?1 ORDER BY path",
             )?;
             let rows = stmt.query_map([project], |row| {
                 Ok(FileEntry {
@@ -750,6 +770,8 @@ impl SearchDb {
                     lang: row.get(2)?,
                     hash: row.get(3)?,
                     lines: row.get(4)?,
+                    title: row.get(5)?,
+                    description: row.get(6)?,
                 })
             })?;
             for row in rows {

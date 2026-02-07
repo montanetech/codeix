@@ -18,6 +18,12 @@ pub struct FileEntry {
     pub lines: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub project: String,
+    /// File title extracted from the source (e.g., first heading, module doc).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// File description extracted from the source (e.g., docstring, frontmatter).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// One line in `symbols.jsonl` — a symbol extracted from the AST.
