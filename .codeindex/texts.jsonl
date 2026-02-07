@@ -1,3 +1,21 @@
+{"file":"README.md","kind":"code","line":[5,9],"text":"codeix                 # start MCP server, watch for changes\ncodeix build           # parse source files, write .codeindex\ncodeix serve --no-watch  # serve without file watching\n","parent":"codeix"}
+{"file":"README.md","kind":"code","line":[40,46],"text":".codeindex/\n  index.json        # manifest: version, name, languages\n  files.jsonl       # one line per source file (path, lang, hash, line count)\n  symbols.jsonl     # one line per symbol (functions, classes, imports, with signatures)\n  texts.jsonl       # one line per comment, docstring, string literal\n","parent":"codeix/The `.codeindex` format"}
+{"file":"README.md","kind":"code","line":[51,56],"text":"{\"file\":\"src/main.py\",\"name\":\"os\",\"kind\":\"import\",\"line\":[1,1]}\n{\"file\":\"src/main.py\",\"name\":\"Config\",\"kind\":\"class\",\"line\":[22,45]}\n{\"file\":\"src/main.py\",\"name\":\"Config.__init__\",\"kind\":\"method\",\"line\":[23,30],\"parent\":\"Config\",\"sig\":\"def __init__(self, path: str, debug: bool = False)\"}\n{\"file\":\"src/main.py\",\"name\":\"main\",\"kind\":\"function\",\"line\":[48,60],\"sig\":\"def main(args: list[str]) -> int\"}\n","parent":"codeix/The `.codeindex` format"}
+{"file":"README.md","kind":"code","line":[123,140],"text":"# npm / npx — run without installing\nnpx codeix\n\n# pip / uvx — run without installing\nuvx codeix\n\n# Rust\ncargo install codeix\n\n# Homebrew\nbrew install codeix\n\n# Or build from source\ngit clone https://github.com/montanetech/codeix.git\ncd codeix\ncargo build --release\n","parent":"codeix/Install"}
+{"file":"README.md","kind":"code","line":[146,159],"text":"# Build the index for the current project\ncodeix build\n\n# Build from a specific directory (discovers all git repos below)\ncodeix build ~/projects\n\n# Start MCP server (default command, watches for changes)\ncodeix\n\n# Or explicitly\ncodeix serve\ncodeix serve --no-watch\n","parent":"codeix/Usage"}
+{"file":"README.md","kind":"code","line":[165,173],"text":"{\n  \"mcpServers\": {\n    \"codeix\": {\n      \"command\": \"codeix\"\n    }\n  }\n}\n","parent":"codeix/Usage/MCP client configuration"}
+{"file":"docs/architecture.md","kind":"code","line":[42,48],"text":".codeindex/\n  index.json        # manifest: version, name, metadata\n  files.jsonl       # one line per source file\n  symbols.jsonl     # one line per symbol, sorted by file then line\n  texts.jsonl       # one line per comment/string/docstring\n","parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files"}
+{"file":"docs/architecture.md","kind":"code","line":[51,58],"text":"{\n  \"version\": \"1.0\",\n  \"name\": \"my-project\",\n  \"root\": \".\",\n  \"languages\": [\"python\", \"typescript\"]\n}\n","parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`index.json` — manifest"}
+{"file":"docs/architecture.md","kind":"code","line":[63,66],"text":"{\"path\":\"src/main.py\",\"lang\":\"python\",\"hash\":\"a1b2c3\",\"lines\":142}\n{\"path\":\"src/utils/helpers.py\",\"lang\":\"python\",\"hash\":\"d4e5f6\",\"lines\":87}\n","parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`files.jsonl` — file registry"}
+{"file":"docs/architecture.md","kind":"code","line":[71,77],"text":"{\"file\":\"src/main.py\",\"name\":\"os\",\"kind\":\"import\",\"line\":[1,1]}\n{\"file\":\"src/main.py\",\"name\":\"utils.parse\",\"kind\":\"import\",\"line\":[2,2],\"alias\":\"parse\"}\n{\"file\":\"src/main.py\",\"name\":\"Config\",\"kind\":\"class\",\"line\":[22,45]}\n{\"file\":\"src/main.py\",\"name\":\"Config.__init__\",\"kind\":\"method\",\"line\":[23,30],\"parent\":\"Config\",\"sig\":\"def __init__(self, path: str, debug: bool = False)\"}\n{\"file\":\"src/main.py\",\"name\":\"main\",\"kind\":\"function\",\"line\":[48,60],\"sig\":\"def main(args: list[str]) -> int\"}\n","parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`symbols.jsonl` — symbol index (definitions + imports)"}
+{"file":"docs/architecture.md","kind":"code","line":[86,90],"text":"{\"file\":\"src/main.py\",\"kind\":\"docstring\",\"line\":[15,18],\"text\":\"Validates user credentials against the database.\",\"parent\":\"authenticate\"}\n{\"file\":\"src/main.py\",\"kind\":\"comment\",\"line\":[45,45],\"text\":\"TODO: add rate limiting\"}\n{\"file\":\"src/main.py\",\"kind\":\"string\",\"line\":[22,22],\"text\":\"Invalid credentials for user: %s\"}\n","parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`texts.jsonl` — comments, docstrings, string literals"}
+{"file":"docs/architecture.md","kind":"code","line":[129,134],"text":"server reads package.json → workspaces: [\"packages/*\"]\n  → finds packages/core/.codeindex/\n  → finds packages/ui/.codeindex/\n  → mounts both automatically\n","parent":"Codeindex — Architecture Decisions/ADR-003: Index is self-contained, no dependency declarations"}
+{"file":"docs/architecture.md","kind":"code","line":[137,141],"text":"server reads pyproject.toml → dependencies\n  → checks .venv/lib/.../requests/.codeindex/\n  → if present, loads it\n","parent":"Codeindex — Architecture Decisions/ADR-003: Index is self-contained, no dependency declarations"}
+{"file":"docs/architecture.md","kind":"code","line":[261,269],"text":"$ codeindex serve --watch     # start once, forget about it\n\n# ... edit code ...\n# .codeindex/ updates automatically\n\n$ git add -A                  # .codeindex/ is just another changed file\n$ git commit -m \"feat: ...\"\n","parent":"Codeindex — Architecture Decisions/ADR-007: Index stays on disk via watch mode — committed like a lockfile"}
+{"file":"docs/architecture.md","kind":"code","line":[432,436],"text":"~/myproject/          # has .git/\n  src/\n  .codeindex/         ← built here\n","parent":"Codeindex — Architecture Decisions/ADR-011: Project discovery — `.git/` boundaries"}
+{"file":"docs/architecture.md","kind":"code","line":[439,444],"text":"~/projects/           # no .git/\n  frontend/           # has .git/ → frontend/.codeindex/\n  backend/            # has .git/ → backend/.codeindex/\n  shared-lib/         # has .git/ → shared-lib/.codeindex/\n","parent":"Codeindex — Architecture Decisions/ADR-011: Project discovery — `.git/` boundaries"}
+{"file":"docs/architecture.md","kind":"code","line":[447,451],"text":"~/monorepo/           # has .git/  → monorepo/.codeindex/\n  vendor/libfoo/      # has .git  → vendor/libfoo/.codeindex/\n  vendor/libbar/      # has .git  → vendor/libbar/.codeindex/\n","parent":"Codeindex — Architecture Decisions/ADR-011: Project discovery — `.git/` boundaries"}
+{"file":"docs/architecture.md","kind":"code","line":[495,504],"text":"{\n    \"version\": \"1.0\",\n    \"name\": \"my-nuxt-app\",\n    \"mcp\": {\n      \"nuxt-ui\": { \"command\": \"npx nuxi-mcp\" },\n      \"supabase\": { \"url\": \"https://mcp.supabase.com\" }\n    }\n  }\n  ","parent":"Codeindex — Architecture Decisions/Future Considerations/External API documentation — two-tier model"}
 {"file":"npm/install.js","kind":"string","line":[2,2],"text":"use strict"}
 {"file":"npm/install.js","kind":"comment","line":[4,5],"text":"Postinstall script: downloads the prebuilt codeix binary from GitHub Releases.\nZero dependencies — uses Node.js built-in modules only."}
 {"file":"npm/install.js","kind":"string","line":[18,18],"text":"x86_64-unknown-linux-gnu"}
@@ -122,11 +140,23 @@
 {"file":"scripts/bench/search_value.py","kind":"docstring","line":[26,26],"text":"Run A/B: codeix vs raw Claude. Returns results list.","parent":"run"}
 {"file":"scripts/bench/search_value.py","kind":"docstring","line":[29,34],"text":"Setup binaries in run dir, return (bin_a, bin_b).\n\n        Binaries are named with version embedded for cache key stability:\n        - codeix-{hash} for local dev build\n        - claude (version injected in prompt for B)","parent":"run.setup_run"}
 {"file":"scripts/bench/search_value.py","kind":"docstring","line":[50,50],"text":"Clone repo and build index for A.","parent":"run.setup_a"}
-{"file":"scripts/bench/search_value.py","kind":"docstring","line":[66,70],"text":"Generate commands for A and B.\n\n        Returns (cmd_a, cwd_a, cmd_b, cwd_b).\n        cwd is set to project repo so paths are relative (for cache key stability).","parent":"run.get_commands"}
+{"file":"scripts/bench/search_value.py","kind":"docstring","line":[64,64],"text":"Clone repo for B (raw Claude needs files to read).","parent":"run.setup_b"}
+{"file":"scripts/bench/search_value.py","kind":"docstring","line":[72,76],"text":"Generate commands for A and B.\n\n        Returns (cmd_a, cwd_a, cmd_b, cwd_b).\n        cwd is set to project repo so paths are relative (for cache key stability).","parent":"run.get_commands"}
 {"file":"site/templates/index.html","kind":"string","line":[1256,1256],"text":"0px 0px -40px 0px"}
 {"file":"site/templates/index.html","kind":"comment","line":[1262,1262],"text":"Sticky header: show after scrolling past the hero"}
 {"file":"site/templates/spec.html","kind":"string","line":[471,471],"text":".spec-nav a[href^=\"#\"]"}
 {"file":"site/templates/spec.html","kind":"string","line":[489,489],"text":"-20% 0px -60% 0px"}
+{"file":"spec/codeindex.md","kind":"code","line":[20,26],"text":".codeindex/\n  index.json        # manifest (required)\n  files.jsonl       # file registry (required)\n  symbols.jsonl     # symbol index (required, may be empty)\n  texts.jsonl       # text content index (required, may be empty)\n","parent":"`.codeindex` Format Specification/Directory layout"}
+{"file":"spec/codeindex.md","kind":"code","line":[42,49],"text":"{\n  \"version\": \"1.0\",\n  \"name\": \"my-project\",\n  \"root\": \".\",\n  \"languages\": [\"python\", \"typescript\"]\n}\n","parent":"`.codeindex` Format Specification/`index.json` — manifest"}
+{"file":"spec/codeindex.md","kind":"code","line":[66,70],"text":"{\"path\":\"src/main.py\",\"lang\":\"python\",\"hash\":\"a1b2c3d4e5f6a7b8\",\"lines\":142}\n{\"path\":\"src/utils/helpers.py\",\"lang\":\"python\",\"hash\":\"b2c3d4e5f6a7b8c9\",\"lines\":87}\n{\"path\":\"pytest.ini\",\"lang\":null,\"hash\":\"c3d4e5f6a7b8c9d0\",\"lines\":12}\n","parent":"`.codeindex` Format Specification/`files.jsonl` — file registry"}
+{"file":"spec/codeindex.md","kind":"code","line":[97,103],"text":"{\"file\":\"src/main.py\",\"name\":\"os\",\"kind\":\"import\",\"line\":[1,1]}\n{\"file\":\"src/main.py\",\"name\":\"utils.parse\",\"kind\":\"import\",\"line\":[2,2],\"alias\":\"parse\"}\n{\"file\":\"src/main.py\",\"name\":\"Config\",\"kind\":\"class\",\"line\":[22,45]}\n{\"file\":\"src/main.py\",\"name\":\"Config.__init__\",\"kind\":\"method\",\"line\":[23,30],\"parent\":\"Config\",\"sig\":\"def __init__(self, path: str, debug: bool = False)\"}\n{\"file\":\"src/main.py\",\"name\":\"main\",\"kind\":\"function\",\"line\":[48,60],\"sig\":\"def main(args: list[str]) -> int\"}\n","parent":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index"}
+{"file":"spec/codeindex.md","kind":"code","line":[146,150],"text":"{\"file\":\"src/app.py\",\"name\":\"App\",\"kind\":\"class\",\"line\":[10,50]}\n{\"file\":\"src/app.py\",\"name\":\"App.__init__\",\"kind\":\"method\",\"line\":[11,15],\"parent\":\"App\",\"sig\":\"def __init__(self)\"}\n{\"file\":\"src/app.py\",\"name\":\"App.run\",\"kind\":\"method\",\"line\":[17,50],\"parent\":\"App\",\"sig\":\"def run(self) -> None\"}\n","parent":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index/Nesting"}
+{"file":"spec/codeindex.md","kind":"code","line":[166,170],"text":"{\"file\":\"src/lib.rs\",\"name\":\"Client\",\"kind\":\"struct\",\"line\":[10,50],\"visibility\":\"public\"}\n{\"file\":\"src/lib.rs\",\"name\":\"Client.connect\",\"kind\":\"method\",\"line\":[12,25],\"parent\":\"Client\",\"visibility\":\"public\",\"sig\":\"pub fn connect(&self, url: &str) -> Result<()>\"}\n{\"file\":\"src/lib.rs\",\"name\":\"Client.retry_internal\",\"kind\":\"method\",\"line\":[27,40],\"parent\":\"Client\",\"visibility\":\"private\",\"sig\":\"fn retry_internal(&self, attempts: u32)\"}\n","parent":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index/Visibility"}
+{"file":"spec/codeindex.md","kind":"code","line":[180,184],"text":"{\"file\":\"src/main.py\",\"kind\":\"docstring\",\"line\":[15,18],\"text\":\"Validates user credentials against the database.\",\"parent\":\"authenticate\"}\n{\"file\":\"src/main.py\",\"kind\":\"comment\",\"line\":[45,45],\"text\":\"TODO: add rate limiting\"}\n{\"file\":\"src/main.py\",\"kind\":\"string\",\"line\":[22,22],\"text\":\"Invalid credentials for user: %s\"}\n","parent":"`.codeindex` Format Specification/`texts.jsonl` — text content index"}
+{"file":"spec/codeindex.md","kind":"code","line":[258,264],"text":"my-project/\n  .git/\n  .codeindex/      # committed with the code\n  src/\n  package.json\n","parent":"`.codeindex` Format Specification/Distribution/Git repository (primary)"}
+{"file":"spec/codeindex.md","kind":"code","line":[284,287],"text":"https://example.com/.well-known/codeindex/index.json\nhttps://example.com/.well-known/codeindex/symbols.jsonl\n","parent":"`.codeindex` Format Specification/Distribution/HTTP discovery (future)"}
+{"file":"spec/codeindex.md","kind":"code","line":[292,294],"text":"https://raw.githubusercontent.com/org/repo/main/.codeindex/symbols.jsonl\n","parent":"`.codeindex` Format Specification/Distribution/HTTP discovery (future)"}
+{"file":"spec/codeindex.md","kind":"code","line":[314,318],"text":"{\"file\":\"api/users.py\",\"name\":\"GET /users\",\"kind\":\"endpoint\",\"line\":[15,30],\"sig\":\"GET /users?page=int&limit=int -> UserList\"}\n{\"file\":\"schema.graphql\",\"name\":\"Query.user\",\"kind\":\"query\",\"line\":[5,8],\"sig\":\"user(id: ID!): User\"}\n{\"file\":\"proto/service.proto\",\"name\":\"UserService.GetUser\",\"kind\":\"rpc\",\"line\":[12,14],\"sig\":\"GetUser(GetUserRequest) returns (User)\"}\n","parent":"`.codeindex` Format Specification/Scope and visibility/Remote APIs (future)"}
 {"file":"src/cli/build.rs","kind":"docstring","line":[11,11],"text":"Result type for build_index_to_db: (MountTable, SearchDb)"}
 {"file":"src/cli/build.rs","kind":"docstring","line":[14,15],"text":"Build the index into a database without flushing to disk.\nReturns MountTable + SearchDb for both build (flush to disk) and serve (keep in memory)."}
 {"file":"src/cli/build.rs","kind":"docstring","line":[17,20],"text":"Uses `on_project_discovery` which:\n1. Loads from .codeindex/ if it exists\n2. Otherwise indexes files (stopping at subproject boundaries)\n3. Recursively handles discovered subprojects"}
@@ -420,8 +450,111 @@
 {"file":"src/parser/javascript.rs","kind":"string","line":[740,748],"text":"/**\n * JSDoc comment\n */\nfunction documented() {}\n\n// Single line comment\nfunction helper() {}\n\n/* Block comment */"}
 {"file":"src/parser/languages.rs","kind":"docstring","line":[4,4],"text":"Return the tree-sitter [`Language`] for the given language name."}
 {"file":"src/parser/languages.rs","kind":"docstring","line":[6,6],"text":"Languages are feature-gated — only grammars enabled at compile time are"}
-{"file":"src/parser/languages.rs","kind":"string","line":[43,43],"text":"unsupported language: {name}"}
-{"file":"src/parser/languages.rs","kind":"docstring","line":[47,47],"text":"Detect the language from a file extension."}
+{"file":"src/parser/languages.rs","kind":"comment","line":[43,44],"text":"Markdown uses custom parser (tree-sitter-md) with MarkdownParser,\nbut we still register the block language for consistency"}
+{"file":"src/parser/languages.rs","kind":"string","line":[48,48],"text":"unsupported language: {name}"}
+{"file":"src/parser/languages.rs","kind":"docstring","line":[52,52],"text":"Detect the language from a file extension."}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[1,1],"text":"Markdown symbol and text extraction using tree-sitter-md."}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[3,4],"text":"Headings are extracted as symbols with `kind=\"section\"` and parent relationships\nreflecting the document hierarchy. Fenced code blocks are extracted as text entries."}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[6,8],"text":"tree-sitter-md uses a two-tree architecture:\n- Block tree (`LANGUAGE`): document structure (headings, code blocks, paragraphs)\n- Inline trees (`INLINE_LANGUAGE`): inline content within blocks (text, emphasis, links)"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[17,17],"text":"Parse and extract symbols/texts from markdown using tree-sitter-md."}
+{"file":"src/parser/markdown.rs","kind":"string","line":[25,25],"text":"failed to parse markdown: {}"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[30,30],"text":"Extract from block tree"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[34,34],"text":"Heading stack tracks (level, name) for building parent-child relationships"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[49,49],"text":"Walk the block tree to extract headings and code blocks."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[69,69],"text":"Recurse to children"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[78,78],"text":"Extract ATX-style heading (# heading)."}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[109,109],"text":"Extract Setext-style heading (underlined with === or ---)."}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[140,140],"text":"Extract fenced code block as text entry."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[148,148],"text":"Try to find code_fence_content child first"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[153,153],"text":"For code blocks, we don't filter as aggressively as other text types"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[173,173],"text":"Fallback: extract content between fence markers from raw text"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[194,195],"text":"Extract code content from fenced block raw text.\nStrips the opening and closing fence lines."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[202,202],"text":"Skip first line (opening fence) and last line (closing fence)"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[208,208],"text":"Find closing fence"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[222,222],"text":"Get heading text by extracting from child nodes."}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[224,225],"text":"For ATX headings, we look for `heading_content` or `inline` children.\nFor Setext headings, we look for `paragraph` children."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[231,231],"text":"ATX heading content - may include trailing # which we need to strip"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[236,236],"text":"Setext heading: first paragraph is the heading text"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[245,245],"text":"Fallback: extract from raw text and strip markdown syntax"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[250,251],"text":"Strip optional closing sequence of # from ATX heading.\nPer CommonMark spec, the closing # sequence must be preceded by a space."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[253,253],"text":"Find the last non-# character"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[256,257],"text":"Check if it ends with space followed by #\nThe closing sequence is: optional whitespace, one or more #, optional whitespace"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[260,260],"text":"Check if everything after the last space is just #"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[262,262],"text":"This is an optional closing sequence - strip it"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[270,270],"text":"Strip markdown heading markers (# prefix and underlines)."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[274,274],"text":"ATX: strip leading # and optional trailing #"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[276,276],"text":"Get just the first line (ATX headings are single line)"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[278,278],"text":"Strip leading #"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[280,280],"text":"Strip trailing # (markdown allows optional closing hashes)"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[285,285],"text":"Setext: strip underline (text is on first line)"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[293,293],"text":"Count ATX heading level (number of leading #)."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[295,295],"text":"Look for atx_h1_marker, atx_h2_marker, etc."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[300,300],"text":"Extract level from marker name: atx_h1_marker -> 1"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[309,309],"text":"Fallback: count leading # characters"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[315,315],"text":"Get Setext heading level (1 for ===, 2 for ---)."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[317,317],"text":"Look for setext_h1_underline or setext_h2_underline"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[327,327],"text":"Fallback: check for underline character in last line"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[337,337],"text":"Default to h1"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[340,340],"text":"Compute qualified name and parent for a heading based on the heading stack."}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[342,346],"text":"The stack maintains (level, qualified_name) pairs. When we encounter a heading at level N:\n1. Pop all headings at level >= N (they're no longer ancestors)\n2. The parent is the top of the stack (if any)\n3. Build qualified name as \"parent/name\" (or just \"name\" if no parent)\n4. Push (N, qualified_name) onto the stack"}
+{"file":"src/parser/markdown.rs","kind":"docstring","line":[348,348],"text":"Returns (qualified_name, parent_qualified_name)."}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[354,354],"text":"Pop all headings at same or deeper level"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[363,363],"text":"Parent is the top of the stack (the nearest ancestor heading)"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[366,366],"text":"Build qualified name"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[372,372],"text":"Push current heading onto the stack"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[384,384],"text":"# Top Level\\n\\nSome content.\\n\\n## Sub Section\\n\\nMore content.\\n"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[388,388],"text":"Top Level"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[392,392],"text":"Qualified name includes parent path"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[393,393],"text":"Top Level/Sub Section"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[395,395],"text":"Top Level"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[401,401],"text":"# Chapter 1\\n## Section A\\n### Detail 1\\n### Detail 2\\n## Section B\\n# Chapter 2\\n"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[406,406],"text":"Chapter 1 has no parent"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[407,407],"text":"Chapter 1"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[410,410],"text":"Section A's parent is Chapter 1"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[411,411],"text":"Chapter 1/Section A"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[412,412],"text":"Chapter 1"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[414,414],"text":"Detail 1's parent is Section A (qualified)"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[415,415],"text":"Chapter 1/Section A/Detail 1"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[416,416],"text":"Chapter 1/Section A"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[418,418],"text":"Detail 2's parent is Section A (same level as Detail 1)"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[419,419],"text":"Chapter 1/Section A/Detail 2"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[420,420],"text":"Chapter 1/Section A"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[422,422],"text":"Section B's parent is Chapter 1 (goes back up)"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[423,423],"text":"Chapter 1/Section B"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[424,424],"text":"Chapter 1"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[426,426],"text":"Chapter 2 has no parent (new top-level)"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[427,427],"text":"Chapter 2"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[433,433],"text":"Heading One\\n===========\\n\\nSome text.\\n\\nHeading Two\\n-----------\\n"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[437,437],"text":"Heading One"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[440,440],"text":"Setext with --- is level 2, so parent is level 1"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[441,441],"text":"Heading One/Heading Two"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[442,442],"text":"Heading One"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[447,447],"text":"# Setup\\n\\n```rust\\nfn main() {\\n    println!(\\\"Hello\\\");\\n}\\n```\\n"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[455,455],"text":"fn main"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[461,461],"text":"Main Title\\n==========\\n\\n## ATX Subsection\\n\\nContent here.\\n"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[465,465],"text":"Main Title"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[466,466],"text":"Main Title/ATX Subsection"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[467,467],"text":"Main Title"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[472,473],"text":"Per CommonMark: optional closing sequence is space + one or more # at end of line\nThe \"###\" in the middle is content (followed by space), only the final \" #\" is stripped"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[474,474],"text":"# Heading with trailing ### #\\n"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[478,478],"text":"The middle \"###\" is content, final \" #\" is stripped"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[479,479],"text":"Heading with trailing ###"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[484,484],"text":"When the entire trailing part is the closing sequence"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[485,485],"text":"# Simple heading ##\\n"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[489,489],"text":"Simple heading"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[494,494],"text":"# \\n## Real Heading\\n"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[497,497],"text":"Empty heading should be skipped"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[499,499],"text":"Real Heading"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[504,504],"text":"```python\\nprint('hello')\\n```\\n"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[510,510],"text":"No heading context"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[515,515],"text":"# H1\\n## H2\\n### H3\\n#### H4\\n##### H5\\n###### H6\\n"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[525,525],"text":"Multiple \"Features\" sections under different parents - qualified names disambiguate"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[526,526],"text":"# v1.0\\n## Features\\n## Bug Fixes\\n# v2.0\\n## Features\\n## Bug Fixes\\n"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[532,532],"text":"v1.0/Bug Fixes"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[535,535],"text":"v2.0/Bug Fixes"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[540,540],"text":"Code block under a nested heading should have qualified parent"}
+{"file":"src/parser/markdown.rs","kind":"string","line":[541,541],"text":"# Guide\\n## Installation\\n```bash\\nnpm install\\n```\\n"}
+{"file":"src/parser/markdown.rs","kind":"comment","line":[550,550],"text":"Parent should be the qualified name"}
 {"file":"src/parser/mod.rs","kind":"comment","line":[6,6],"text":"Language-specific extractors"}
 {"file":"src/parser/python.rs","kind":"docstring","line":[1,1],"text":"Python symbol and text extraction."}
 {"file":"src/parser/python.rs","kind":"comment","line":[29,29],"text":"Prevent stack overflow on deeply nested code"}
@@ -573,19 +706,20 @@
 {"file":"src/parser/treesitter.rs","kind":"docstring","line":[9,9],"text":"Maximum recursion depth for AST traversal to prevent stack overflow on deeply nested code."}
 {"file":"src/parser/treesitter.rs","kind":"docstring","line":[12,12],"text":"Parse a single file using tree-sitter and extract symbols and text blocks."}
 {"file":"src/parser/treesitter.rs","kind":"comment","line":[18,18],"text":"SFC preprocessing: extract script blocks from Vue/Svelte/Astro files"}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[37,37],"text":"failed to parse {file_path}"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[84,84],"text":"For unsupported languages, just extract comments and strings"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[89,89],"text":"Merge consecutive doc comments (/// lines) into single entries"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[95,97],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[100,100],"text":"Use iterative traversal with explicit stack to avoid stack overflow"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[138,138],"text":"Push children in reverse order so they're processed in forward order"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[147,149],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[151,151],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[179,181],"text":"---------------------------------------------------------------------------\nSFC (Single File Component) handling\n---------------------------------------------------------------------------"}
-{"file":"src/parser/treesitter.rs","kind":"docstring","line":[183,184],"text":"Parse an SFC file by extracting script blocks and running them through the\nappropriate JS/TS parser, adjusting line numbers back to the original file."}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[200,200],"text":"Parse each script block with the detected language"}
-{"file":"src/parser/treesitter.rs","kind":"string","line":[205,205],"text":"failed to parse {} script block in {}: {}"}
-{"file":"src/parser/treesitter.rs","kind":"comment","line":[214,215],"text":"Adjust line numbers: add the block's start_line offset (minus 1 because\nthe parser already counts from line 1)"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[31,31],"text":"Markdown uses a custom two-pass parser (tree-sitter-md with MarkdownParser)"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[43,43],"text":"failed to parse {file_path}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[90,90],"text":"For unsupported languages, just extract comments and strings"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[95,95],"text":"Merge consecutive doc comments (/// lines) into single entries"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[101,103],"text":"---------------------------------------------------------------------------\nGeneric text extraction (for unsupported languages)\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[106,106],"text":"Use iterative traversal with explicit stack to avoid stack overflow"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[144,144],"text":"Push children in reverse order so they're processed in forward order"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[153,155],"text":"---------------------------------------------------------------------------\nPost-processing: merge consecutive doc comments\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[157,157],"text":"Merge consecutive text entries of the same kind on adjacent lines."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[185,187],"text":"---------------------------------------------------------------------------\nSFC (Single File Component) handling\n---------------------------------------------------------------------------"}
+{"file":"src/parser/treesitter.rs","kind":"docstring","line":[189,190],"text":"Parse an SFC file by extracting script blocks and running them through the\nappropriate JS/TS parser, adjusting line numbers back to the original file."}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[206,206],"text":"Parse each script block with the detected language"}
+{"file":"src/parser/treesitter.rs","kind":"string","line":[211,211],"text":"failed to parse {} script block in {}: {}"}
+{"file":"src/parser/treesitter.rs","kind":"comment","line":[220,221],"text":"Adjust line numbers: add the block's start_line offset (minus 1 because\nthe parser already counts from line 1)"}
 {"file":"src/parser/typescript.rs","kind":"docstring","line":[1,1],"text":"TypeScript symbol and text extraction."}
 {"file":"src/parser/typescript.rs","kind":"docstring","line":[3,5],"text":"TypeScript extends JavaScript with type annotations, interfaces,\nenums, type aliases, and namespaces. We reuse the JS extraction\nfor most constructs and add TS-specific ones."}
 {"file":"src/parser/typescript.rs","kind":"comment","line":[33,33],"text":"Prevent stack overflow on deeply nested code"}
@@ -684,55 +818,60 @@
 {"file":"src/server/db.rs","kind":"docstring","line":[20,21],"text":"Create a new in-memory database without FTS5 (for build mode).\nThis significantly reduces memory usage for large repositories.","parent":"SearchDb"}
 {"file":"src/server/db.rs","kind":"docstring","line":[26,26],"text":"Internal constructor with configurable FTS support.","parent":"SearchDb"}
 {"file":"src/server/db.rs","kind":"docstring","line":[114,114],"text":"Load index data into the database for a specific project.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[184,184],"text":"FTS5 search on symbol names, with optional kind, file, and project filters.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[236,236],"text":"FTS5 search on text content, with optional kind, file, and project filters.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[283,283],"text":"FTS5 search on file paths, with optional language and project filters.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[325,325],"text":"Get all symbols in a file, ordered by start line.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[355,355],"text":"Get direct children of a symbol in a file.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[385,385],"text":"Get all imports for a file (symbols with kind \"import\").","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[415,415],"text":"Get the hash of a file from the DB (for change detection).","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[428,429],"text":"Remove all data for a file (from files, symbols, texts tables).\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[450,452],"text":"Upsert a single file and its symbols/texts.\nRemoves old data for this path first, then inserts new data.\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[521,525],"text":"Rebuild all FTS5 indexes.\nCall this after batch upsert/remove operations.\nRebuild all FTS5 indexes.\nCall this after batch upsert/remove operations.\nNo-op when FTS is disabled (build mode).","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[540,540],"text":"Export all data from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[615,615],"text":"Export data for a specific project from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[695,695],"text":"List all unique repos (projects) in the database.","parent":"SearchDb"}
-{"file":"src/server/db.rs","kind":"docstring","line":[709,710],"text":"Quote a string for use in an FTS5 MATCH expression.\nWraps in double quotes and escapes any internal double quotes."}
+{"file":"src/server/db.rs","kind":"docstring","line":[184,186],"text":"Search or list symbols.\n- With query (no glob in file): FTS5 full-text search on symbol names (BM25-ranked)\n- Without query OR with glob file pattern: List matching symbols (ordered by file, line)","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[188,189],"text":"File filter supports glob patterns with * (e.g. \"src/*.py\").\nNote: When file contains glob patterns, uses SQL GLOB for filtering (case-sensitive).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[212,212],"text":"FTS5 search on symbol names (BM25-ranked).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[266,268],"text":"List symbols matching filters (no FTS, ordered by file and line).\nFile filter supports SQLite GLOB patterns: * matches any sequence, ? matches single char.\nQuery performs substring match on symbol name when provided.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[352,352],"text":"FTS5 search on text content, with optional kind, file, and project filters.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[399,399],"text":"FTS5 search on file paths, with optional language and project filters.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[441,441],"text":"Get all symbols in a file, ordered by start line.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[471,471],"text":"Get direct children of a symbol in a file.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[501,501],"text":"Get all imports for a file (symbols with kind \"import\").","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[531,531],"text":"Get the hash of a file from the DB (for change detection).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[544,545],"text":"Remove all data for a file (from files, symbols, texts tables).\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[566,568],"text":"Upsert a single file and its symbols/texts.\nRemoves old data for this path first, then inserts new data.\nDoes not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[637,641],"text":"Rebuild all FTS5 indexes.\nCall this after batch upsert/remove operations.\nRebuild all FTS5 indexes.\nCall this after batch upsert/remove operations.\nNo-op when FTS is disabled (build mode).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[656,656],"text":"Export all data from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[731,731],"text":"Export data for a specific project from DB back to vecs (for flushing to disk).","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[811,811],"text":"List all unique projects in the database.","parent":"SearchDb"}
+{"file":"src/server/db.rs","kind":"docstring","line":[825,826],"text":"Quote a string for use in an FTS5 MATCH expression.\nWraps in double quotes and escapes any internal double quotes."}
 {"file":"src/server/mcp.rs","kind":"comment","line":[17,17],"text":"Parameter structs for each tool"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[20,20],"text":"Search query for symbol names"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[20,20],"text":"Search query for symbol names. If omitted, lists all symbols matching the filters."}
 {"file":"src/server/mcp.rs","kind":"docstring","line":[22,22],"text":"Filter by symbol kind (e.g. function, struct, class, method)"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[24,24],"text":"Filter by file path"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[24,24],"text":"Filter by file path. Supports glob patterns with * (e.g. \"src/utils/*.py\")"}
 {"file":"src/server/mcp.rs","kind":"docstring","line":[26,26],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[32,32],"text":"Search query for file paths"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[34,34],"text":"Filter by language (e.g. python, rust, javascript)"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[36,36],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[42,42],"text":"Search query for text content"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[44,44],"text":"Filter by text kind (e.g. docstring, comment)"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[46,46],"text":"Filter by file path"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[48,48],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[54,54],"text":"File path to get symbols for"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[60,60],"text":"File path containing the parent symbol"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[62,62],"text":"Name of the parent symbol"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[68,68],"text":"File path to get imports for"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[72,72],"text":"MCP server exposing code-index query tools."}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[74,75],"text":"`SearchDb` wraps a `rusqlite::Connection` which is not `Sync`, so we protect\nit with a `Mutex` to satisfy rmcp's `Send + Sync` requirements."}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[93,93],"text":"Search symbols by name using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[94,94],"text":"Search symbols by name with optional kind/file filters","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[118,118],"text":"Search files by path using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[119,119],"text":"Search files by path with optional language filter","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[142,142],"text":"Search text entries (docstrings, comments) using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[144,144],"text":"Search text entries (docstrings, comments) with optional kind/file filters","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[169,169],"text":"Get all symbols in a file, ordered by line number.","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[170,170],"text":"Get all symbols in a file, ordered by line number","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[189,189],"text":"Get direct children of a symbol (e.g. methods of a class).","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[190,190],"text":"Get direct children of a symbol (e.g. methods of a class)","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[211,211],"text":"Get all import statements for a file.","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[212,212],"text":"Get all import statements for a file","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[231,231],"text":"List all indexed projects.","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"string","line":[232,232],"text":"List all indexed projects","parent":"CodeIndexServer"}
-{"file":"src/server/mcp.rs","kind":"docstring","line":[266,266],"text":"Start the MCP server over stdio with the given search database."}
-{"file":"src/server/mcp.rs","kind":"string","line":[272,272],"text":"MCP serve error: {e}"}
-{"file":"src/server/mcp.rs","kind":"string","line":[276,276],"text":"MCP runtime error: {e}"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[28,28],"text":"Maximum number of results to return (default: 100)"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[30,30],"text":"Number of results to skip for pagination (default: 0)"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[36,36],"text":"Search query for file paths"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[38,38],"text":"Filter by language (e.g. python, rust, javascript)"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[40,40],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[46,46],"text":"Search query for text content"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[48,48],"text":"Filter by text kind (e.g. docstring, comment)"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[50,50],"text":"Filter by file path"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[52,52],"text":"Filter by project (relative path from workspace root, e.g. \"libs/utils\")"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[58,58],"text":"File path to get symbols for"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[64,64],"text":"File path containing the parent symbol"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[66,66],"text":"Name of the parent symbol"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[72,72],"text":"File path to get imports for"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[76,76],"text":"MCP server exposing code-index query tools."}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[78,79],"text":"`SearchDb` wraps a `rusqlite::Connection` which is not `Sync`, so we protect\nit with a `Mutex` to satisfy rmcp's `Send + Sync` requirements."}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[97,97],"text":"Search or list symbols. With query: FTS5 search (BM25-ranked). Without query: list all matching filters.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[99,99],"text":"Search or list symbols. Provide query for full-text search, or omit to list all symbols matching filters. File filter supports glob patterns (e.g. 'src/*.py')","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[128,128],"text":"Search files by path using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[129,129],"text":"Search files by path with optional language filter","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[152,152],"text":"Search text entries (docstrings, comments) using FTS5 full-text search (BM25-ranked).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[154,154],"text":"Search text entries (docstrings, comments) with optional kind/file filters","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[179,179],"text":"Get all symbols in a file, ordered by line number.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[180,180],"text":"Get all symbols in a file, ordered by line number","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[199,199],"text":"Get direct children of a symbol (e.g. methods of a class).","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[200,200],"text":"Get direct children of a symbol (e.g. methods of a class)","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[221,221],"text":"Get all import statements for a file.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[222,222],"text":"Get all import statements for a file","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[241,241],"text":"List all indexed projects.","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"string","line":[242,242],"text":"List all indexed projects","parent":"CodeIndexServer"}
+{"file":"src/server/mcp.rs","kind":"docstring","line":[276,276],"text":"Start the MCP server over stdio with the given search database."}
+{"file":"src/server/mcp.rs","kind":"string","line":[282,282],"text":"MCP serve error: {e}"}
+{"file":"src/server/mcp.rs","kind":"string","line":[286,286],"text":"MCP runtime error: {e}"}
 {"file":"src/watcher/handler.rs","kind":"docstring","line":[22,23],"text":"Start watching the given directory for file changes and trigger\nre-indexing when files are modified."}
 {"file":"src/watcher/handler.rs","kind":"docstring","line":[25,26],"text":"Uses `GitignoreWatcher` for efficient watching that respects `.gitignore` rules.\nRoutes events to the appropriate mount via `MountTable`."}
 {"file":"src/watcher/handler.rs","kind":"string","line":[34,34],"text":"cannot resolve path: {}"}
@@ -871,47 +1010,47 @@
 {"file":"src/watcher/handler.rs","kind":"comment","line":[773,773],"text":"Verify: should have 2 files indexed"}
 {"file":"src/watcher/handler.rs","kind":"comment","line":[777,777],"text":"Root project has empty string"}
 {"file":"src/watcher/handler.rs","kind":"comment","line":[779,779],"text":"Search for the main function"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[787,787],"text":"Search for greet function"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[801,801],"text":"Create root project"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[803,803],"text":"fn app_main() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[805,805],"text":"Create a subproject"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[808,808],"text":"pub fn utility() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[810,810],"text":"Index from root"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[816,816],"text":"Verify: should have 2 projects"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[823,823],"text":"Root project should have app_main (search without filter, check project field)"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[830,830],"text":"Subproject should have utility"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[843,843],"text":"Create root project"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[845,845],"text":"fn root_fn() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[847,847],"text":"Create nested subprojects: root > libs/core > libs/core/nested"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[850,850],"text":"fn core_fn() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[854,854],"text":"fn nested_fn() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[856,856],"text":"Index from root"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[862,862],"text":"Verify: should have 3 projects"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[867,867],"text":"Each function should be in its respective project (search without filter, verify project)"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[890,890],"text":"Create root with a subproject"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[892,892],"text":"fn root_fn() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[896,896],"text":"fn sub_fn() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[904,904],"text":"Verify: sub.rs should NOT appear in root project"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[907,907],"text":"Search without project filter - should find both"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[912,912],"text":"root_fn should appear exactly once"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[913,913],"text":"sub_fn should appear exactly once"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[915,915],"text":"Verify project assignment"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[928,928],"text":"Create root with two subprojects"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[930,930],"text":"fn main() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[934,934],"text":"fn a() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[938,938],"text":"fn b() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[946,946],"text":"Verify mount table has all 3 mounts"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[951,951],"text":"All should be mounted"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[962,962],"text":"Create two projects with same-named function"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[964,964],"text":"fn helper() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[968,968],"text":"fn helper() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[978,978],"text":"Without filter: should find 2 helpers"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[982,982],"text":"One should be root (empty project), one should be sub"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[988,988],"text":"With sub filter: should find 1"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[1001,1001],"text":"Create deeply nested subproject"}
-{"file":"src/watcher/handler.rs","kind":"string","line":[1005,1005],"text":"fn deep_fn() {}\\n"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[1013,1013],"text":"Verify relative path is correct"}
-{"file":"src/watcher/handler.rs","kind":"comment","line":[1019,1019],"text":"Symbol should have correct project"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[789,789],"text":"Search for greet function"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[805,805],"text":"Create root project"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[807,807],"text":"fn app_main() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[809,809],"text":"Create a subproject"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[812,812],"text":"pub fn utility() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[814,814],"text":"Index from root"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[820,820],"text":"Verify: should have 2 projects"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[827,827],"text":"Root project should have app_main (search without filter, check project field)"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[834,834],"text":"Subproject should have utility"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[847,847],"text":"Create root project"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[849,849],"text":"fn root_fn() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[851,851],"text":"Create nested subprojects: root > libs/core > libs/core/nested"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[854,854],"text":"fn core_fn() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[858,858],"text":"fn nested_fn() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[860,860],"text":"Index from root"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[866,866],"text":"Verify: should have 3 projects"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[871,871],"text":"Each function should be in its respective project (search without filter, verify project)"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[901,901],"text":"Create root with a subproject"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[903,903],"text":"fn root_fn() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[907,907],"text":"fn sub_fn() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[915,915],"text":"Verify: sub.rs should NOT appear in root project"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[918,918],"text":"Search without project filter - should find both"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[925,925],"text":"root_fn should appear exactly once"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[926,926],"text":"sub_fn should appear exactly once"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[928,928],"text":"Verify project assignment"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[941,941],"text":"Create root with two subprojects"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[943,943],"text":"fn main() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[947,947],"text":"fn a() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[951,951],"text":"fn b() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[959,959],"text":"Verify mount table has all 3 mounts"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[964,964],"text":"All should be mounted"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[975,975],"text":"Create two projects with same-named function"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[977,977],"text":"fn helper() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[981,981],"text":"fn helper() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[991,991],"text":"Without filter: should find 2 helpers"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[997,997],"text":"One should be root (empty project), one should be sub"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[1003,1003],"text":"With sub filter: should find 1"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[1016,1016],"text":"Create deeply nested subproject"}
+{"file":"src/watcher/handler.rs","kind":"string","line":[1020,1020],"text":"fn deep_fn() {}\\n"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[1028,1028],"text":"Verify relative path is correct"}
+{"file":"src/watcher/handler.rs","kind":"comment","line":[1034,1034],"text":"Symbol should have correct project"}
 {"file":"src/watcher/mod.rs","kind":"docstring","line":[12,13],"text":"A file watcher that respects .gitignore rules.\nUses non-recursive watching on each directory to avoid watching ignored paths."}
 {"file":"src/watcher/mod.rs","kind":"docstring","line":[20,21],"text":"Create a new watcher for the given root directory.\nWalks the tree respecting .gitignore and watches each non-ignored directory.","parent":"GitignoreWatcher"}
 {"file":"src/watcher/mod.rs","kind":"docstring","line":[67,67],"text":"Watch a directory (non-recursive).","parent":"GitignoreWatcher"}

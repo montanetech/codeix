@@ -57,6 +57,7 @@ fs2 = "0.4"
 default = [
     "lang-python", "lang-rust", "lang-javascript", "lang-typescript",
     "lang-go", "lang-java", "lang-c", "lang-cpp", "lang-ruby", "lang-csharp",
+    "lang-markdown",
 ]
 lang-python = ["dep:tree-sitter-python"]
 lang-rust = ["dep:tree-sitter-rust"]
@@ -68,6 +69,7 @@ lang-c = ["dep:tree-sitter-c"]
 lang-cpp = ["dep:tree-sitter-cpp"]
 lang-ruby = ["dep:tree-sitter-ruby"]
 lang-csharp = ["dep:tree-sitter-c-sharp"]
+lang-markdown = ["dep:tree-sitter-md"]
 
 [dependencies.tree-sitter-python]
 version = "0.25"
@@ -107,6 +109,11 @@ optional = true
 
 [dependencies.tree-sitter-c-sharp]
 version = "0.23"
+optional = true
+
+[dependencies.tree-sitter-md]
+version = "0.5"
+features = ["parser"]
 optional = true
 
 [dev-dependencies]

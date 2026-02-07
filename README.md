@@ -97,6 +97,13 @@ Tree-sitter grammars, feature-gated at compile time:
 | C++ | `lang-cpp` | yes | `.cpp` `.cc` `.cxx` `.hpp` `.hxx` |
 | Ruby | `lang-ruby` | yes | `.rb` `.rake` `.gemspec` |
 | C# | `lang-csharp` | yes | `.cs` |
+| Markdown | `lang-markdown` | yes | `.md` `.markdown` |
+
+### Markdown support
+
+Markdown files are parsed for **headings** (both ATX `#` and Setext underline styles) which are indexed as `section` symbols with hierarchical parent-child relationships — enabling TOC extraction and document structure navigation.
+
+Fenced code blocks are extracted as `code` text entries, parented to their containing section.
 
 ### Embedded scripts
 

@@ -1,3 +1,73 @@
+{"file":"CHANGELOG.md","name":"Changelog","kind":"section","line":[1,1]}
+{"file":"CHANGELOG.md","name":"Changelog/[0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)","kind":"section","line":[3,3],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)/⚠ BREAKING CHANGES","kind":"section","line":[6,6],"parent":"Changelog/[0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)/Features","kind":"section","line":[10,10],"parent":"Changelog/[0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)/Performance Improvements","kind":"section","line":[20,20],"parent":"Changelog/[0.2.0](https://github.com/montanetech/codeix/compare/v0.1.8...v0.2.0) (2026-02-06)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.8](https://github.com/montanetech/codeix/compare/v0.1.7...v0.1.8) (2026-02-06)","kind":"section","line":[24,24],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.8](https://github.com/montanetech/codeix/compare/v0.1.7...v0.1.8) (2026-02-06)/Features","kind":"section","line":[27,27],"parent":"Changelog/[0.1.8](https://github.com/montanetech/codeix/compare/v0.1.7...v0.1.8) (2026-02-06)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.8](https://github.com/montanetech/codeix/compare/v0.1.7...v0.1.8) (2026-02-06)/Bug Fixes","kind":"section","line":[32,32],"parent":"Changelog/[0.1.8](https://github.com/montanetech/codeix/compare/v0.1.7...v0.1.8) (2026-02-06)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.7](https://github.com/montanetech/codeix/compare/v0.1.6...v0.1.7) (2026-02-05)","kind":"section","line":[37,37],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.7](https://github.com/montanetech/codeix/compare/v0.1.6...v0.1.7) (2026-02-05)/Bug Fixes","kind":"section","line":[40,40],"parent":"Changelog/[0.1.7](https://github.com/montanetech/codeix/compare/v0.1.6...v0.1.7) (2026-02-05)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.6](https://github.com/montanetech/codeix/compare/v0.1.5...v0.1.6) (2026-02-05)","kind":"section","line":[44,44],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.6](https://github.com/montanetech/codeix/compare/v0.1.5...v0.1.6) (2026-02-05)/Bug Fixes","kind":"section","line":[47,47],"parent":"Changelog/[0.1.6](https://github.com/montanetech/codeix/compare/v0.1.5...v0.1.6) (2026-02-05)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.5](https://github.com/montanetech/codeix/compare/v0.1.4...v0.1.5) (2026-02-05)","kind":"section","line":[51,51],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.5](https://github.com/montanetech/codeix/compare/v0.1.4...v0.1.5) (2026-02-05)/Bug Fixes","kind":"section","line":[54,54],"parent":"Changelog/[0.1.5](https://github.com/montanetech/codeix/compare/v0.1.4...v0.1.5) (2026-02-05)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.4](https://github.com/montanetech/codeix/compare/v0.1.3...v0.1.4) (2026-02-05)","kind":"section","line":[59,59],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.4](https://github.com/montanetech/codeix/compare/v0.1.3...v0.1.4) (2026-02-05)/Bug Fixes","kind":"section","line":[62,62],"parent":"Changelog/[0.1.4](https://github.com/montanetech/codeix/compare/v0.1.3...v0.1.4) (2026-02-05)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.3](https://github.com/montanetech/codeix/compare/v0.1.2...v0.1.3) (2026-02-05)","kind":"section","line":[66,66],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.3](https://github.com/montanetech/codeix/compare/v0.1.2...v0.1.3) (2026-02-05)/Bug Fixes","kind":"section","line":[69,69],"parent":"Changelog/[0.1.3](https://github.com/montanetech/codeix/compare/v0.1.2...v0.1.3) (2026-02-05)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.2](https://github.com/montanetech/codeix/compare/v0.1.1...v0.1.2) (2026-02-05)","kind":"section","line":[73,73],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.2](https://github.com/montanetech/codeix/compare/v0.1.1...v0.1.2) (2026-02-05)/Bug Fixes","kind":"section","line":[76,76],"parent":"Changelog/[0.1.2](https://github.com/montanetech/codeix/compare/v0.1.1...v0.1.2) (2026-02-05)"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.1](https://github.com/montanetech/codeix/compare/codeix-v0.1.0...codeix-v0.1.1) (2026-02-05)","kind":"section","line":[81,81],"parent":"Changelog"}
+{"file":"CHANGELOG.md","name":"Changelog/[0.1.1](https://github.com/montanetech/codeix/compare/codeix-v0.1.0...codeix-v0.1.1) (2026-02-05)/Features","kind":"section","line":[84,84],"parent":"Changelog/[0.1.1](https://github.com/montanetech/codeix/compare/codeix-v0.1.0...codeix-v0.1.1) (2026-02-05)"}
+{"file":"README.md","name":"codeix","kind":"section","line":[1,1]}
+{"file":"README.md","name":"codeix/Why","kind":"section","line":[11,11],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Why/What existing tools get wrong","kind":"section","line":[17,17],"parent":"codeix/Why"}
+{"file":"README.md","name":"codeix/Why/What codeix does differently","kind":"section","line":[27,27],"parent":"codeix/Why"}
+{"file":"README.md","name":"codeix/The `.codeindex` format","kind":"section","line":[36,36],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Ship your index with your package","kind":"section","line":[58,58],"parent":"codeix"}
+{"file":"README.md","name":"codeix/MCP tools","kind":"section","line":[64,64],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Project discovery","kind":"section","line":[78,78],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Languages","kind":"section","line":[84,84],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Languages/Markdown support","kind":"section","line":[102,102],"parent":"codeix/Languages"}
+{"file":"README.md","name":"codeix/Languages/Embedded scripts","kind":"section","line":[108,108],"parent":"codeix/Languages"}
+{"file":"README.md","name":"codeix/Install","kind":"section","line":[121,121],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Usage","kind":"section","line":[144,144],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Usage/MCP client configuration","kind":"section","line":[161,161],"parent":"codeix/Usage"}
+{"file":"README.md","name":"codeix/Design principles","kind":"section","line":[175,175],"parent":"codeix"}
+{"file":"README.md","name":"codeix/Architecture","kind":"section","line":[182,182],"parent":"codeix"}
+{"file":"README.md","name":"codeix/License","kind":"section","line":[186,186],"parent":"codeix"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions","kind":"section","line":[1,1]}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Problem Statement","kind":"section","line":[3,3],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Vision","kind":"section","line":[11,11],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-001: Index format is text-based JSONL","kind":"section","line":[19,19],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files","kind":"section","line":[38,38],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`index.json` — manifest","kind":"section","line":[50,50],"parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`files.jsonl` — file registry","kind":"section","line":[62,62],"parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`symbols.jsonl` — symbol index (definitions + imports)","kind":"section","line":[70,70],"parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files/`texts.jsonl` — comments, docstrings, string literals","kind":"section","line":[85,85],"parent":"Codeindex — Architecture Decisions/ADR-002: Index structure — 4 files"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-003: Index is self-contained, no dependency declarations","kind":"section","line":[107,107],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-004: Parsing via tree-sitter","kind":"section","line":[145,145],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-005: Three commands — build, serve, watch","kind":"section","line":[201,201],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-005: Three commands — build, serve, watch/`codeindex build`","kind":"section","line":[205,205],"parent":"Codeindex — Architecture Decisions/ADR-005: Three commands — build, serve, watch"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-005: Three commands — build, serve, watch/`codeindex serve`","kind":"section","line":[211,211],"parent":"Codeindex — Architecture Decisions/ADR-005: Three commands — build, serve, watch"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-005: Three commands — build, serve, watch/`codeindex serve --watch`","kind":"section","line":[216,216],"parent":"Codeindex — Architecture Decisions/ADR-005: Three commands — build, serve, watch"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-006: Deterministic, sorted output","kind":"section","line":[230,230],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-007: Index stays on disk via watch mode — committed like a lockfile","kind":"section","line":[246,246],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-008: Core is local only — no external services","kind":"section","line":[284,284],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-009: MCP tool surface — 7 tools, zero plumbing","kind":"section","line":[302,302],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-009: MCP tool surface — 7 tools, zero plumbing/Discovery tool","kind":"section","line":[308,308],"parent":"Codeindex — Architecture Decisions/ADR-009: MCP tool surface — 7 tools, zero plumbing"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-009: MCP tool surface — 7 tools, zero plumbing/Search tools (FTS5, BM25-ranked)","kind":"section","line":[314,314],"parent":"Codeindex — Architecture Decisions/ADR-009: MCP tool surface — 7 tools, zero plumbing"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-009: MCP tool surface — 7 tools, zero plumbing/Lookup tools (exact, structural)","kind":"section","line":[322,322],"parent":"Codeindex — Architecture Decisions/ADR-009: MCP tool surface — 7 tools, zero plumbing"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-010: Host language — Rust","kind":"section","line":[351,351],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-011: Project discovery — `.git/` boundaries","kind":"section","line":[413,413],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Future Considerations","kind":"section","line":[468,468],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Future Considerations/Project metadata tools","kind":"section","line":[470,470],"parent":"Codeindex — Architecture Decisions/Future Considerations"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Future Considerations/External API documentation — two-tier model","kind":"section","line":[484,484],"parent":"Codeindex — Architecture Decisions/Future Considerations"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Future Considerations/MCP resources","kind":"section","line":[514,514],"parent":"Codeindex — Architecture Decisions/Future Considerations"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Future Considerations/Dependency index composition (ADR-003)","kind":"section","line":[535,535],"parent":"Codeindex — Architecture Decisions/Future Considerations"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/ADR-012: Cross-platform support","kind":"section","line":[545,545],"parent":"Codeindex — Architecture Decisions"}
+{"file":"docs/architecture.md","name":"Codeindex — Architecture Decisions/Resolved Questions","kind":"section","line":[575,575],"parent":"Codeindex — Architecture Decisions"}
 {"file":"npm/install.js","name":"https","kind":"variable","line":[7,7],"visibility":"private"}
 {"file":"npm/install.js","name":"fs","kind":"variable","line":[8,8],"visibility":"private"}
 {"file":"npm/install.js","name":"path","kind":"variable","line":[9,9],"visibility":"private"}
@@ -222,10 +292,11 @@
 {"file":"scripts/bench/search_value.py","name":".common.get_codeix_bin","kind":"import","line":[14,22],"visibility":"private"}
 {"file":"scripts/bench/search_value.py","name":".common.get_claude_version","kind":"import","line":[14,22],"visibility":"private"}
 {"file":"scripts/bench/search_value.py","name":".common.get_repo_by_name","kind":"import","line":[14,22],"visibility":"private"}
-{"file":"scripts/bench/search_value.py","name":"run","kind":"function","line":[25,102],"sig":"def run(question_id: str | None = None) -> list[dict]","visibility":"public"}
+{"file":"scripts/bench/search_value.py","name":"run","kind":"function","line":[25,108],"sig":"def run(question_id: str | None = None) -> list[dict]","visibility":"public"}
 {"file":"scripts/bench/search_value.py","name":"run.setup_run","kind":"method","line":[28,47],"parent":"run","sig":"def setup_run(ctx: RunContext) -> tuple[str, str]","visibility":"public"}
 {"file":"scripts/bench/search_value.py","name":"run.setup_a","kind":"method","line":[49,61],"parent":"run","sig":"def setup_a(q: dict, ctx: RunContext) -> bool","visibility":"public"}
-{"file":"scripts/bench/search_value.py","name":"run.get_commands","kind":"method","line":[65,90],"parent":"run","sig":"def get_commands(q: dict, ctx: RunContext) -> tuple[list[str], Path, list[str], Path]","visibility":"public"}
+{"file":"scripts/bench/search_value.py","name":"run.setup_b","kind":"method","line":[63,69],"parent":"run","sig":"def setup_b(q: dict, ctx: RunContext) -> bool","visibility":"public"}
+{"file":"scripts/bench/search_value.py","name":"run.get_commands","kind":"method","line":[71,95],"parent":"run","sig":"def get_commands(q: dict, ctx: RunContext) -> tuple[list[str], Path, list[str], Path]","visibility":"public"}
 {"file":"site/templates/index.html","name":"observer","kind":"variable","line":[1249,1256],"visibility":"private"}
 {"file":"site/templates/index.html","name":"header","kind":"variable","line":[1263,1263],"visibility":"private"}
 {"file":"site/templates/index.html","name":"hero","kind":"variable","line":[1264,1264],"visibility":"private"}
@@ -236,6 +307,30 @@
 {"file":"site/templates/spec.html","name":"el","kind":"variable","line":[475,475],"visibility":"private"}
 {"file":"site/templates/spec.html","name":"observer","kind":"variable","line":[481,489],"visibility":"private"}
 {"file":"site/templates/spec.html","name":"match","kind":"variable","line":[485,485],"visibility":"private"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification","kind":"section","line":[6,6]}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Overview","kind":"section","line":[10,10],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Directory layout","kind":"section","line":[16,16],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/File format conventions","kind":"section","line":[30,30],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`index.json` — manifest","kind":"section","line":[38,38],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`files.jsonl` — file registry","kind":"section","line":[60,60],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`files.jsonl` — file registry/Language identifiers","kind":"section","line":[81,81],"parent":"`.codeindex` Format Specification/`files.jsonl` — file registry"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index","kind":"section","line":[91,91],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index/Symbol kinds","kind":"section","line":[118,118],"parent":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index/Nesting","kind":"section","line":[141,141],"parent":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index/Visibility","kind":"section","line":[154,154],"parent":"`.codeindex` Format Specification/`symbols.jsonl` — symbol index"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`texts.jsonl` — text content index","kind":"section","line":[174,174],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/`texts.jsonl` — text content index/Filtering","kind":"section","line":[196,196],"parent":"`.codeindex` Format Specification/`texts.jsonl` — text content index"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Hashing","kind":"section","line":[206,206],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Sorting and determinism","kind":"section","line":[214,214],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Line numbers","kind":"section","line":[228,228],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Path conventions","kind":"section","line":[232,232],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Versioning","kind":"section","line":[241,241],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Distribution","kind":"section","line":[250,250],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Distribution/Git repository (primary)","kind":"section","line":[254,254],"parent":"`.codeindex` Format Specification/Distribution"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Distribution/Published packages","kind":"section","line":[268,268],"parent":"`.codeindex` Format Specification/Distribution"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Distribution/HTTP discovery (future)","kind":"section","line":[280,280],"parent":"`.codeindex` Format Specification/Distribution"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Scope and visibility","kind":"section","line":[298,298],"parent":"`.codeindex` Format Specification"}
+{"file":"spec/codeindex.md","name":"`.codeindex` Format Specification/Scope and visibility/Remote APIs (future)","kind":"section","line":[310,310],"parent":"`.codeindex` Format Specification/Scope and visibility"}
 {"file":"src/cli/build.rs","name":"std::path::Path","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/cli/build.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[2,2],"visibility":"private"}
 {"file":"src/cli/build.rs","name":"anyhow::{Context, Result}","kind":"import","line":[4,4],"visibility":"private"}
@@ -493,8 +588,39 @@
 {"file":"src/parser/javascript.rs","name":"test_js_comments","kind":"function","line":[739,752],"sig":"fn test_js_comments()","visibility":"private"}
 {"file":"src/parser/languages.rs","name":"anyhow::Result","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/parser/languages.rs","name":"tree_sitter::Language","kind":"import","line":[2,2],"visibility":"private"}
-{"file":"src/parser/languages.rs","name":"get_language","kind":"function","line":[8,45],"sig":"pub fn get_language(name: &str) -> Result<Language>","visibility":"public"}
-{"file":"src/parser/languages.rs","name":"detect_language","kind":"function","line":[48,67],"sig":"pub fn detect_language(extension: &str) -> Option<&'static str>","visibility":"public"}
+{"file":"src/parser/languages.rs","name":"get_language","kind":"function","line":[8,50],"sig":"pub fn get_language(name: &str) -> Result<Language>","visibility":"public"}
+{"file":"src/parser/languages.rs","name":"detect_language","kind":"function","line":[53,73],"sig":"pub fn detect_language(extension: &str) -> Option<&'static str>","visibility":"public"}
+{"file":"src/parser/markdown.rs","name":"anyhow::Result","kind":"import","line":[10,10],"visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"tree_sitter::Node","kind":"import","line":[11,11],"visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"tree_sitter_md::MarkdownParser","kind":"import","line":[12,12],"visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[14,14],"visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"crate::parser::helpers::{node_line_range, node_text, push_symbol}","kind":"import","line":[15,15],"visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"parse_and_extract","kind":"function","line":[18,47],"sig":"pub fn parse_and_extract( source: &[u8], file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/parser/markdown.rs","name":"walk_blocks","kind":"function","line":[50,76],"sig":"fn walk_blocks( node: Node, source: &[u8], file_path: &str, heading_stack: &mut Vec<(u32, String)>, symbols: &mut Vec<SymbolEntry>, texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"extract_atx_heading","kind":"function","line":[79,107],"sig":"fn extract_atx_heading( node: Node, source: &[u8], file_path: &str, heading_stack: &mut Vec<(u32, String)>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"extract_setext_heading","kind":"function","line":[110,138],"sig":"fn extract_setext_heading( node: Node, source: &[u8], file_path: &str, heading_stack: &mut Vec<(u32, String)>, symbols: &mut Vec<SymbolEntry>, )","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"extract_code_block","kind":"function","line":[141,192],"sig":"fn extract_code_block( node: Node, source: &[u8], file_path: &str, heading_stack: &[(u32, String)], texts: &mut Vec<TextEntry>, )","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"extract_code_content","kind":"function","line":[196,220],"sig":"fn extract_code_content(raw: &str) -> Option<String>","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"get_heading_text","kind":"function","line":[226,248],"sig":"fn get_heading_text(node: Node, source: &[u8]) -> String","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"strip_optional_closing_hashes","kind":"function","line":[252,268],"sig":"fn strip_optional_closing_hashes(text: &str) -> String","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"strip_heading_markers","kind":"function","line":[271,291],"sig":"fn strip_heading_markers(raw: &str) -> String","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"count_atx_level","kind":"function","line":[294,313],"sig":"fn count_atx_level(node: Node, source: &[u8]) -> u32","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"get_setext_level","kind":"function","line":[316,338],"sig":"fn get_setext_level(node: Node, source: &[u8]) -> u32","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"compute_qualified_name","kind":"function","line":[349,376],"sig":"fn compute_qualified_name( heading_stack: &mut Vec<(u32, String)>, level: u32, name: &str, ) -> (String, Option<String>)","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"tests","kind":"module","line":[379,553],"visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"super::*","kind":"import","line":[380,380],"visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_atx_headings_basic","kind":"function","line":[383,396],"sig":"fn test_atx_headings_basic()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_atx_headings_hierarchy","kind":"function","line":[399,429],"sig":"fn test_atx_headings_hierarchy()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_setext_headings","kind":"function","line":[432,443],"sig":"fn test_setext_headings()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_code_blocks","kind":"function","line":[446,457],"sig":"fn test_code_blocks()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_mixed_heading_styles","kind":"function","line":[460,468],"sig":"fn test_mixed_heading_styles()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_heading_with_trailing_hashes","kind":"function","line":[471,480],"sig":"fn test_heading_with_trailing_hashes()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_heading_with_only_closing_hashes","kind":"function","line":[483,490],"sig":"fn test_heading_with_only_closing_hashes()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_empty_heading_skipped","kind":"function","line":[493,500],"sig":"fn test_empty_heading_skipped()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_code_block_without_heading","kind":"function","line":[503,511],"sig":"fn test_code_block_without_heading()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_deeply_nested_headings","kind":"function","line":[514,521],"sig":"fn test_deeply_nested_headings()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_duplicate_heading_names","kind":"function","line":[524,536],"sig":"fn test_duplicate_heading_names()","visibility":"private"}
+{"file":"src/parser/markdown.rs","name":"test_code_block_with_qualified_parent","kind":"function","line":[539,552],"sig":"fn test_code_block_with_qualified_parent()","visibility":"private"}
 {"file":"src/parser/mod.rs","name":"helpers","kind":"module","line":[1,1],"visibility":"public"}
 {"file":"src/parser/mod.rs","name":"languages","kind":"module","line":[2,2],"visibility":"public"}
 {"file":"src/parser/mod.rs","name":"sfc","kind":"module","line":[3,3],"visibility":"public"}
@@ -509,6 +635,7 @@
 {"file":"src/parser/mod.rs","name":"cpp","kind":"module","line":[29,29],"visibility":"public"}
 {"file":"src/parser/mod.rs","name":"ruby","kind":"module","line":[32,32],"visibility":"public"}
 {"file":"src/parser/mod.rs","name":"csharp","kind":"module","line":[35,35],"visibility":"public"}
+{"file":"src/parser/mod.rs","name":"markdown","kind":"module","line":[38,38],"visibility":"public"}
 {"file":"src/parser/python.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/parser/python.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[5,5],"visibility":"private"}
 {"file":"src/parser/python.rs","name":"crate::parser::helpers::*","kind":"import","line":[6,6],"visibility":"private"}
@@ -618,10 +745,10 @@
 {"file":"src/parser/treesitter.rs","name":"crate::parser::languages::get_language","kind":"import","line":[6,6],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"crate::parser::sfc","kind":"import","line":[7,7],"visibility":"private"}
 {"file":"src/parser/treesitter.rs","name":"MAX_DEPTH","kind":"constant","line":[10,10],"visibility":"public"}
-{"file":"src/parser/treesitter.rs","name":"parse_file","kind":"function","line":[13,93],"sig":"pub fn parse_file( source: &[u8], language: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
-{"file":"src/parser/treesitter.rs","name":"extract_texts_generic","kind":"function","line":[99,145],"sig":"fn extract_texts_generic(tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>)","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"merge_consecutive_texts","kind":"function","line":[152,177],"sig":"fn merge_consecutive_texts(texts: Vec<TextEntry>) -> Vec<TextEntry>","visibility":"private"}
-{"file":"src/parser/treesitter.rs","name":"parse_sfc","kind":"function","line":[185,233],"sig":"fn parse_sfc( source: &[u8], extension: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"parse_file","kind":"function","line":[13,99],"sig":"pub fn parse_file( source: &[u8], language: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/parser/treesitter.rs","name":"extract_texts_generic","kind":"function","line":[105,151],"sig":"fn extract_texts_generic(tree: &Tree, source: &[u8], file_path: &str, texts: &mut Vec<TextEntry>)","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"merge_consecutive_texts","kind":"function","line":[158,183],"sig":"fn merge_consecutive_texts(texts: Vec<TextEntry>) -> Vec<TextEntry>","visibility":"private"}
+{"file":"src/parser/treesitter.rs","name":"parse_sfc","kind":"function","line":[191,239],"sig":"fn parse_sfc( source: &[u8], extension: &str, file_path: &str, ) -> Result<(Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"tree_sitter::{Node, Tree}","kind":"import","line":[7,7],"visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"crate::index::format::{SymbolEntry, TextEntry}","kind":"import","line":[9,9],"visibility":"private"}
 {"file":"src/parser/typescript.rs","name":"crate::parser::helpers::*","kind":"import","line":[10,10],"visibility":"private"}
@@ -713,50 +840,52 @@
 {"file":"src/server/db.rs","name":"rusqlite::Connection","kind":"import","line":[2,2],"visibility":"private"}
 {"file":"src/server/db.rs","name":"crate::index::format::{FileEntry, SymbolEntry, TextEntry}","kind":"import","line":[4,4],"visibility":"private"}
 {"file":"src/server/db.rs","name":"SearchDb","kind":"struct","line":[8,12],"visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb","kind":"impl","line":[14,707],"sig":"impl SearchDb","visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb","kind":"impl","line":[14,823],"sig":"impl SearchDb","visibility":"private"}
 {"file":"src/server/db.rs","name":"SearchDb.new","kind":"method","line":[16,18],"parent":"SearchDb","sig":"pub fn new() -> Result<Self>","visibility":"public"}
 {"file":"src/server/db.rs","name":"SearchDb.new_no_fts","kind":"method","line":[22,24],"parent":"SearchDb","sig":"pub fn new_no_fts() -> Result<Self>","visibility":"public"}
 {"file":"src/server/db.rs","name":"SearchDb.new_internal","kind":"method","line":[27,112],"parent":"SearchDb","sig":"fn new_internal(fts_enabled: bool) -> Result<Self>","visibility":"private"}
 {"file":"src/server/db.rs","name":"SearchDb.load","kind":"method","line":[115,182],"parent":"SearchDb","sig":"pub fn load( &self, project: &str, files: &[FileEntry], symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.search_symbols","kind":"method","line":[185,234],"parent":"SearchDb","sig":"pub fn search_symbols( &self, query: &str, kind: Option<&str>, file: Option<&str>, project: Option<&str>, ) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.search_text","kind":"method","line":[237,281],"parent":"SearchDb","sig":"pub fn search_text( &self, query: &str, kind: Option<&str>, file: Option<&str>, project: Option<&str>, ) -> Result<Vec<TextEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.search_files","kind":"method","line":[284,323],"parent":"SearchDb","sig":"pub fn search_files( &self, query: &str, lang: Option<&str>, project: Option<&str>, ) -> Result<Vec<FileEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_file_symbols","kind":"method","line":[326,353],"parent":"SearchDb","sig":"pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_symbol_children","kind":"method","line":[356,383],"parent":"SearchDb","sig":"pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_imports","kind":"method","line":[386,413],"parent":"SearchDb","sig":"pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.get_file_hash","kind":"method","line":[416,426],"parent":"SearchDb","sig":"pub fn get_file_hash(&self, project: &str, path: &str) -> Result<Option<String>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.remove_file","kind":"method","line":[430,448],"parent":"SearchDb","sig":"pub fn remove_file(&self, project: &str, path: &str) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.upsert_file","kind":"method","line":[453,519],"parent":"SearchDb","sig":"pub fn upsert_file( &self, project: &str, file: &FileEntry, symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.rebuild_fts","kind":"method","line":[526,538],"parent":"SearchDb","sig":"pub fn rebuild_fts(&self) -> Result<()>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.export_all","kind":"method","line":[541,613],"parent":"SearchDb","sig":"pub fn export_all(&self) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.export_for_project","kind":"method","line":[616,693],"parent":"SearchDb","sig":"pub fn export_for_project( &self, project: &str, ) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
-{"file":"src/server/db.rs","name":"SearchDb.list_projects","kind":"method","line":[696,706],"parent":"SearchDb","sig":"pub fn list_projects(&self) -> Result<Vec<String>>","visibility":"public"}
-{"file":"src/server/db.rs","name":"fts5_quote","kind":"function","line":[711,713],"sig":"fn fts5_quote(s: &str) -> String","visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb.search_symbols","kind":"method","line":[190,210],"parent":"SearchDb","sig":"pub fn search_symbols( &self, query: Option<&str>, kind: Option<&str>, file: Option<&str>, project: Option<&str>, limit: u32, offset: u32, ) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_symbols_fts","kind":"method","line":[213,264],"parent":"SearchDb","sig":"fn search_symbols_fts( &self, query: &str, kind: Option<&str>, file: Option<&str>, project: Option<&str>, limit: u32, offset: u32, ) -> Result<Vec<SymbolEntry>>","visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb.list_symbols","kind":"method","line":[269,350],"parent":"SearchDb","sig":"fn list_symbols( &self, query: Option<&str>, kind: Option<&str>, file: Option<&str>, project: Option<&str>, limit: u32, offset: u32, ) -> Result<Vec<SymbolEntry>>","visibility":"private"}
+{"file":"src/server/db.rs","name":"SearchDb.search_text","kind":"method","line":[353,397],"parent":"SearchDb","sig":"pub fn search_text( &self, query: &str, kind: Option<&str>, file: Option<&str>, project: Option<&str>, ) -> Result<Vec<TextEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.search_files","kind":"method","line":[400,439],"parent":"SearchDb","sig":"pub fn search_files( &self, query: &str, lang: Option<&str>, project: Option<&str>, ) -> Result<Vec<FileEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_file_symbols","kind":"method","line":[442,469],"parent":"SearchDb","sig":"pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_symbol_children","kind":"method","line":[472,499],"parent":"SearchDb","sig":"pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_imports","kind":"method","line":[502,529],"parent":"SearchDb","sig":"pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.get_file_hash","kind":"method","line":[532,542],"parent":"SearchDb","sig":"pub fn get_file_hash(&self, project: &str, path: &str) -> Result<Option<String>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.remove_file","kind":"method","line":[546,564],"parent":"SearchDb","sig":"pub fn remove_file(&self, project: &str, path: &str) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.upsert_file","kind":"method","line":[569,635],"parent":"SearchDb","sig":"pub fn upsert_file( &self, project: &str, file: &FileEntry, symbols: &[SymbolEntry], texts: &[TextEntry], ) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.rebuild_fts","kind":"method","line":[642,654],"parent":"SearchDb","sig":"pub fn rebuild_fts(&self) -> Result<()>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.export_all","kind":"method","line":[657,729],"parent":"SearchDb","sig":"pub fn export_all(&self) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.export_for_project","kind":"method","line":[732,809],"parent":"SearchDb","sig":"pub fn export_for_project( &self, project: &str, ) -> Result<(Vec<FileEntry>, Vec<SymbolEntry>, Vec<TextEntry>)>","visibility":"public"}
+{"file":"src/server/db.rs","name":"SearchDb.list_projects","kind":"method","line":[812,822],"parent":"SearchDb","sig":"pub fn list_projects(&self) -> Result<Vec<String>>","visibility":"public"}
+{"file":"src/server/db.rs","name":"fts5_quote","kind":"function","line":[827,829],"sig":"fn fts5_quote(s: &str) -> String","visibility":"private"}
 {"file":"src/server/mcp.rs","name":"std::sync::{Arc, Mutex}","kind":"import","line":[1,1],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"anyhow::Result","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"rmcp::{\n    ErrorData as McpError, ServerHandler, ServiceExt,\n    handler::server::{tool::ToolRouter, wrapper::Parameters},\n    model::{CallToolResult, Content, ServerCapabilities, ServerInfo},\n    schemars,\n    schemars::JsonSchema,\n    tool, tool_handler, tool_router,\n    transport::stdio,\n}","kind":"import","line":[4,12],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"serde::Deserialize","kind":"import","line":[13,13],"visibility":"private"}
 {"file":"src/server/mcp.rs","name":"super::db::SearchDb","kind":"import","line":[15,15],"visibility":"private"}
-{"file":"src/server/mcp.rs","name":"SearchSymbolsParams","kind":"struct","line":[19,28],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"SearchFilesParams","kind":"struct","line":[31,38],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"SearchTextsParams","kind":"struct","line":[41,50],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"GetFileSymbolsParams","kind":"struct","line":[53,56],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"GetSymbolChildrenParams","kind":"struct","line":[59,64],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"GetImportsParams","kind":"struct","line":[67,70],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"struct","line":[77,80],"visibility":"public"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[82,89],"sig":"impl CodeIndexServer","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.new","kind":"method","line":[83,88],"parent":"CodeIndexServer","sig":"pub fn new(db: Arc<Mutex<SearchDb>>) -> Self","visibility":"public"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[92,247],"sig":"impl CodeIndexServer","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_symbols","kind":"method","line":[95,116],"parent":"CodeIndexServer","sig":"async fn search_symbols( &self, Parameters(params): Parameters<SearchSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_files","kind":"method","line":[120,140],"parent":"CodeIndexServer","sig":"async fn search_files( &self, Parameters(params): Parameters<SearchFilesParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_texts","kind":"method","line":[146,167],"parent":"CodeIndexServer","sig":"async fn search_texts( &self, Parameters(params): Parameters<SearchTextsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_file_symbols","kind":"method","line":[171,187],"parent":"CodeIndexServer","sig":"async fn get_file_symbols( &self, Parameters(params): Parameters<GetFileSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_symbol_children","kind":"method","line":[191,209],"parent":"CodeIndexServer","sig":"async fn get_symbol_children( &self, Parameters(params): Parameters<GetSymbolChildrenParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_imports","kind":"method","line":[213,229],"parent":"CodeIndexServer","sig":"async fn get_imports( &self, Parameters(params): Parameters<GetImportsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.list_projects","kind":"method","line":[233,246],"parent":"CodeIndexServer","sig":"async fn list_projects(&self) -> Result<CallToolResult, McpError>","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"trait_impl","line":[250,264],"sig":"impl ServerHandler for CodeIndexServer","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_info","kind":"method","line":[251,263],"parent":"CodeIndexServer","sig":"fn get_info(&self) -> ServerInfo","visibility":"private"}
-{"file":"src/server/mcp.rs","name":"start_server","kind":"function","line":[267,278],"sig":"pub async fn start_server(db: Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
+{"file":"src/server/mcp.rs","name":"SearchSymbolsParams","kind":"struct","line":[19,32],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"SearchFilesParams","kind":"struct","line":[35,42],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"SearchTextsParams","kind":"struct","line":[45,54],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"GetFileSymbolsParams","kind":"struct","line":[57,60],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"GetSymbolChildrenParams","kind":"struct","line":[63,68],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"GetImportsParams","kind":"struct","line":[71,74],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"struct","line":[81,84],"visibility":"public"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[86,93],"sig":"impl CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.new","kind":"method","line":[87,92],"parent":"CodeIndexServer","sig":"pub fn new(db: Arc<Mutex<SearchDb>>) -> Self","visibility":"public"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"impl","line":[96,257],"sig":"impl CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_symbols","kind":"method","line":[101,126],"parent":"CodeIndexServer","sig":"async fn search_symbols( &self, Parameters(params): Parameters<SearchSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_files","kind":"method","line":[130,150],"parent":"CodeIndexServer","sig":"async fn search_files( &self, Parameters(params): Parameters<SearchFilesParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.search_texts","kind":"method","line":[156,177],"parent":"CodeIndexServer","sig":"async fn search_texts( &self, Parameters(params): Parameters<SearchTextsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_file_symbols","kind":"method","line":[181,197],"parent":"CodeIndexServer","sig":"async fn get_file_symbols( &self, Parameters(params): Parameters<GetFileSymbolsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_symbol_children","kind":"method","line":[201,219],"parent":"CodeIndexServer","sig":"async fn get_symbol_children( &self, Parameters(params): Parameters<GetSymbolChildrenParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_imports","kind":"method","line":[223,239],"parent":"CodeIndexServer","sig":"async fn get_imports( &self, Parameters(params): Parameters<GetImportsParams>, ) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.list_projects","kind":"method","line":[243,256],"parent":"CodeIndexServer","sig":"async fn list_projects(&self) -> Result<CallToolResult, McpError>","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer","kind":"trait_impl","line":[260,274],"sig":"impl ServerHandler for CodeIndexServer","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"CodeIndexServer.get_info","kind":"method","line":[261,273],"parent":"CodeIndexServer","sig":"fn get_info(&self) -> ServerInfo","visibility":"private"}
+{"file":"src/server/mcp.rs","name":"start_server","kind":"function","line":[277,288],"sig":"pub async fn start_server(db: Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
 {"file":"src/server/mod.rs","name":"db","kind":"module","line":[1,1],"visibility":"public"}
 {"file":"src/server/mod.rs","name":"mcp","kind":"module","line":[2,2],"visibility":"public"}
 {"file":"src/watcher/handler.rs","name":"std::collections::{BTreeSet, HashMap, HashSet}","kind":"import","line":[1,1],"visibility":"private"}
@@ -788,19 +917,19 @@
 {"file":"src/watcher/handler.rs","name":"flush_mount_to_disk","kind":"function","line":[608,672],"sig":"pub fn flush_mount_to_disk( mount_root: &Path, mount_table: &MountTable, db: &Arc<Mutex<SearchDb>>, ) -> Result<()>","visibility":"public"}
 {"file":"src/watcher/handler.rs","name":"flush_index_to_disk","kind":"function","line":[676,716],"sig":"pub fn flush_index_to_disk(root: &Path, db: &Arc<Mutex<SearchDb>>) -> Result<()>","visibility":"public"}
 {"file":"src/watcher/handler.rs","name":"count_lines","kind":"function","line":[719,730],"sig":"fn count_lines(content: &[u8]) -> u32","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"tests","kind":"module","line":[733,1025],"visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"tests","kind":"module","line":[733,1040],"visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"super::*","kind":"import","line":[734,734],"visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"std::fs","kind":"import","line":[735,735],"visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"tempfile::TempDir","kind":"import","line":[736,736],"visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"create_git_marker","kind":"function","line":[739,741],"sig":"fn create_git_marker(path: &Path)","visibility":"private"}
 {"file":"src/watcher/handler.rs","name":"create_source_file","kind":"function","line":[744,749],"sig":"fn create_source_file(path: &Path, content: &str)","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"test_single_project_indexing","kind":"function","line":[752,794],"sig":"fn test_single_project_indexing()","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"test_subproject_discovery","kind":"function","line":[797,836],"sig":"fn test_subproject_discovery()","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"test_nested_subprojects","kind":"function","line":[839,883],"sig":"fn test_nested_subprojects()","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"test_files_not_duplicated_across_projects","kind":"function","line":[886,921],"sig":"fn test_files_not_duplicated_across_projects()","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"test_mount_table_tracks_all_projects","kind":"function","line":[924,955],"sig":"fn test_mount_table_tracks_all_projects()","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"test_project_filter_in_search","kind":"function","line":[958,994],"sig":"fn test_project_filter_in_search()","visibility":"private"}
-{"file":"src/watcher/handler.rs","name":"test_relative_project_paths","kind":"function","line":[997,1024],"sig":"fn test_relative_project_paths()","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"test_single_project_indexing","kind":"function","line":[752,798],"sig":"fn test_single_project_indexing()","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"test_subproject_discovery","kind":"function","line":[801,840],"sig":"fn test_subproject_discovery()","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"test_nested_subprojects","kind":"function","line":[843,894],"sig":"fn test_nested_subprojects()","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"test_files_not_duplicated_across_projects","kind":"function","line":[897,934],"sig":"fn test_files_not_duplicated_across_projects()","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"test_mount_table_tracks_all_projects","kind":"function","line":[937,968],"sig":"fn test_mount_table_tracks_all_projects()","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"test_project_filter_in_search","kind":"function","line":[971,1009],"sig":"fn test_project_filter_in_search()","visibility":"private"}
+{"file":"src/watcher/handler.rs","name":"test_relative_project_paths","kind":"function","line":[1012,1039],"sig":"fn test_relative_project_paths()","visibility":"private"}
 {"file":"src/watcher/mod.rs","name":"handler","kind":"module","line":[1,1],"visibility":"public"}
 {"file":"src/watcher/mod.rs","name":"std::collections::HashSet","kind":"import","line":[3,3],"visibility":"private"}
 {"file":"src/watcher/mod.rs","name":"std::path::{Path, PathBuf}","kind":"import","line":[4,4],"visibility":"private"}

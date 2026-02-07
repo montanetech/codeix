@@ -28,6 +28,12 @@ pub fn parse_file(
         return parse_sfc(source, ext, file_path);
     }
 
+    // Markdown uses a custom two-pass parser (tree-sitter-md with MarkdownParser)
+    #[cfg(feature = "lang-markdown")]
+    if language == "markdown" {
+        return crate::parser::markdown::parse_and_extract(source, file_path);
+    }
+
     let lang = get_language(language)?;
     let mut parser = Parser::new();
     parser.set_language(&lang)?;
