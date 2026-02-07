@@ -50,6 +50,6 @@ pub fn run(path: &Path, watch: bool) -> Result<()> {
 
     rt.block_on(async {
         tracing::info!("starting MCP server on stdio");
-        start_server(db).await
+        start_server(db, mount_table).await
     })
 }

@@ -10,9 +10,12 @@ use rmcp::{
     tool, tool_handler, tool_router,
     transport::stdio,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::db::SearchDb;
+use super::snippet::SnippetExtractor;
+use crate::index::format::SymbolEntry;
+use crate::scanner::mount::MountTable;
 
 // Parameter structs for each tool
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -29,6 +32,8 @@ pub struct SearchSymbolsParams {
     pub limit: Option<u32>,
     /// Number of results to skip for pagination (default: 0)
     pub offset: Option<u32>,
+    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    pub snippet_lines: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -57,6 +62,8 @@ pub struct SearchTextsParams {
 pub struct GetFileSymbolsParams {
     /// File path to get symbols for
     pub file: String,
+    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    pub snippet_lines: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -65,12 +72,23 @@ pub struct GetSymbolChildrenParams {
     pub file: String,
     /// Name of the parent symbol
     pub parent: String,
+    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    pub snippet_lines: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetImportsParams {
     /// File path to get imports for
     pub file: String,
+}
+
+/// Response wrapper for SymbolEntry with optional snippet.
+#[derive(Debug, Serialize)]
+struct SymbolWithSnippet {
+    #[serde(flatten)]
+    symbol: SymbolEntry,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    snippet: Option<String>,
 }
 
 /// MCP server exposing code-index query tools.
@@ -80,15 +98,52 @@ pub struct GetImportsParams {
 #[derive(Clone)]
 pub struct CodeIndexServer {
     db: Arc<Mutex<SearchDb>>,
+    snippet_extractor: SnippetExtractor,
     tool_router: ToolRouter<Self>,
 }
 
 impl CodeIndexServer {
-    pub fn new(db: Arc<Mutex<SearchDb>>) -> Self {
+    pub fn new(db: Arc<Mutex<SearchDb>>, mount_table: Arc<Mutex<MountTable>>) -> Self {
+        let workspace_root = mount_table
+            .lock()
+            .expect("mount table lock poisoned")
+            .workspace_root()
+            .to_path_buf();
+
         Self {
             db,
+            snippet_extractor: SnippetExtractor::new(workspace_root),
             tool_router: Self::tool_router(),
         }
+    }
+
+    /// Enrich symbols with snippets, filtering out symbols whose files are missing.
+    fn enrich_with_snippets(
+        &self,
+        symbols: Vec<SymbolEntry>,
+        snippet_lines: i32,
+    ) -> Vec<SymbolWithSnippet> {
+        symbols
+            .into_iter()
+            .filter_map(|symbol| {
+                // Skip symbols whose files are missing
+                if !self
+                    .snippet_extractor
+                    .file_exists(&symbol.project, &symbol.file)
+                {
+                    return None;
+                }
+
+                let snippet = self.snippet_extractor.extract_snippet(
+                    &symbol.project,
+                    &symbol.file,
+                    symbol.line[0],
+                    symbol.line[1],
+                    snippet_lines,
+                );
+                Some(SymbolWithSnippet { symbol, snippet })
+            })
+            .collect()
     }
 }
 
@@ -96,7 +151,7 @@ impl CodeIndexServer {
 impl CodeIndexServer {
     /// Search or list symbols. With query: FTS5 search (BM25-ranked). Without query: list all matching filters.
     #[tool(
-        description = "Search or list symbols. Provide query for full-text search, or omit to list all symbols matching filters. File filter supports glob patterns (e.g. 'src/*.py')"
+        description = "Search or list symbols. Provide query for full-text search, or omit to list all symbols matching filters. File filter supports glob patterns (e.g. 'src/*.py'). Returns code snippets by default."
     )]
     async fn search_symbols(
         &self,
@@ -119,7 +174,12 @@ impl CodeIndexServer {
             )
             .map_err(|e| McpError::internal_error(format!("search_symbols failed: {e}"), None))?;
 
-        let json = serde_json::to_string_pretty(&results)
+        drop(db); // Release lock before file I/O
+
+        let snippet_lines = params.snippet_lines.unwrap_or(10);
+        let enriched = self.enrich_with_snippets(results, snippet_lines);
+
+        let json = serde_json::to_string_pretty(&enriched)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
@@ -177,7 +237,9 @@ impl CodeIndexServer {
     }
 
     /// Get all symbols in a file, ordered by line number.
-    #[tool(description = "Get all symbols in a file, ordered by line number")]
+    #[tool(
+        description = "Get all symbols in a file, ordered by line number. Returns code snippets by default."
+    )]
     async fn get_file_symbols(
         &self,
         Parameters(params): Parameters<GetFileSymbolsParams>,
@@ -190,14 +252,21 @@ impl CodeIndexServer {
             .get_file_symbols(&params.file)
             .map_err(|e| McpError::internal_error(format!("get_file_symbols failed: {e}"), None))?;
 
-        let json = serde_json::to_string_pretty(&results)
+        drop(db); // Release lock before file I/O
+
+        let snippet_lines = params.snippet_lines.unwrap_or(10);
+        let enriched = self.enrich_with_snippets(results, snippet_lines);
+
+        let json = serde_json::to_string_pretty(&enriched)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
     /// Get direct children of a symbol (e.g. methods of a class).
-    #[tool(description = "Get direct children of a symbol (e.g. methods of a class)")]
+    #[tool(
+        description = "Get direct children of a symbol (e.g. methods of a class). Returns code snippets by default."
+    )]
     async fn get_symbol_children(
         &self,
         Parameters(params): Parameters<GetSymbolChildrenParams>,
@@ -212,7 +281,12 @@ impl CodeIndexServer {
                 McpError::internal_error(format!("get_symbol_children failed: {e}"), None)
             })?;
 
-        let json = serde_json::to_string_pretty(&results)
+        drop(db); // Release lock before file I/O
+
+        let snippet_lines = params.snippet_lines.unwrap_or(10);
+        let enriched = self.enrich_with_snippets(results, snippet_lines);
+
+        let json = serde_json::to_string_pretty(&enriched)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
@@ -273,9 +347,12 @@ impl ServerHandler for CodeIndexServer {
     }
 }
 
-/// Start the MCP server over stdio with the given search database.
-pub async fn start_server(db: Arc<Mutex<SearchDb>>) -> Result<()> {
-    let server = CodeIndexServer::new(db);
+/// Start the MCP server over stdio with the given search database and mount table.
+pub async fn start_server(
+    db: Arc<Mutex<SearchDb>>,
+    mount_table: Arc<Mutex<MountTable>>,
+) -> Result<()> {
+    let server = CodeIndexServer::new(db, mount_table);
     let service = server
         .serve(stdio())
         .await
