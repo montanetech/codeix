@@ -83,6 +83,42 @@ pub struct GetImportsParams {
     pub file: String,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct GetCallersParams {
+    /// Symbol name to find callers for (e.g. "my_function", "MyClass.method")
+    pub name: String,
+    /// Filter by reference kind (e.g. "call", "import", "type_annotation")
+    pub kind: Option<String>,
+    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    pub project: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct GetCalleesParams {
+    /// Symbol name to find callees for (e.g. "my_function", "MyClass.method")
+    pub caller: String,
+    /// Filter by reference kind (e.g. "call", "import", "type_annotation")
+    pub kind: Option<String>,
+    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    pub project: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct SearchReferencesParams {
+    /// Search query for reference names
+    pub query: String,
+    /// Filter by reference kind (e.g. "call", "import", "type_annotation")
+    pub kind: Option<String>,
+    /// Filter by file path
+    pub file: Option<String>,
+    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    pub project: Option<String>,
+    /// Maximum number of results to return (default: 100)
+    pub limit: Option<u32>,
+    /// Number of results to skip for pagination (default: 0)
+    pub offset: Option<u32>,
+}
+
 /// Response wrapper for SymbolEntry with optional snippet.
 #[derive(Debug, Serialize)]
 struct SymbolWithSnippet {
@@ -368,6 +404,91 @@ impl CodeIndexServer {
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
+
+    /// Get all references TO a symbol (who calls/uses this symbol).
+    #[tool(
+        description = "Find all places that call or reference a symbol. Returns references sorted by file and line. Useful for understanding symbol usage and finding callers of a function."
+    )]
+    async fn get_callers(
+        &self,
+        Parameters(params): Parameters<GetCallersParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+        let results = db
+            .get_callers(
+                &params.name,
+                params.kind.as_deref(),
+                params.project.as_deref(),
+            )
+            .map_err(|e| McpError::internal_error(format!("get_callers failed: {e}"), None))?;
+
+        let json = serde_json::to_string_pretty(&results)
+            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
+
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    /// Get all references FROM a symbol (what does this symbol call/use).
+    #[tool(
+        description = "Find all symbols that a given function/method calls or references. Returns references sorted by file and line. Useful for understanding dependencies and call chains."
+    )]
+    async fn get_callees(
+        &self,
+        Parameters(params): Parameters<GetCalleesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+        let results = db
+            .get_callees(
+                &params.caller,
+                params.kind.as_deref(),
+                params.project.as_deref(),
+            )
+            .map_err(|e| McpError::internal_error(format!("get_callees failed: {e}"), None))?;
+
+        let json = serde_json::to_string_pretty(&results)
+            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
+
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
+
+    /// Search references by name using FTS5.
+    #[tool(
+        description = "Search for symbol references (calls, imports, type annotations) using full-text search. Filter by kind, file, or project."
+    )]
+    async fn search_references(
+        &self,
+        Parameters(params): Parameters<SearchReferencesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+        let limit = params.limit.unwrap_or(100);
+        let offset = params.offset.unwrap_or(0);
+        let results = db
+            .search_references(
+                &params.query,
+                params.kind.as_deref(),
+                params.file.as_deref(),
+                params.project.as_deref(),
+                limit,
+                offset,
+            )
+            .map_err(|e| {
+                McpError::internal_error(format!("search_references failed: {e}"), None)
+            })?;
+
+        let json = serde_json::to_string_pretty(&results)
+            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
+
+        Ok(CallToolResult::success(vec![Content::text(json)]))
+    }
 }
 
 /// Project info returned by list_projects, combining path with manifest metadata.
@@ -388,7 +509,9 @@ impl ServerHandler for CodeIndexServer {
                 "Code index query tools. Use list_projects to see indexed projects. \
                  Use search_symbols, search_files, and search_texts for full-text search \
                  (optionally filtered by project). Use get_file_symbols, get_symbol_children, \
-                 and get_imports for structural lookups."
+                 and get_imports for structural lookups. Use get_callers to find who calls \
+                 a symbol, get_callees to find what a symbol calls, and search_references \
+                 for full-text search across all references."
                     .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
