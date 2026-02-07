@@ -505,7 +505,7 @@ mod tests {
 
     private void helper() {}
 }";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
@@ -534,7 +534,7 @@ mod tests {
     void run();
     default void start() {}
 }";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         let runnable = find_sym(&symbols, "Runnable");
         assert_eq!(runnable.kind, "interface");
@@ -548,7 +548,7 @@ mod tests {
     INACTIVE,
     PENDING
 }";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         let status = find_sym(&symbols, "Status");
         assert_eq!(status.kind, "enum");
@@ -562,7 +562,7 @@ mod tests {
     private int value;
     protected String name;
 }";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         let max_size = find_sym(&symbols, "Config.MAX_SIZE");
         assert_eq!(max_size.kind, "constant");
@@ -589,7 +589,7 @@ mod tests {
 
     private void log(String msg) {}
 }";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         let add = find_sym(&symbols, "Calculator.add");
         assert_eq!(add.kind, "method");
@@ -607,7 +607,7 @@ mod tests {
         let source = b"import java.util.List;
 import java.util.*;
 import java.io.File;";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         // Check at least one import is extracted
         let imports: Vec<_> = symbols.iter().filter(|s| s.kind == "import").collect();
@@ -625,7 +625,7 @@ import java.io.File;";
         let source = b"package com.example.app;
 
 class Foo {}";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         let pkg = symbols.iter().find(|s| s.kind == "module").unwrap();
         assert_eq!(pkg.name, "com.example.app");
@@ -636,7 +636,7 @@ class Foo {}";
         let source = b"class Foo {
     void packagePrivate() {}
 }";
-        let (symbols, _texts) = parse_file(source, "java", "test.java").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "java", "test.java").unwrap();
 
         let foo = find_sym(&symbols, "Foo");
         assert_eq!(foo.visibility.as_deref(), Some("internal")); // default = package-private
@@ -652,7 +652,7 @@ class Documented {}
 
 // Single line
 /* Block comment */";
-        let (_symbols, texts) = parse_file(source, "java", "test.java").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "java", "test.java").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
     }
 }

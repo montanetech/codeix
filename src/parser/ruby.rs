@@ -595,7 +595,7 @@ end
 def _private_helper
   puts 'private'
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let hello = find_sym(&symbols, "hello");
         assert_eq!(hello.kind, "function");
@@ -622,7 +622,7 @@ end";
     Person.new('default')
   end
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
@@ -647,7 +647,7 @@ module Logger
   class Writer
   end
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let utils = find_sym(&symbols, "Utils");
         assert_eq!(utils.kind, "module");
@@ -671,7 +671,7 @@ DEFAULT_NAME = 'Unknown'
 class Config
   VERSION = '1.0'
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let max = find_sym(&symbols, "MAX_SIZE");
         assert_eq!(max.kind, "constant");
@@ -687,7 +687,7 @@ end";
   @instance_var = 1
   @@class_var = 2
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let instance = find_sym(&symbols, "Foo.@instance_var");
         assert_eq!(instance.kind, "property");
@@ -703,7 +703,7 @@ end";
         let source = b"require 'json'
 require_relative 'config'
 require 'active_support'";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let json = symbols.iter().find(|s| s.name == "json").unwrap();
         assert_eq!(json.kind, "import");
@@ -722,7 +722,7 @@ class Dog < Animal
     'woof'
   end
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let dog = find_sym(&symbols, "Dog");
         assert_eq!(dog.kind, "class");
@@ -738,7 +738,7 @@ end";
     text.upcase
   end
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let format = find_sym(&symbols, "Utils.format");
         assert_eq!(format.kind, "method");
@@ -753,7 +753,7 @@ end
 =begin
 Multi-line comment
 =end";
-        let (_symbols, texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
     }
 
@@ -764,7 +764,7 @@ end
 
 def _internal_method
 end";
-        let (symbols, _texts) = parse_file(source, "ruby", "test.rb").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "ruby", "test.rb").unwrap();
 
         let public = find_sym(&symbols, "public_method");
         assert_eq!(public.visibility.as_deref(), Some("public"));

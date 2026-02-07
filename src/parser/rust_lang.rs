@@ -393,7 +393,7 @@ mod tests {
 fn private_helper() {
     println!(\"private\");
 }";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
         assert_eq!(symbols.len(), 2);
 
         let hello = find_sym(&symbols, "hello");
@@ -415,7 +415,7 @@ fn private_helper() {
 }
 
 struct Private;";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
         assert_eq!(symbols.len(), 2);
 
         let point = find_sym(&symbols, "Point");
@@ -438,7 +438,7 @@ impl Foo {
 
     fn private_method(&self) {}
 }";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
         assert_eq!(symbols.len(), 4); // struct + impl + 2 methods
 
         let _impl_sym = find_sym(&symbols, "Foo");
@@ -467,7 +467,7 @@ impl Display for Foo {
         String::new()
     }
 }";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
 
         let trait_sym = symbols
             .iter()
@@ -485,7 +485,7 @@ impl Display for Foo {
         let source = b"use std::collections::HashMap;
 use std::io::{self, Read};
 pub use std::fmt::Debug;";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
 
         let hashmap = symbols
             .iter()
@@ -505,7 +505,7 @@ pub use std::fmt::Debug;";
     Ok(T),
     Err(E),
 }";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
         let result = find_sym(&symbols, "Result");
         assert_eq!(result.kind, "enum");
         assert_eq!(result.visibility.as_deref(), Some("public"));
@@ -515,7 +515,7 @@ pub use std::fmt::Debug;";
     fn test_rust_mod() {
         let source = b"pub mod utils;
 mod private_mod;";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
 
         let utils = find_sym(&symbols, "utils");
         assert_eq!(utils.kind, "module");
@@ -529,7 +529,7 @@ mod private_mod;";
     fn test_rust_const() {
         let source = b"pub const MAX: usize = 100;
 static GLOBAL: i32 = 0;";
-        let (symbols, _texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
 
         let max = find_sym(&symbols, "MAX");
         assert_eq!(max.kind, "constant");
@@ -548,7 +548,7 @@ pub fn documented() {}
 
 // Regular comment
 fn helper() {}";
-        let (_symbols, texts) = parse_file(source, "rust", "test.rs").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
     }
 }

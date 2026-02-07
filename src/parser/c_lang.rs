@@ -533,7 +533,7 @@ mod tests {
 static void helper() {
     printf(\"helper\");
 }";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
@@ -550,7 +550,7 @@ static void helper() {
     int x;
     int y;
 };";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let point = find_sym(&symbols, "Point");
         assert_eq!(point.kind, "struct");
@@ -570,7 +570,7 @@ static void helper() {
     ERROR,
     PENDING
 };";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let status = find_sym(&symbols, "Status");
         assert_eq!(status.kind, "enum");
@@ -590,7 +590,7 @@ static void helper() {
 int add(MyInt a, MyInt b) {
     return a + b;
 }";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         // Function should definitely be extracted
         let add = find_sym(&symbols, "add");
@@ -604,7 +604,7 @@ static int file_scoped = 200;
 extern int external;
 
 #define MAX_SIZE 1000";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let global = find_sym(&symbols, "global");
         assert_eq!(global.kind, "variable");
@@ -621,7 +621,7 @@ extern int external;
     fn test_c_includes() {
         let source = b"#include <stdio.h>
 #include \"myheader.h\"";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let stdio = symbols.iter().find(|s| s.name == "stdio.h").unwrap();
         assert_eq!(stdio.kind, "import");
@@ -634,7 +634,7 @@ extern int external;
     fn test_c_macros() {
         let source = b"#define PI 3.14159
 #define MAX(a, b) ((a) > (b) ? (a) : (b))";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let pi = find_sym(&symbols, "PI");
         assert_eq!(pi.kind, "constant");
@@ -650,7 +650,7 @@ extern int external;
     float f;
     char str[20];
 };";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let data = find_sym(&symbols, "Data");
         assert_eq!(data.kind, "struct"); // unions mapped to struct
@@ -664,7 +664,7 @@ extern int external;
         let source = b"/* Block comment */
 // Single line comment
 int foo() { return 0; }";
-        let (_symbols, texts) = parse_file(source, "c", "test.c").unwrap();
+        let (_symbols, texts, _refs) = parse_file(source, "c", "test.c").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
     }
 
@@ -672,7 +672,7 @@ int foo() { return 0; }";
     fn test_c_function_prototype() {
         let source = b"int add(int a, int b);
 extern void print(const char* msg);";
-        let (symbols, _texts) = parse_file(source, "c", "test.c").unwrap();
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
