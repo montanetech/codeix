@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -120,11 +120,13 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -132,6 +134,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -144,13 +147,13 @@ fn walk_node(
     match kind {
         "class_declaration" => {
             extract_type_decl(
-                node, source, file_path, "class", parent_ctx, symbols, texts, depth,
+                node, source, file_path, "class", parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
         "struct_declaration" => {
             extract_type_decl(
-                node, source, file_path, "struct", parent_ctx, symbols, texts, depth,
+                node, source, file_path, "struct", parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
@@ -163,6 +166,7 @@ fn walk_node(
                 parent_ctx,
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
@@ -172,19 +176,57 @@ fn walk_node(
         }
         "record_declaration" => {
             extract_type_decl(
-                node, source, file_path, "struct", parent_ctx, symbols, texts, depth,
+                node, source, file_path, "struct", parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
         "namespace_declaration" | "file_scoped_namespace_declaration" => {
-            extract_namespace(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_namespace(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "method_declaration" => {
-            extract_method(node, source, file_path, parent_ctx, symbols);
+            let method_name = extract_method(node, source, file_path, parent_ctx, symbols);
+            // Recurse into method body with method name as context
+            if let Some(body) = find_child_by_field(node, "body") {
+                let ctx = method_name.as_deref();
+                let mut cursor = body.walk();
+                for child in body.children(&mut cursor) {
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        ctx,
+                        symbols,
+                        texts,
+                        references,
+                        depth + 1,
+                    );
+                }
+            }
+            return;
         }
         "constructor_declaration" => {
-            extract_constructor(node, source, file_path, parent_ctx, symbols);
+            let ctor_name = extract_constructor(node, source, file_path, parent_ctx, symbols);
+            // Recurse into constructor body with constructor name as context
+            if let Some(body) = find_child_by_field(node, "body") {
+                let ctx = ctor_name.as_deref();
+                let mut cursor = body.walk();
+                for child in body.children(&mut cursor) {
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        ctx,
+                        symbols,
+                        texts,
+                        references,
+                        depth + 1,
+                    );
+                }
+            }
+            return;
         }
         "property_declaration" => {
             extract_property(node, source, file_path, parent_ctx, symbols);
@@ -196,7 +238,13 @@ fn walk_node(
             extract_delegate(node, source, file_path, parent_ctx, symbols);
         }
         "using_directive" => {
-            extract_using(node, source, file_path, symbols);
+            extract_using(node, source, file_path, symbols, references);
+        }
+        "invocation_expression" => {
+            extract_call(node, source, file_path, parent_ctx, references);
+        }
+        "object_creation_expression" => {
+            extract_new_call(node, source, file_path, parent_ctx, references);
         }
         "comment" => {
             extract_csharp_comment(node, source, file_path, parent_ctx, texts);
@@ -222,6 +270,7 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
@@ -236,6 +285,7 @@ fn extract_type_decl(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -293,6 +343,7 @@ fn extract_type_decl(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -357,6 +408,7 @@ fn extract_enum(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_namespace(
     node: Node,
     source: &[u8],
@@ -364,6 +416,7 @@ fn extract_namespace(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -402,6 +455,7 @@ fn extract_namespace(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -426,6 +480,7 @@ fn extract_namespace(
                         Some(&full_name),
                         symbols,
                         texts,
+                        references,
                         depth + 1,
                     );
                 }
@@ -440,10 +495,10 @@ fn extract_method(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
-) {
+) -> Option<String> {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
-        None => return,
+        None => return None,
     };
 
     let line = node_line_range(node);
@@ -460,6 +515,7 @@ fn extract_method(
     let tokens = find_child_by_field(node, "body")
         .and_then(|body| filter_csharp_tokens(extract_tokens(body, source)));
 
+    let result = full_name.clone();
     push_symbol(
         symbols,
         file_path,
@@ -471,6 +527,8 @@ fn extract_method(
         None,
         Some(visibility),
     );
+
+    Some(result)
 }
 
 fn extract_constructor(
@@ -479,10 +537,10 @@ fn extract_constructor(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
-) {
+) -> Option<String> {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
-        None => return,
+        None => return None,
     };
 
     let line = node_line_range(node);
@@ -499,6 +557,7 @@ fn extract_constructor(
     let tokens = find_child_by_field(node, "body")
         .and_then(|body| filter_csharp_tokens(extract_tokens(body, source)));
 
+    let result = full_name.clone();
     push_symbol(
         symbols,
         file_path,
@@ -510,6 +569,8 @@ fn extract_constructor(
         None,
         Some(visibility),
     );
+
+    Some(result)
 }
 
 fn extract_property(
@@ -638,7 +699,13 @@ fn extract_delegate(
     );
 }
 
-fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_using(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // `using System.Linq;` or `using Foo = System.Bar;`
@@ -650,7 +717,7 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
                 push_symbol(
                     symbols,
                     file_path,
-                    name,
+                    name.clone(),
                     "import",
                     line,
                     None,
@@ -658,6 +725,14 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
                     None,
                     Some("private".to_string()),
                 );
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name,
+                    kind: "import".to_string(),
+                    line,
+                    caller: None,
+                    project: String::new(),
+                });
             }
             "name_equals" => {
                 // `using Alias = Namespace.Type;`
@@ -672,7 +747,7 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
                         push_symbol(
                             symbols,
                             file_path,
-                            type_name,
+                            type_name.clone(),
                             "import",
                             line,
                             None,
@@ -680,12 +755,225 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
                             Some(a),
                             Some("private".to_string()),
                         );
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: type_name,
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                 }
             }
             _ => {}
         }
     }
+}
+
+fn extract_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    // invocation_expression has an "expression" (the function being called) and "argument_list"
+    let mut cursor = node.walk();
+    let func_node = node.children(&mut cursor).next();
+
+    let func_node = match func_node {
+        Some(f) => f,
+        None => return,
+    };
+
+    let name = match func_node.kind() {
+        "identifier" | "identifier_name" => node_text(func_node, source),
+        "member_access_expression" => {
+            // obj.Method() - extract the method name (last identifier)
+            if let Some(name_node) = find_child_by_field(func_node, "name") {
+                node_text(name_node, source)
+            } else {
+                // Fallback: get text and extract last part
+                let text = node_text(func_node, source);
+                text.rsplit('.').next().unwrap_or(&text).to_string()
+            }
+        }
+        "generic_name" => {
+            // Method<T>() - extract the method name
+            if let Some(name_node) = find_child_by_field(func_node, "name") {
+                node_text(name_node, source)
+            } else {
+                let text = node_text(func_node, source);
+                text.split('<').next().unwrap_or(&text).to_string()
+            }
+        }
+        _ => return,
+    };
+
+    if name.is_empty() || is_csharp_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(|s| s.to_string()),
+        project: String::new(),
+    });
+}
+
+fn extract_new_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    // new ClassName() - extract the type being constructed
+    if let Some(type_node) = find_child_by_field(node, "type") {
+        let name = match type_node.kind() {
+            "identifier" | "identifier_name" => node_text(type_node, source),
+            "generic_name" => {
+                // List<T> - get the generic type name
+                if let Some(name_node) = find_child_by_field(type_node, "name") {
+                    node_text(name_node, source)
+                } else {
+                    let text = node_text(type_node, source);
+                    text.split('<').next().unwrap_or(&text).to_string()
+                }
+            }
+            "qualified_name" => {
+                // Namespace.ClassName - get just the class name
+                let text = node_text(type_node, source);
+                text.rsplit('.').next().unwrap_or(&text).to_string()
+            }
+            _ => node_text(type_node, source),
+        };
+
+        if name.is_empty() || is_csharp_builtin(&name) {
+            return;
+        }
+
+        let line = node_line_range(node);
+        references.push(ReferenceEntry {
+            file: file_path.to_string(),
+            name,
+            kind: "call".to_string(),
+            line,
+            caller: parent_ctx.map(|s| s.to_string()),
+            project: String::new(),
+        });
+    }
+}
+
+/// Check if a name is a C# standard library builtin.
+fn is_csharp_builtin(name: &str) -> bool {
+    matches!(
+        name,
+        // Console
+        "Console"
+            | "WriteLine"
+            | "ReadLine"
+            | "Write"
+            | "Read"
+            // String methods
+            | "ToString"
+            | "Equals"
+            | "GetHashCode"
+            | "GetType"
+            | "Format"
+            | "Join"
+            | "Split"
+            | "Trim"
+            | "ToLower"
+            | "ToUpper"
+            | "Contains"
+            | "StartsWith"
+            | "EndsWith"
+            | "Replace"
+            | "Substring"
+            | "IndexOf"
+            | "LastIndexOf"
+            // Collection methods
+            | "Add"
+            | "Remove"
+            | "Clear"
+            | "Count"
+            | "ToList"
+            | "ToArray"
+            | "ToDictionary"
+            | "First"
+            | "FirstOrDefault"
+            | "Last"
+            | "LastOrDefault"
+            | "Single"
+            | "SingleOrDefault"
+            | "Where"
+            | "Select"
+            | "OrderBy"
+            | "OrderByDescending"
+            | "GroupBy"
+            | "Any"
+            | "All"
+            | "Skip"
+            | "Take"
+            | "Aggregate"
+            | "Sum"
+            | "Average"
+            | "Min"
+            | "Max"
+            // Type conversions
+            | "Parse"
+            | "TryParse"
+            | "Convert"
+            | "Cast"
+            | "OfType"
+            // Common types (constructors)
+            | "String"
+            | "Int32"
+            | "Int64"
+            | "Boolean"
+            | "Object"
+            | "List"
+            | "Dictionary"
+            | "HashSet"
+            | "Queue"
+            | "Stack"
+            | "Array"
+            | "Tuple"
+            | "Task"
+            | "Action"
+            | "Func"
+            | "Exception"
+            | "ArgumentException"
+            | "InvalidOperationException"
+            | "NullReferenceException"
+            // Async
+            | "Wait"
+            | "Result"
+            | "ConfigureAwait"
+            | "GetAwaiter"
+            | "GetResult"
+            // Dispose
+            | "Dispose"
+            | "Close"
+            // Debug/Trace
+            | "Debug"
+            | "Trace"
+            | "Assert"
+            // Math
+            | "Math"
+            | "Abs"
+            | "Floor"
+            | "Ceiling"
+            | "Round"
+            | "Sqrt"
+            | "Pow"
+    )
 }
 
 fn extract_csharp_comment(
@@ -1005,6 +1293,49 @@ public class Documented {}
             texts
                 .iter()
                 .any(|t| t.kind == "docstring" || t.kind == "comment")
+        );
+    }
+
+    #[test]
+    fn test_csharp_call_references() {
+        let source = b"using System;
+
+public class Program
+{
+    public void DoWork()
+    {
+        Console.WriteLine(\"hello\");
+    }
+
+    public static void Main()
+    {
+        var p = new Program();
+        p.DoWork();
+        CustomMethod();
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "csharp", "test.cs").unwrap();
+
+        // Should find call to CustomMethod (Console.WriteLine is a builtin)
+        let custom_call = refs
+            .iter()
+            .find(|r| r.name == "CustomMethod" && r.kind == "call");
+        assert!(custom_call.is_some(), "should find call to CustomMethod");
+        assert_eq!(custom_call.unwrap().caller.as_deref(), Some("Program.Main"));
+
+        // Should find new Program() as a call
+        let new_program = refs
+            .iter()
+            .find(|r| r.name == "Program" && r.kind == "call");
+        assert!(new_program.is_some(), "should find new Program()");
+
+        // Should have import reference for System
+        let import_ref = refs
+            .iter()
+            .find(|r| r.name == "System" && r.kind == "import");
+        assert!(
+            import_ref.is_some(),
+            "should find import reference for System"
         );
     }
 }

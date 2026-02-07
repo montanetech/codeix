@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -98,11 +98,13 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -110,6 +112,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -121,27 +124,36 @@ fn walk_node(
 
     match kind {
         "method" => {
-            extract_method(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_method(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "singleton_method" => {
-            extract_singleton_method(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_singleton_method(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "class" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_class(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "module" => {
-            extract_module(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_module(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "assignment" => {
             extract_assignment(node, source, file_path, parent_ctx, symbols);
         }
         "call" => {
-            // Capture `require`, `include`, `extend`, `attr_*`
-            extract_call(node, source, file_path, parent_ctx, symbols);
+            // Capture `require`, `include`, `extend`, `attr_*` and method calls
+            extract_require(node, source, file_path, symbols, references);
+            extract_method_call(node, source, file_path, parent_ctx, references);
         }
         "comment" => {
             extract_ruby_comment(node, source, file_path, parent_ctx, texts);
@@ -166,11 +178,13 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_method(
     node: Node,
     source: &[u8],
@@ -178,6 +192,7 @@ fn extract_method(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -213,7 +228,7 @@ fn extract_method(
     push_symbol(
         symbols,
         file_path,
-        full_name,
+        full_name.clone(),
         kind,
         line,
         parent_ctx,
@@ -222,33 +237,25 @@ fn extract_method(
         Some(visibility),
     );
 
-    // Recurse for nested definitions
+    // Recurse for nested definitions and calls with method name as context
     if let Some(body) = find_child_by_field(node, "body") {
-        let ctx = if let Some(p) = parent_ctx {
-            format!("{}.{}", p, name)
-        } else {
-            name
-        };
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            match child.kind() {
-                "method" | "singleton_method" | "class" | "module" => {
-                    walk_node(
-                        child,
-                        source,
-                        file_path,
-                        Some(&ctx),
-                        symbols,
-                        texts,
-                        depth + 1,
-                    );
-                }
-                _ => {}
-            }
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                references,
+                depth + 1,
+            );
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_singleton_method(
     node: Node,
     source: &[u8],
@@ -256,6 +263,7 @@ fn extract_singleton_method(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -284,7 +292,7 @@ fn extract_singleton_method(
     push_symbol(
         symbols,
         file_path,
-        full_name,
+        full_name.clone(),
         "method",
         line,
         parent_ctx,
@@ -293,33 +301,25 @@ fn extract_singleton_method(
         Some("public".to_string()),
     );
 
-    // Recurse for nested definitions
+    // Recurse for nested definitions and calls with method name as context
     if let Some(body) = find_child_by_field(node, "body") {
-        let ctx = if let Some(p) = parent_ctx {
-            format!("{}.{}", p, name)
-        } else {
-            name
-        };
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
-            match child.kind() {
-                "method" | "singleton_method" | "class" | "module" => {
-                    walk_node(
-                        child,
-                        source,
-                        file_path,
-                        Some(&ctx),
-                        symbols,
-                        texts,
-                        depth + 1,
-                    );
-                }
-                _ => {}
-            }
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                references,
+                depth + 1,
+            );
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_class(
     node: Node,
     source: &[u8],
@@ -327,6 +327,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -376,12 +377,14 @@ fn extract_class(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_module(
     node: Node,
     source: &[u8],
@@ -389,6 +392,7 @@ fn extract_module(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -426,6 +430,7 @@ fn extract_module(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -513,12 +518,12 @@ fn extract_assignment(
     }
 }
 
-fn extract_call(
+fn extract_require(
     node: Node,
     source: &[u8],
     file_path: &str,
-    _parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let method = match find_child_by_field(node, "method") {
         Some(n) => node_text(n, source),
@@ -539,7 +544,7 @@ fn extract_call(
                             push_symbol(
                                 symbols,
                                 file_path,
-                                path,
+                                path.clone(),
                                 "import",
                                 line,
                                 None,
@@ -547,6 +552,14 @@ fn extract_call(
                                 None,
                                 Some("private".to_string()),
                             );
+                            references.push(ReferenceEntry {
+                                file: file_path.to_string(),
+                                name: path,
+                                kind: "import".to_string(),
+                                line,
+                                caller: None,
+                                project: String::new(),
+                            });
                         }
                     }
                 }
@@ -554,6 +567,223 @@ fn extract_call(
         }
         _ => {}
     }
+}
+
+fn extract_method_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let method = match find_child_by_field(node, "method") {
+        Some(n) => node_text(n, source),
+        None => return,
+    };
+
+    // Skip Ruby builtins and common methods
+    if is_ruby_builtin(&method) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name: method,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(|s| s.to_string()),
+        project: String::new(),
+    });
+}
+
+/// Check if a method name is a Ruby builtin.
+fn is_ruby_builtin(name: &str) -> bool {
+    matches!(
+        name,
+        // I/O
+        "puts"
+            | "print"
+            | "p"
+            | "gets"
+            | "printf"
+            | "putc"
+            | "warn"
+            | "raise"
+            | "fail"
+            // Require/Include
+            | "require"
+            | "require_relative"
+            | "load"
+            | "include"
+            | "extend"
+            | "prepend"
+            // Attribute accessors
+            | "attr_reader"
+            | "attr_writer"
+            | "attr_accessor"
+            | "attr"
+            // Class macros
+            | "private"
+            | "protected"
+            | "public"
+            | "module_function"
+            | "alias_method"
+            // Object basics
+            | "new"
+            | "initialize"
+            | "class"
+            | "object_id"
+            | "send"
+            | "respond_to?"
+            | "method"
+            | "methods"
+            | "instance_variable_get"
+            | "instance_variable_set"
+            | "is_a?"
+            | "kind_of?"
+            | "instance_of?"
+            | "dup"
+            | "clone"
+            | "freeze"
+            | "frozen?"
+            | "nil?"
+            | "to_s"
+            | "to_str"
+            | "to_i"
+            | "to_int"
+            | "to_a"
+            | "to_ary"
+            | "to_h"
+            | "to_hash"
+            | "to_sym"
+            | "inspect"
+            // Enumerable
+            | "each"
+            | "each_with_index"
+            | "map"
+            | "collect"
+            | "select"
+            | "filter"
+            | "reject"
+            | "find"
+            | "detect"
+            | "find_all"
+            | "reduce"
+            | "inject"
+            | "any?"
+            | "all?"
+            | "none?"
+            | "one?"
+            | "count"
+            | "first"
+            | "last"
+            | "take"
+            | "drop"
+            | "sort"
+            | "sort_by"
+            | "min"
+            | "max"
+            | "minmax"
+            | "group_by"
+            | "partition"
+            | "flat_map"
+            | "compact"
+            | "uniq"
+            | "reverse"
+            | "shuffle"
+            | "sample"
+            // Array/Hash
+            | "push"
+            | "pop"
+            | "shift"
+            | "unshift"
+            | "length"
+            | "size"
+            | "empty?"
+            | "include?"
+            | "index"
+            | "rindex"
+            | "join"
+            | "split"
+            | "concat"
+            | "flatten"
+            | "fetch"
+            | "keys"
+            | "values"
+            | "merge"
+            | "merge!"
+            | "delete"
+            | "delete_if"
+            | "keep_if"
+            | "clear"
+            // String
+            | "strip"
+            | "chomp"
+            | "chop"
+            | "upcase"
+            | "downcase"
+            | "capitalize"
+            | "gsub"
+            | "sub"
+            | "match"
+            | "match?"
+            | "start_with?"
+            | "end_with?"
+            | "tr"
+            | "encode"
+            | "bytes"
+            | "chars"
+            | "lines"
+            // Blocks/Procs
+            | "lambda"
+            | "proc"
+            | "block_given?"
+            | "yield"
+            | "call"
+            | "tap"
+            | "then"
+            // Numeric
+            | "abs"
+            | "ceil"
+            | "floor"
+            | "round"
+            | "times"
+            | "upto"
+            | "downto"
+            | "step"
+            | "between?"
+            | "zero?"
+            | "positive?"
+            | "negative?"
+            // File/Dir
+            | "open"
+            | "read"
+            | "write"
+            | "close"
+            | "exist?"
+            | "exists?"
+            | "directory?"
+            | "file?"
+            | "dirname"
+            | "basename"
+            | "extname"
+            // Misc
+            | "sleep"
+            | "exit"
+            | "abort"
+            | "loop"
+            | "rand"
+            | "srand"
+            | "system"
+            | "exec"
+            | "spawn"
+            | "fork"
+            | "eval"
+            | "binding"
+            | "caller"
+            | "defined?"
+    )
 }
 
 fn extract_ruby_comment(
@@ -771,5 +1001,49 @@ end";
 
         let internal = find_sym(&symbols, "_internal_method");
         assert_eq!(internal.visibility.as_deref(), Some("private"));
+    }
+
+    #[test]
+    fn test_ruby_call_references() {
+        let source = b"require 'json'
+
+class Calculator
+  def add(a, b)
+    helper(a) + helper(b)
+  end
+
+  def helper(x)
+    x * 2
+  end
+end
+
+def main
+  calc = Calculator.new
+  result = calc.add(1, 2)
+  custom_method(result)
+end";
+        let (_symbols, _texts, refs) = parse_file(source, "ruby", "test.rb").unwrap();
+
+        // Should find call to helper from add method
+        let helper_call = refs.iter().find(|r| r.name == "helper" && r.kind == "call");
+        assert!(helper_call.is_some(), "should find call to helper");
+        assert_eq!(
+            helper_call.unwrap().caller.as_deref(),
+            Some("Calculator.add")
+        );
+
+        // Should find call to custom_method from main
+        let custom_call = refs
+            .iter()
+            .find(|r| r.name == "custom_method" && r.kind == "call");
+        assert!(custom_call.is_some(), "should find call to custom_method");
+        assert_eq!(custom_call.unwrap().caller.as_deref(), Some("main"));
+
+        // Should have import reference for json
+        let import_ref = refs.iter().find(|r| r.name == "json" && r.kind == "import");
+        assert!(
+            import_ref.is_some(),
+            "should find import reference for json"
+        );
     }
 }

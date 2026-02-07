@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -61,11 +61,13 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -73,6 +75,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -84,20 +87,108 @@ fn walk_node(
 
     match kind {
         "function_declaration" => {
+            let fn_name = find_child_by_field(node, "name").map(|n| node_text(n, source));
             extract_function_decl(node, source, file_path, parent_ctx, symbols);
+            // Walk function body with function name as parent context for call tracking
+            if let Some(body) = find_child_by_field(node, "body") {
+                let caller = fn_name.as_deref().or(parent_ctx);
+                walk_node(
+                    body,
+                    source,
+                    file_path,
+                    caller,
+                    symbols,
+                    texts,
+                    references,
+                    depth + 1,
+                );
+            }
+            return;
         }
         "generator_function_declaration" => {
+            let fn_name = find_child_by_field(node, "name").map(|n| node_text(n, source));
             extract_function_decl(node, source, file_path, parent_ctx, symbols);
+            if let Some(body) = find_child_by_field(node, "body") {
+                let caller = fn_name.as_deref().or(parent_ctx);
+                walk_node(
+                    body,
+                    source,
+                    file_path,
+                    caller,
+                    symbols,
+                    texts,
+                    references,
+                    depth + 1,
+                );
+            }
+            return;
         }
         "class_declaration" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_class(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return; // handled recursively
         }
         "method_definition" => {
+            let method_name = find_child_by_field(node, "name").map(|n| node_text(n, source));
             extract_method(node, source, file_path, parent_ctx, symbols);
+            // Walk method body with method name as parent context
+            if let Some(body) = find_child_by_field(node, "body") {
+                let full_name = match (parent_ctx, &method_name) {
+                    (Some(p), Some(m)) => Some(format!("{p}.{m}")),
+                    (None, Some(m)) => Some(m.clone()),
+                    _ => None,
+                };
+                walk_node(
+                    body,
+                    source,
+                    file_path,
+                    full_name.as_deref(),
+                    symbols,
+                    texts,
+                    references,
+                    depth + 1,
+                );
+            }
+            return;
+        }
+        "arrow_function" | "function" | "function_expression" => {
+            // Anonymous functions - walk body with current parent context
+            if let Some(body) = find_child_by_field(node, "body") {
+                walk_node(
+                    body,
+                    source,
+                    file_path,
+                    parent_ctx,
+                    symbols,
+                    texts,
+                    references,
+                    depth + 1,
+                );
+            }
+            return;
         }
         "lexical_declaration" | "variable_declaration" => {
             extract_variable_decl(node, source, file_path, parent_ctx, symbols);
+            // Walk value nodes for calls within variable initializers
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "variable_declarator"
+                    && let Some(value) = find_child_by_field(child, "value")
+                {
+                    walk_node(
+                        value,
+                        source,
+                        file_path,
+                        parent_ctx,
+                        symbols,
+                        texts,
+                        references,
+                        depth + 1,
+                    );
+                }
+            }
+            return;
         }
         "export_statement" => {
             // Recurse into the exported declaration
@@ -110,13 +201,20 @@ fn walk_node(
                     parent_ctx,
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
             return;
         }
         "import_statement" => {
-            extract_import(node, source, file_path, symbols);
+            extract_import(node, source, file_path, symbols, references);
+        }
+        "call_expression" => {
+            extract_call(node, source, file_path, parent_ctx, references);
+        }
+        "new_expression" => {
+            extract_new_call(node, source, file_path, parent_ctx, references);
         }
         "comment" => {
             extract_js_comment(node, source, file_path, parent_ctx, texts);
@@ -139,6 +237,7 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
@@ -198,6 +297,7 @@ fn extract_function_decl(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_class(
     node: Node,
     source: &[u8],
@@ -205,6 +305,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -260,6 +361,7 @@ fn extract_class(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -447,7 +549,13 @@ fn extract_variable_decl(
     }
 }
 
-fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_import(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // Get the source module
@@ -471,7 +579,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                         push_symbol(
                             symbols,
                             file_path,
-                            full_name,
+                            full_name.clone(),
                             "import",
                             line,
                             None,
@@ -479,6 +587,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                             Some(name),
                             Some("private".to_string()),
                         );
+                        // Also push as reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: full_name,
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                     "named_imports" => {
                         // `import { foo, bar as baz } from "..."`
@@ -495,7 +612,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                                     push_symbol(
                                         symbols,
                                         file_path,
-                                        full_name,
+                                        full_name.clone(),
                                         "import",
                                         line,
                                         None,
@@ -503,6 +620,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                                         alias,
                                         Some("private".to_string()),
                                     );
+                                    // Also push as reference
+                                    references.push(ReferenceEntry {
+                                        file: file_path.to_string(),
+                                        name: full_name,
+                                        kind: "import".to_string(),
+                                        line,
+                                        caller: None,
+                                        project: String::new(),
+                                    });
                                 }
                             }
                         }
@@ -522,7 +648,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                         push_symbol(
                             symbols,
                             file_path,
-                            full_name,
+                            full_name.clone(),
                             "import",
                             line,
                             None,
@@ -530,12 +656,157 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                             alias,
                             Some("private".to_string()),
                         );
+                        // Also push as reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: full_name,
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                     _ => {}
                 }
             }
         }
     }
+}
+
+/// Extract a function call reference.
+fn extract_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let func_node = match find_child_by_field(node, "function") {
+        Some(n) => n,
+        None => return,
+    };
+
+    let name = match func_node.kind() {
+        "identifier" => node_text(func_node, source),
+        "member_expression" => {
+            // obj.method() or obj.prop.method()
+            node_text(func_node, source)
+        }
+        _ => return,
+    };
+
+    if is_js_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Extract a constructor call (new expression) reference.
+fn extract_new_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let constructor = match find_child_by_field(node, "constructor") {
+        Some(n) => n,
+        None => return,
+    };
+
+    let name = match constructor.kind() {
+        "identifier" => node_text(constructor, source),
+        "member_expression" => node_text(constructor, source),
+        _ => return,
+    };
+
+    if is_js_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Check if a name is a JavaScript/DOM builtin.
+fn is_js_builtin(name: &str) -> bool {
+    // Get base name (before any dots)
+    let base = name.split('.').next().unwrap_or(name);
+
+    matches!(
+        base,
+        // Console, timing
+        "console"
+            | "setTimeout"
+            | "setInterval"
+            | "clearTimeout"
+            | "clearInterval"
+            | "requestAnimationFrame"
+            | "cancelAnimationFrame"
+            // DOM
+            | "document"
+            | "window"
+            | "alert"
+            | "confirm"
+            | "prompt"
+            | "fetch"
+            // Built-in constructors (without "new")
+            | "Array"
+            | "Object"
+            | "String"
+            | "Number"
+            | "Boolean"
+            | "Date"
+            | "RegExp"
+            | "Error"
+            | "Map"
+            | "Set"
+            | "WeakMap"
+            | "WeakSet"
+            | "Promise"
+            | "Symbol"
+            | "Proxy"
+            | "Reflect"
+            | "JSON"
+            | "Math"
+            | "Intl"
+            | "ArrayBuffer"
+            | "DataView"
+            | "Int8Array"
+            | "Uint8Array"
+            | "Float32Array"
+            | "Float64Array"
+            // Common methods
+            | "parseInt"
+            | "parseFloat"
+            | "isNaN"
+            | "isFinite"
+            | "encodeURI"
+            | "decodeURI"
+            | "encodeURIComponent"
+            | "decodeURIComponent"
+            | "eval"
+            // Module system
+            | "require"
+            | "import"
+            | "exports"
+    )
 }
 
 fn extract_js_comment(
@@ -785,5 +1056,53 @@ function helper() {}
         let (_symbols, texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
         assert!(texts.iter().any(|t| t.kind == "docstring"));
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_js_call_references() {
+        let source = b"import { fetchData } from './api';
+
+function processData() {
+    const data = fetchData();
+    transform(data);
+    return helper.format(data);
+}
+
+class DataProcessor {
+    process() {
+        this.validate();
+        const result = new Parser();
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "javascript", "test.js").unwrap();
+
+        // Check import reference
+        let import_ref = refs.iter().find(|r| r.name == "./api.fetchData").unwrap();
+        assert_eq!(import_ref.kind, "import");
+
+        // Check call references
+        let fetch_call = refs
+            .iter()
+            .find(|r| r.name == "fetchData" && r.kind == "call")
+            .unwrap();
+        assert_eq!(fetch_call.caller.as_deref(), Some("processData"));
+
+        let transform_call = refs.iter().find(|r| r.name == "transform").unwrap();
+        assert_eq!(transform_call.kind, "call");
+        assert_eq!(transform_call.caller.as_deref(), Some("processData"));
+
+        let format_call = refs.iter().find(|r| r.name == "helper.format").unwrap();
+        assert_eq!(format_call.kind, "call");
+
+        // Check method call within class
+        let validate_call = refs.iter().find(|r| r.name == "this.validate").unwrap();
+        assert_eq!(
+            validate_call.caller.as_deref(),
+            Some("DataProcessor.process")
+        );
+
+        // Check new expression
+        let parser_new = refs.iter().find(|r| r.name == "Parser").unwrap();
+        assert_eq!(parser_new.kind, "call");
     }
 }

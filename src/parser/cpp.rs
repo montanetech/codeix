@@ -4,7 +4,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -98,9 +98,12 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, "public", symbols, texts, 0);
+    walk_node(
+        root, source, file_path, None, "public", symbols, texts, references, 0,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -112,6 +115,7 @@ fn walk_node(
     access: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -123,14 +127,33 @@ fn walk_node(
 
     match kind {
         "function_definition" => {
-            extract_function(node, source, file_path, parent_ctx, access, symbols);
+            let func_name = extract_function(node, source, file_path, parent_ctx, access, symbols);
+            // Recurse into function body with function name as context
+            if let Some(body) = find_child_by_field(node, "body") {
+                let ctx = func_name.as_deref();
+                let mut cursor = body.walk();
+                for child in body.children(&mut cursor) {
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        ctx,
+                        access,
+                        symbols,
+                        texts,
+                        references,
+                        depth + 1,
+                    );
+                }
+            }
+            return;
         }
         "declaration" => {
             extract_declaration(node, source, file_path, parent_ctx, access, symbols);
         }
         "class_specifier" | "struct_specifier" => {
             extract_class(
-                node, source, file_path, kind, parent_ctx, symbols, texts, depth,
+                node, source, file_path, kind, parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
@@ -143,6 +166,7 @@ fn walk_node(
                 parent_ctx,
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
@@ -151,7 +175,9 @@ fn walk_node(
             extract_enum(node, source, file_path, parent_ctx, symbols);
         }
         "namespace_definition" => {
-            extract_namespace(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_namespace(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "template_declaration" => {
@@ -166,6 +192,7 @@ fn walk_node(
                     access,
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
@@ -179,13 +206,19 @@ fn walk_node(
             extract_using_alias(node, source, file_path, parent_ctx, symbols);
         }
         "preproc_include" => {
-            extract_include(node, source, file_path, symbols);
+            extract_include(node, source, file_path, symbols, references);
         }
         "preproc_def" | "preproc_function_def" => {
             extract_macro(node, source, file_path, symbols);
         }
         "using_declaration" => {
-            extract_using(node, source, file_path, symbols);
+            extract_using(node, source, file_path, symbols, references);
+        }
+        "call_expression" => {
+            extract_call(node, source, file_path, parent_ctx, references);
+        }
+        "new_expression" => {
+            extract_new_call(node, source, file_path, parent_ctx, references);
         }
         "comment" => {
             extract_comment(node, source, file_path, parent_ctx, texts);
@@ -209,6 +242,7 @@ fn walk_node(
             access,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
@@ -221,15 +255,12 @@ fn extract_function(
     parent_ctx: Option<&str>,
     access: &str,
     symbols: &mut Vec<SymbolEntry>,
-) {
-    let declarator = match find_child_by_field(node, "declarator") {
-        Some(d) => d,
-        None => return,
-    };
+) -> Option<String> {
+    let declarator = find_child_by_field(node, "declarator")?;
 
     let name = extract_declarator_name(declarator, source);
     if name.is_empty() {
-        return;
+        return None;
     }
 
     let line = node_line_range(node);
@@ -262,6 +293,7 @@ fn extract_function(
     let tokens = find_child_by_field(node, "body")
         .and_then(|body| filter_cpp_tokens(extract_tokens(body, source)));
 
+    let result = full_name.clone();
     push_symbol(
         symbols,
         file_path,
@@ -273,6 +305,8 @@ fn extract_function(
         None,
         Some(visibility),
     );
+
+    Some(result)
 }
 
 fn extract_declaration(
@@ -402,6 +436,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = find_child_by_field(node, "name")
@@ -470,6 +505,7 @@ fn extract_class(
                 &current_access,
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -536,6 +572,7 @@ fn extract_enum(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_namespace(
     node: Node,
     source: &[u8],
@@ -543,6 +580,7 @@ fn extract_namespace(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = find_child_by_field(node, "name")
@@ -562,6 +600,7 @@ fn extract_namespace(
                     "private",
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
@@ -599,6 +638,7 @@ fn extract_namespace(
                 "public",
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -669,7 +709,13 @@ fn extract_using_alias(
     );
 }
 
-fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_using(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
     let text = node_text(node, source);
     // `using namespace std;` or `using std::string;`
@@ -686,7 +732,7 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
         push_symbol(
             symbols,
             file_path,
-            name,
+            name.clone(),
             "import",
             line,
             None,
@@ -694,10 +740,25 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
             None,
             Some("private".to_string()),
         );
+
+        references.push(ReferenceEntry {
+            file: file_path.to_string(),
+            name,
+            kind: "import".to_string(),
+            line,
+            caller: None,
+            project: String::new(),
+        });
     }
 }
 
-fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_include(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
     if let Some(path_node) = find_child_by_field(node, "path") {
         let path = node_text(path_node, source);
@@ -705,10 +766,11 @@ fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
             .trim_start_matches(['<', '"'])
             .trim_end_matches(['>', '"'])
             .to_string();
+
         push_symbol(
             symbols,
             file_path,
-            path,
+            path.clone(),
             "import",
             line,
             None,
@@ -716,6 +778,15 @@ fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
             None,
             Some("private".to_string()),
         );
+
+        references.push(ReferenceEntry {
+            file: file_path.to_string(),
+            name: path,
+            kind: "import".to_string(),
+            line,
+            caller: None,
+            project: String::new(),
+        });
     }
 }
 
@@ -743,6 +814,196 @@ fn extract_macro(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
         None,
         Some("public".to_string()),
     );
+}
+
+fn extract_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    // In C++, call_expression has a "function" field that can be:
+    // - identifier: simple function call like foo()
+    // - field_expression: member access like obj.method()
+    // - qualified_identifier: namespace::function()
+    // - template_function: func<T>()
+    let func_node = match find_child_by_field(node, "function") {
+        Some(f) => f,
+        None => return,
+    };
+
+    let name = match func_node.kind() {
+        "identifier" => node_text(func_node, source),
+        "field_expression" => {
+            // obj.method or obj->method - extract the field name
+            if let Some(field) = find_child_by_field(func_node, "field") {
+                node_text(field, source)
+            } else {
+                return;
+            }
+        }
+        "qualified_identifier" => {
+            // namespace::function - get the full qualified name
+            node_text(func_node, source)
+        }
+        "template_function" => {
+            // func<T> - get the function name
+            if let Some(name_node) = find_child_by_field(func_node, "name") {
+                node_text(name_node, source)
+            } else {
+                return;
+            }
+        }
+        _ => return,
+    };
+
+    if name.is_empty() || is_cpp_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(|s| s.to_string()),
+        project: String::new(),
+    });
+}
+
+fn extract_new_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    // new ClassName() - extract the type being constructed
+    if let Some(type_node) = find_child_by_field(node, "type") {
+        let name = node_text(type_node, source);
+        if name.is_empty() || is_cpp_builtin(&name) {
+            return;
+        }
+
+        let line = node_line_range(node);
+        references.push(ReferenceEntry {
+            file: file_path.to_string(),
+            name,
+            kind: "call".to_string(),
+            line,
+            caller: parent_ctx.map(|s| s.to_string()),
+            project: String::new(),
+        });
+    }
+}
+
+/// Check if a function name is a C++ standard library builtin.
+fn is_cpp_builtin(name: &str) -> bool {
+    // Get base name (strip namespace qualifiers like std::)
+    let base = name.rsplit("::").next().unwrap_or(name);
+
+    matches!(
+        base,
+        // C standard library (inherited)
+        "printf"
+            | "fprintf"
+            | "sprintf"
+            | "scanf"
+            | "malloc"
+            | "calloc"
+            | "realloc"
+            | "free"
+            | "exit"
+            | "abort"
+            | "strlen"
+            | "strcpy"
+            | "strcmp"
+            | "memcpy"
+            | "memset"
+            | "assert"
+            // STL containers and algorithms
+            | "vector"
+            | "string"
+            | "map"
+            | "set"
+            | "list"
+            | "deque"
+            | "array"
+            | "unordered_map"
+            | "unordered_set"
+            | "pair"
+            | "tuple"
+            | "make_pair"
+            | "make_tuple"
+            | "make_unique"
+            | "make_shared"
+            | "move"
+            | "forward"
+            | "swap"
+            | "sort"
+            | "find"
+            | "copy"
+            | "fill"
+            | "begin"
+            | "end"
+            | "size"
+            | "empty"
+            | "push_back"
+            | "pop_back"
+            | "front"
+            | "back"
+            | "insert"
+            | "erase"
+            | "clear"
+            | "resize"
+            | "reserve"
+            | "emplace"
+            | "emplace_back"
+            // I/O
+            | "cout"
+            | "cin"
+            | "cerr"
+            | "clog"
+            | "endl"
+            | "flush"
+            | "getline"
+            | "ifstream"
+            | "ofstream"
+            | "fstream"
+            | "stringstream"
+            // Smart pointers
+            | "unique_ptr"
+            | "shared_ptr"
+            | "weak_ptr"
+            // Type traits and utilities
+            | "static_cast"
+            | "dynamic_cast"
+            | "const_cast"
+            | "reinterpret_cast"
+            | "sizeof"
+            | "alignof"
+            | "typeid"
+            | "decltype"
+            // Threading
+            | "thread"
+            | "mutex"
+            | "lock_guard"
+            | "unique_lock"
+            | "condition_variable"
+            // Exceptions
+            | "throw"
+            | "try"
+            | "catch"
+            | "exception"
+            | "runtime_error"
+            | "logic_error"
+            // Common std namespace items
+            | "std"
+            | "this"
+            | "nullptr"
+    )
 }
 
 fn extract_declarator_name(node: Node, source: &[u8]) -> String {
@@ -1006,5 +1267,56 @@ using MyInt = int;";
 class Foo {};";
         let (_symbols, texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_cpp_call_references() {
+        let source = b"#include <iostream>
+
+class Helper {
+public:
+    void doWork() {
+        std::cout << \"work\";
+    }
+};
+
+void process() {
+    Helper h;
+    h.doWork();
+    customFunc();
+}
+
+int main() {
+    process();
+    return 0;
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "cpp", "test.cpp").unwrap();
+
+        // Should find call to process
+        let process_call = refs
+            .iter()
+            .find(|r| r.name == "process" && r.kind == "call");
+        assert!(process_call.is_some(), "should find call to process");
+        assert_eq!(process_call.unwrap().caller.as_deref(), Some("main"));
+
+        // Should find call to customFunc
+        let custom_call = refs
+            .iter()
+            .find(|r| r.name == "customFunc" && r.kind == "call");
+        assert!(custom_call.is_some(), "should find call to customFunc");
+        assert_eq!(custom_call.unwrap().caller.as_deref(), Some("process"));
+
+        // Should find method call doWork (field access)
+        let do_work_call = refs.iter().find(|r| r.name == "doWork" && r.kind == "call");
+        assert!(do_work_call.is_some(), "should find call to doWork");
+
+        // Should have import reference for iostream
+        let import_ref = refs
+            .iter()
+            .find(|r| r.name == "iostream" && r.kind == "import");
+        assert!(
+            import_ref.is_some(),
+            "should find import reference for iostream"
+        );
     }
 }

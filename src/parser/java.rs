@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -81,11 +81,13 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -93,6 +95,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -105,7 +108,7 @@ fn walk_node(
     match kind {
         "class_declaration" => {
             extract_class(
-                node, source, file_path, parent_ctx, "class", symbols, texts, depth,
+                node, source, file_path, parent_ctx, "class", symbols, texts, references, depth,
             );
             return;
         }
@@ -118,13 +121,14 @@ fn walk_node(
                 "interface",
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
         }
         "enum_declaration" => {
             extract_class(
-                node, source, file_path, parent_ctx, "enum", symbols, texts, depth,
+                node, source, file_path, parent_ctx, "enum", symbols, texts, references, depth,
             );
             return;
         }
@@ -137,30 +141,77 @@ fn walk_node(
                 "annotation",
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
         }
         "record_declaration" => {
             extract_class(
-                node, source, file_path, parent_ctx, "struct", symbols, texts, depth,
+                node, source, file_path, parent_ctx, "struct", symbols, texts, references, depth,
             );
             return;
         }
         "method_declaration" => {
+            let method_name = find_child_by_field(node, "name").map(|n| node_text(n, source));
             extract_method(node, source, file_path, parent_ctx, symbols);
+            // Walk method body with method name as parent context
+            if let Some(body) = find_child_by_field(node, "body") {
+                let full_name = match (parent_ctx, &method_name) {
+                    (Some(p), Some(m)) => Some(format!("{p}.{m}")),
+                    (None, Some(m)) => Some(m.clone()),
+                    _ => None,
+                };
+                walk_node(
+                    body,
+                    source,
+                    file_path,
+                    full_name.as_deref(),
+                    symbols,
+                    texts,
+                    references,
+                    depth + 1,
+                );
+            }
+            return;
         }
         "constructor_declaration" => {
+            let ctor_name = find_child_by_field(node, "name").map(|n| node_text(n, source));
             extract_constructor(node, source, file_path, parent_ctx, symbols);
+            // Walk constructor body
+            if let Some(body) = find_child_by_field(node, "body") {
+                let full_name = match (parent_ctx, &ctor_name) {
+                    (Some(p), Some(m)) => Some(format!("{p}.{m}")),
+                    (None, Some(m)) => Some(m.clone()),
+                    _ => None,
+                };
+                walk_node(
+                    body,
+                    source,
+                    file_path,
+                    full_name.as_deref(),
+                    symbols,
+                    texts,
+                    references,
+                    depth + 1,
+                );
+            }
+            return;
         }
         "field_declaration" => {
             extract_field(node, source, file_path, parent_ctx, symbols);
         }
         "import_declaration" => {
-            extract_import(node, source, file_path, symbols);
+            extract_import(node, source, file_path, symbols, references);
         }
         "package_declaration" => {
             extract_package(node, source, file_path, symbols);
+        }
+        "method_invocation" => {
+            extract_call(node, source, file_path, parent_ctx, references);
+        }
+        "object_creation_expression" => {
+            extract_new_call(node, source, file_path, parent_ctx, references);
         }
         "line_comment" | "block_comment" => {
             extract_java_comment(node, source, file_path, parent_ctx, texts);
@@ -183,6 +234,7 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
@@ -197,6 +249,7 @@ fn extract_class(
     kind: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -243,6 +296,7 @@ fn extract_class(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -376,7 +430,13 @@ fn extract_field(
     }
 }
 
-fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_import(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // Get the import path
@@ -387,7 +447,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
             push_symbol(
                 symbols,
                 file_path,
-                name,
+                name.clone(),
                 "import",
                 line,
                 None,
@@ -395,8 +455,146 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                 None,
                 Some("private".to_string()),
             );
+            // Also push as reference
+            references.push(ReferenceEntry {
+                file: file_path.to_string(),
+                name,
+                kind: "import".to_string(),
+                line,
+                caller: None,
+                project: String::new(),
+            });
         }
     }
+}
+
+/// Extract a method invocation reference.
+fn extract_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let method_name = match find_child_by_field(node, "name") {
+        Some(n) => node_text(n, source),
+        None => return,
+    };
+
+    // Get the object if it's a method call on an object
+    let name = if let Some(obj) = find_child_by_field(node, "object") {
+        let obj_text = node_text(obj, source);
+        format!("{obj_text}.{method_name}")
+    } else {
+        method_name
+    };
+
+    if is_java_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Extract an object creation (new) expression reference.
+fn extract_new_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let type_node = match find_child_by_field(node, "type") {
+        Some(n) => n,
+        None => return,
+    };
+
+    let name = node_text(type_node, source);
+
+    if is_java_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Check if a name is a Java builtin/common class.
+fn is_java_builtin(name: &str) -> bool {
+    // Get base name (before any dots)
+    let base = name.split('.').next().unwrap_or(name);
+
+    matches!(
+        base,
+        // System and common output
+        "System"
+            | "out"
+            | "err"
+            | "in"
+            | "println"
+            | "print"
+            | "printf"
+            // Common classes
+            | "String"
+            | "Integer"
+            | "Long"
+            | "Double"
+            | "Float"
+            | "Boolean"
+            | "Character"
+            | "Byte"
+            | "Short"
+            | "Object"
+            | "Class"
+            // Collections
+            | "List"
+            | "ArrayList"
+            | "LinkedList"
+            | "Map"
+            | "HashMap"
+            | "TreeMap"
+            | "Set"
+            | "HashSet"
+            | "TreeSet"
+            | "Collection"
+            | "Collections"
+            | "Arrays"
+            // Exceptions
+            | "Exception"
+            | "RuntimeException"
+            | "IllegalArgumentException"
+            | "NullPointerException"
+            // Common utility
+            | "Math"
+            | "Objects"
+            | "Optional"
+            | "Stream"
+            // Primitives (shouldn't appear, but just in case)
+            | "int"
+            | "long"
+            | "double"
+            | "float"
+            | "boolean"
+            | "char"
+            | "byte"
+            | "short"
+            | "void"
+    )
 }
 
 fn extract_package(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
@@ -654,5 +852,44 @@ class Documented {}
 /* Block comment */";
         let (_symbols, texts, _refs) = parse_file(source, "java", "test.java").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_java_call_references() {
+        let source = b"import com.example.DataService;
+
+class Processor {
+    private DataService service;
+
+    public void process() {
+        service.fetchData();
+        transform(data);
+        helper.format(data);
+        Parser parser = new Parser();
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "java", "test.java").unwrap();
+
+        // Check import reference
+        let import_ref = refs
+            .iter()
+            .find(|r| r.name == "com.example.DataService")
+            .unwrap();
+        assert_eq!(import_ref.kind, "import");
+
+        // Check method call references
+        let fetch_call = refs.iter().find(|r| r.name == "service.fetchData").unwrap();
+        assert_eq!(fetch_call.kind, "call");
+        assert_eq!(fetch_call.caller.as_deref(), Some("Processor.process"));
+
+        let transform_call = refs.iter().find(|r| r.name == "transform").unwrap();
+        assert_eq!(transform_call.kind, "call");
+
+        let format_call = refs.iter().find(|r| r.name == "helper.format").unwrap();
+        assert_eq!(format_call.kind, "call");
+
+        // Check new expression
+        let parser_new = refs.iter().find(|r| r.name == "Parser").unwrap();
+        assert_eq!(parser_new.kind, "call");
     }
 }

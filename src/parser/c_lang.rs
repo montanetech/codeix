@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -68,11 +68,13 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -80,6 +82,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -91,7 +94,25 @@ fn walk_node(
 
     match kind {
         "function_definition" => {
-            extract_function(node, source, file_path, symbols);
+            let func_name = extract_function(node, source, file_path, symbols);
+            // Recurse into function body with function name as context
+            if let Some(body) = find_child_by_field(node, "body") {
+                let ctx = func_name.as_deref();
+                let mut cursor = body.walk();
+                for child in body.children(&mut cursor) {
+                    walk_node(
+                        child,
+                        source,
+                        file_path,
+                        ctx,
+                        symbols,
+                        texts,
+                        references,
+                        depth + 1,
+                    );
+                }
+            }
+            return;
         }
         "declaration" => {
             extract_declaration(node, source, file_path, parent_ctx, symbols);
@@ -115,10 +136,13 @@ fn walk_node(
             extract_typedef(node, source, file_path, symbols);
         }
         "preproc_include" => {
-            extract_include(node, source, file_path, symbols);
+            extract_include(node, source, file_path, symbols, references);
         }
         "preproc_def" | "preproc_function_def" => {
             extract_macro(node, source, file_path, symbols);
+        }
+        "call_expression" => {
+            extract_call(node, source, file_path, parent_ctx, references);
         }
         "comment" => {
             extract_comment(node, source, file_path, parent_ctx, texts);
@@ -141,20 +165,23 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
 }
 
-fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
-    let declarator = match find_child_by_field(node, "declarator") {
-        Some(d) => d,
-        None => return,
-    };
+fn extract_function(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+) -> Option<String> {
+    let declarator = find_child_by_field(node, "declarator")?;
 
     let name = extract_declarator_name(declarator, source);
     if name.is_empty() {
-        return;
+        return None;
     }
 
     let line = node_line_range(node);
@@ -169,6 +196,7 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
     let tokens = find_child_by_field(node, "body")
         .and_then(|body| filter_c_tokens(extract_tokens(body, source)));
 
+    let func_name = name.clone();
     push_symbol(
         symbols,
         file_path,
@@ -180,6 +208,8 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
         None,
         Some(visibility.to_string()),
     );
+
+    Some(func_name)
 }
 
 fn extract_declaration(
@@ -418,7 +448,13 @@ fn extract_typedef(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
     }
 }
 
-fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_include(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     if let Some(path_node) = find_child_by_field(node, "path") {
@@ -428,10 +464,11 @@ fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
             .trim_start_matches(['<', '"'])
             .trim_end_matches(['>', '"'])
             .to_string();
+
         push_symbol(
             symbols,
             file_path,
-            path,
+            path.clone(),
             "import",
             line,
             None,
@@ -439,6 +476,16 @@ fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
             None,
             Some("private".to_string()),
         );
+
+        // Also add as a reference
+        references.push(ReferenceEntry {
+            file: file_path.to_string(),
+            name: path,
+            kind: "import".to_string(),
+            line,
+            caller: None,
+            project: String::new(),
+        });
     }
 }
 
@@ -466,6 +513,179 @@ fn extract_macro(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
         None,
         Some("public".to_string()),
     );
+}
+
+fn extract_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    // In C, call_expression has a "function" field that can be:
+    // - identifier: simple function call like foo()
+    // - field_expression: member access like obj.method() or obj->method()
+    // - parenthesized_expression: (*func_ptr)()
+    let func_node = match find_child_by_field(node, "function") {
+        Some(f) => f,
+        None => return,
+    };
+
+    let name = match func_node.kind() {
+        "identifier" => node_text(func_node, source),
+        "field_expression" => {
+            // obj.method or obj->method - extract the field name
+            if let Some(field) = find_child_by_field(func_node, "field") {
+                node_text(field, source)
+            } else {
+                return;
+            }
+        }
+        _ => return,
+    };
+
+    if name.is_empty() || is_c_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(|s| s.to_string()),
+        project: String::new(),
+    });
+}
+
+/// Check if a function name is a C standard library builtin.
+fn is_c_builtin(name: &str) -> bool {
+    matches!(
+        name,
+        // stdio.h
+        "printf"
+            | "fprintf"
+            | "sprintf"
+            | "snprintf"
+            | "scanf"
+            | "fscanf"
+            | "sscanf"
+            | "fopen"
+            | "fclose"
+            | "fread"
+            | "fwrite"
+            | "fgets"
+            | "fputs"
+            | "fgetc"
+            | "fputc"
+            | "getchar"
+            | "putchar"
+            | "puts"
+            | "gets"
+            | "perror"
+            | "fflush"
+            | "fseek"
+            | "ftell"
+            | "rewind"
+            | "clearerr"
+            | "feof"
+            | "ferror"
+            // stdlib.h
+            | "malloc"
+            | "calloc"
+            | "realloc"
+            | "free"
+            | "exit"
+            | "abort"
+            | "atexit"
+            | "atoi"
+            | "atol"
+            | "atof"
+            | "strtol"
+            | "strtoul"
+            | "strtod"
+            | "rand"
+            | "srand"
+            | "qsort"
+            | "bsearch"
+            | "abs"
+            | "labs"
+            | "div"
+            | "ldiv"
+            | "getenv"
+            | "system"
+            // string.h
+            | "strlen"
+            | "strcpy"
+            | "strncpy"
+            | "strcat"
+            | "strncat"
+            | "strcmp"
+            | "strncmp"
+            | "strchr"
+            | "strrchr"
+            | "strstr"
+            | "strtok"
+            | "memcpy"
+            | "memmove"
+            | "memset"
+            | "memcmp"
+            | "memchr"
+            // ctype.h
+            | "isalpha"
+            | "isdigit"
+            | "isalnum"
+            | "isspace"
+            | "isupper"
+            | "islower"
+            | "toupper"
+            | "tolower"
+            // math.h
+            | "sin"
+            | "cos"
+            | "tan"
+            | "asin"
+            | "acos"
+            | "atan"
+            | "atan2"
+            | "sinh"
+            | "cosh"
+            | "tanh"
+            | "exp"
+            | "log"
+            | "log10"
+            | "pow"
+            | "sqrt"
+            | "ceil"
+            | "floor"
+            | "fabs"
+            | "fmod"
+            // assert.h
+            | "assert"
+            // time.h
+            | "time"
+            | "difftime"
+            | "mktime"
+            | "strftime"
+            | "localtime"
+            | "gmtime"
+            | "ctime"
+            | "clock"
+            // setjmp.h
+            | "setjmp"
+            | "longjmp"
+            // signal.h
+            | "signal"
+            | "raise"
+            // errno
+            | "errno"
+            // variadic
+            | "va_start"
+            | "va_end"
+            | "va_arg"
+            | "va_copy"
+    )
 }
 
 fn extract_declarator_name(node: Node, source: &[u8]) -> String {
@@ -666,6 +886,43 @@ extern int external;
 int foo() { return 0; }";
         let (_symbols, texts, _refs) = parse_file(source, "c", "test.c").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_c_call_references() {
+        let source = b"#include <stdio.h>
+
+void helper() {
+    printf(\"hello\");
+}
+
+int main() {
+    helper();
+    custom_func();
+    return 0;
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "c", "test.c").unwrap();
+
+        // Should find call to helper (printf is a builtin, filtered out)
+        let helper_call = refs.iter().find(|r| r.name == "helper" && r.kind == "call");
+        assert!(helper_call.is_some(), "should find call to helper");
+        assert_eq!(helper_call.unwrap().caller.as_deref(), Some("main"));
+
+        // Should find call to custom_func
+        let custom_call = refs
+            .iter()
+            .find(|r| r.name == "custom_func" && r.kind == "call");
+        assert!(custom_call.is_some(), "should find call to custom_func");
+        assert_eq!(custom_call.unwrap().caller.as_deref(), Some("main"));
+
+        // Should have import reference for stdio.h
+        let import_ref = refs
+            .iter()
+            .find(|r| r.name == "stdio.h" && r.kind == "import");
+        assert!(
+            import_ref.is_some(),
+            "should find import reference for stdio.h"
+        );
     }
 
     #[test]
