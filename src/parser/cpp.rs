@@ -149,7 +149,7 @@ fn extract_function(
     }
 
     let line = node_line_range(node);
-    let sig = extract_signature_to_brace(node, source);
+    let _sig = extract_signature_to_brace(node, source);
 
     let kind = if parent_ctx.is_some() {
         "method"
@@ -181,7 +181,7 @@ fn extract_function(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        None, // TODO: add token extraction
         None,
         Some(visibility),
     );
@@ -221,7 +221,7 @@ fn extract_declaration(
             "function_declarator" => {
                 let name = extract_declarator_name(child, source);
                 if !name.is_empty() {
-                    let sig = collapse_whitespace(node_text(node, source).trim());
+                    let _sig = collapse_whitespace(node_text(node, source).trim());
                     let full_name = if let Some(parent) = parent_ctx {
                         format!("{parent}.{name}")
                     } else {
@@ -239,7 +239,7 @@ fn extract_declaration(
                         kind,
                         line,
                         parent_ctx,
-                        Some(sig),
+                        None, // TODO: add token extraction
                         None,
                         Some(visibility.clone()),
                     );
@@ -728,7 +728,8 @@ static void helper() {
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
-        assert!(add.sig.as_ref().unwrap().contains("int add"));
+        // Token extraction not yet implemented for C++
+        assert!(add.tokens.is_none());
         assert_eq!(add.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "helper");

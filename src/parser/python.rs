@@ -131,8 +131,10 @@ fn extract_function(
     // Check for decorators to detect properties, staticmethods, etc.
     let visibility = detect_python_visibility(&name);
 
-    // Build signature from parameters
-    let sig = build_function_signature(node, source, &name);
+    // Extract tokens from function body for FTS
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| extract_tokens(body, source))
+        .map(|t| filter_python_tokens(&t));
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
@@ -147,7 +149,7 @@ fn extract_function(
         kind,
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -215,8 +217,10 @@ fn extract_class(
     let line = node_line_range(node);
     let visibility = detect_python_visibility(&name);
 
-    // Build signature with base classes
-    let sig = build_class_signature(node, source, &name);
+    // Extract tokens from class body for FTS
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| extract_tokens(body, source))
+        .map(|t| filter_python_tokens(&t));
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
@@ -231,7 +235,7 @@ fn extract_class(
         "class",
         line,
         parent_ctx,
-        Some(sig),
+        tokens,
         None,
         Some(visibility),
     );
@@ -488,33 +492,18 @@ fn detect_python_visibility(name: &str) -> String {
     }
 }
 
-fn build_function_signature(node: Node, source: &[u8], name: &str) -> String {
-    let params = find_child_by_field(node, "parameters")
-        .map(|n| node_text(n, source))
-        .unwrap_or_else(|| "()".to_string());
+/// Python-specific stopwords to filter from tokens.
+const PYTHON_STOPWORDS: &[&str] = &[
+    "self", "cls", "args", "kwargs", "super", "None", "True", "False",
+];
 
-    let return_type = find_child_by_field(node, "return_type")
-        .map(|n| format!(" -> {}", node_text(n, source)))
-        .unwrap_or_default();
-
-    // Check for async
-    let is_async = node.child(0).map(|c| c.kind() == "async").unwrap_or(false);
-
-    let prefix = if is_async { "async def" } else { "def" };
-
-    format!("{prefix} {name}{params}{return_type}")
-}
-
-fn build_class_signature(node: Node, source: &[u8], name: &str) -> String {
-    let bases = find_child_by_field(node, "superclasses")
-        .map(|n| node_text(n, source))
-        .unwrap_or_default();
-
-    if bases.is_empty() {
-        format!("class {name}")
-    } else {
-        format!("class {name}{bases}")
-    }
+/// Filter Python-specific tokens from the extracted token string.
+fn filter_python_tokens(tokens: &str) -> String {
+    tokens
+        .split_whitespace()
+        .filter(|t| !PYTHON_STOPWORDS.contains(t))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 #[cfg(test)]
@@ -544,14 +533,18 @@ async def fetch_data():
 
         let hello = find_sym(&symbols, "hello");
         assert_eq!(hello.kind, "function");
-        assert!(hello.sig.as_ref().unwrap().contains("def hello"));
+        // Tokens should contain identifiers from the function body (name param filtered by stopwords)
+        assert!(hello.tokens.is_some());
         assert_eq!(hello.visibility.as_deref(), Some("public"));
 
         let priv_fn = find_sym(&symbols, "_private");
         assert_eq!(priv_fn.visibility.as_deref(), Some("internal"));
+        // Empty body, no meaningful tokens
+        assert!(priv_fn.tokens.is_none());
 
         let async_fn = find_sym(&symbols, "fetch_data");
-        assert!(async_fn.sig.as_ref().unwrap().contains("async def"));
+        // Body just returns None, no meaningful tokens after filtering
+        assert!(async_fn.tokens.is_none());
     }
 
     #[test]
@@ -569,12 +562,16 @@ class _Private:
 
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
-        assert!(person.sig.as_ref().unwrap().contains("class Person"));
+        // Class body tokens should contain identifiers from methods
+        assert!(person.tokens.is_some());
         assert_eq!(person.visibility.as_deref(), Some("public"));
 
         let init = find_sym(&symbols, "Person.__init__");
         assert_eq!(init.kind, "method");
         assert_eq!(init.parent.as_deref(), Some("Person"));
+        // Method body has 'name' identifier
+        assert!(init.tokens.is_some());
+        assert!(init.tokens.as_ref().unwrap().contains("name"));
 
         let greet = find_sym(&symbols, "Person.greet");
         assert_eq!(greet.kind, "method");

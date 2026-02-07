@@ -1,8 +1,18 @@
 //! Shared helpers for tree-sitter extraction across all languages.
 
+use std::collections::HashSet;
 use tree_sitter::Node;
 
 use crate::index::format::{SymbolEntry, TextEntry};
+
+/// Universal stopwords filtered from token extraction.
+/// Single-char identifiers are also filtered.
+const STOPWORDS: &[&str] = &[
+    // Common temporary/placeholder names
+    "tmp", "temp", "foo", "bar", "baz", "qux", // Generic names that add noise
+    "data", "result", "value", "item", "obj", "val", "ret", "res", "input", "output", "out", "err",
+    "error", "msg", "info",
+];
 
 /// Get the text content of a tree-sitter node.
 pub fn node_text(node: Node, source: &[u8]) -> String {
@@ -235,7 +245,7 @@ pub fn push_symbol(
     kind: &str,
     line: [u32; 2],
     parent: Option<&str>,
-    sig: Option<String>,
+    tokens: Option<String>,
     alias: Option<String>,
     visibility: Option<String>,
 ) {
@@ -245,7 +255,7 @@ pub fn push_symbol(
         kind: kind.to_string(),
         line,
         parent: parent.map(String::from),
-        sig,
+        tokens,
         alias,
         visibility,
         project: String::new(),
@@ -268,5 +278,55 @@ pub fn extract_signature_to_brace(node: Node, source: &[u8]) -> String {
         collapse_whitespace(sig)
     } else {
         collapse_whitespace(text.trim())
+    }
+}
+
+/// Extract identifier tokens from a tree-sitter node for FTS indexing.
+///
+/// Recursively walks the AST to collect all identifier nodes, filters by
+/// length (>= 2 chars) and universal stopwords, then returns as a
+/// space-separated string.
+///
+/// Language parsers can apply additional filtering on the result.
+pub fn extract_tokens(node: Node, source: &[u8]) -> Option<String> {
+    let mut tokens = HashSet::new();
+    collect_identifiers(node, source, &mut tokens, 0);
+
+    if tokens.is_empty() {
+        return None;
+    }
+
+    // Filter stopwords and short tokens (keep 2+ chars for meaningful identifiers like id, db)
+    let filtered: Vec<&str> = tokens
+        .iter()
+        .filter(|t| t.len() >= 2)
+        .filter(|t| !STOPWORDS.contains(&t.to_lowercase().as_str()))
+        .map(|s| s.as_str())
+        .collect();
+
+    if filtered.is_empty() {
+        None
+    } else {
+        Some(filtered.join(" "))
+    }
+}
+
+/// Recursively collect identifier text from AST nodes.
+fn collect_identifiers(node: Node, source: &[u8], tokens: &mut HashSet<String>, depth: usize) {
+    // Prevent stack overflow on deeply nested code
+    if depth > 100 {
+        return;
+    }
+
+    // Collect identifier nodes (tree-sitter uses "identifier" for most languages)
+    if node.kind() == "identifier" {
+        let text = node_text(node, source);
+        tokens.insert(text);
+    }
+
+    // Recurse into children
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_identifiers(child, source, tokens, depth + 1);
     }
 }

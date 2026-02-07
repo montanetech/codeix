@@ -107,7 +107,7 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
     let is_static = has_storage_class(node, source, "static");
     let visibility = if is_static { "private" } else { "public" };
 
-    let sig = extract_signature_to_brace(node, source);
+    let _sig = extract_signature_to_brace(node, source);
 
     push_symbol(
         symbols,
@@ -116,7 +116,7 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
         "function",
         line,
         None,
-        Some(sig),
+        None, // TODO: add token extraction
         None,
         Some(visibility.to_string()),
     );
@@ -150,7 +150,7 @@ fn extract_declaration(
                 // Function prototype
                 let name = extract_declarator_name(child, source);
                 if !name.is_empty() {
-                    let sig = collapse_whitespace(node_text(node, source).trim());
+                    let _sig = collapse_whitespace(node_text(node, source).trim());
                     let kind = "function";
                     push_symbol(
                         symbols,
@@ -159,7 +159,7 @@ fn extract_declaration(
                         kind,
                         line,
                         parent_ctx,
-                        Some(sig),
+                        None, // TODO: add token extraction
                         None,
                         Some(visibility.to_string()),
                     );
@@ -476,7 +476,8 @@ static void helper() {
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
-        assert!(add.sig.as_ref().unwrap().contains("int add"));
+        // Token extraction not yet implemented for C
+        assert!(add.tokens.is_none());
         assert_eq!(add.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "helper");
@@ -615,6 +616,7 @@ extern void print(const char* msg);";
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
-        assert!(add.sig.is_some());
+        // Token extraction not yet implemented for C
+        assert!(add.tokens.is_none());
     }
 }

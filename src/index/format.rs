@@ -30,7 +30,7 @@ pub struct SymbolEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sig: Option<String>,
+    pub tokens: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
