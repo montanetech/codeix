@@ -777,7 +777,9 @@ mod tests {
         assert_eq!(projects[0], ""); // Root project has empty string
 
         // Search for the main function
-        let symbols = db_guard.search_symbols("main", None, None, None).unwrap();
+        let symbols = db_guard
+            .search_symbols(Some("main"), None, None, None, 100, 0)
+            .unwrap();
         assert!(
             symbols
                 .iter()
@@ -785,7 +787,9 @@ mod tests {
         );
 
         // Search for greet function
-        let symbols = db_guard.search_symbols("greet", None, None, None).unwrap();
+        let symbols = db_guard
+            .search_symbols(Some("greet"), None, None, None, 100, 0)
+            .unwrap();
         assert!(
             symbols
                 .iter()
@@ -822,14 +826,14 @@ mod tests {
 
         // Root project should have app_main (search without filter, check project field)
         let symbols = db_guard
-            .search_symbols("app_main", None, None, None)
+            .search_symbols(Some("app_main"), None, None, None, 100, 0)
             .unwrap();
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].project, "");
 
         // Subproject should have utility
         let symbols = db_guard
-            .search_symbols("utility", None, None, Some("libs/utils"))
+            .search_symbols(Some("utility"), None, None, Some("libs/utils"), 100, 0)
             .unwrap();
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].project, "libs/utils");
@@ -866,18 +870,25 @@ mod tests {
 
         // Each function should be in its respective project (search without filter, verify project)
         let root_syms = db_guard
-            .search_symbols("root_fn", None, None, None)
+            .search_symbols(Some("root_fn"), None, None, None, 100, 0)
             .unwrap();
         assert_eq!(root_syms.len(), 1);
         assert_eq!(root_syms[0].project, "");
 
         let core_syms = db_guard
-            .search_symbols("core_fn", None, None, Some("libs/core"))
+            .search_symbols(Some("core_fn"), None, None, Some("libs/core"), 100, 0)
             .unwrap();
         assert_eq!(core_syms.len(), 1);
 
         let nested_syms = db_guard
-            .search_symbols("nested_fn", None, None, Some("libs/core/nested"))
+            .search_symbols(
+                Some("nested_fn"),
+                None,
+                None,
+                Some("libs/core/nested"),
+                100,
+                0,
+            )
             .unwrap();
         assert_eq!(nested_syms.len(), 1);
     }
@@ -905,7 +916,9 @@ mod tests {
         let db_guard = db.lock().unwrap();
 
         // Search without project filter - should find both
-        let all_symbols = db_guard.search_symbols("fn", None, None, None).unwrap();
+        let all_symbols = db_guard
+            .search_symbols(Some("fn"), None, None, None, 100, 0)
+            .unwrap();
         let root_fn_count = all_symbols.iter().filter(|s| s.name == "root_fn").count();
         let sub_fn_count = all_symbols.iter().filter(|s| s.name == "sub_fn").count();
 
@@ -976,7 +989,9 @@ mod tests {
         let db_guard = db.lock().unwrap();
 
         // Without filter: should find 2 helpers
-        let all = db_guard.search_symbols("helper", None, None, None).unwrap();
+        let all = db_guard
+            .search_symbols(Some("helper"), None, None, None, 100, 0)
+            .unwrap();
         assert_eq!(all.len(), 2);
 
         // One should be root (empty project), one should be sub
@@ -987,7 +1002,7 @@ mod tests {
 
         // With sub filter: should find 1
         let sub_only = db_guard
-            .search_symbols("helper", None, None, Some("sub"))
+            .search_symbols(Some("helper"), None, None, Some("sub"), 100, 0)
             .unwrap();
         assert_eq!(sub_only.len(), 1);
         assert_eq!(sub_only[0].project, "sub");
@@ -1018,7 +1033,7 @@ mod tests {
 
         // Symbol should have correct project
         let symbols = db_guard
-            .search_symbols("deep_fn", None, None, None)
+            .search_symbols(Some("deep_fn"), None, None, None, 100, 0)
             .unwrap();
         assert_eq!(symbols[0].project, "path/to/deep/project");
     }

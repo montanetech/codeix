@@ -181,13 +181,43 @@ impl SearchDb {
         Ok(())
     }
 
-    /// FTS5 search on symbol names, with optional kind, file, and project filters.
+    /// Search or list symbols.
+    /// - With query (no glob in file): FTS5 full-text search on symbol names (BM25-ranked)
+    /// - Without query OR with glob file pattern: List matching symbols (ordered by file, line)
+    ///
+    /// File filter supports glob patterns with * (e.g. "src/*.py").
+    /// Note: When file contains glob patterns, uses SQL GLOB for filtering (case-sensitive).
     pub fn search_symbols(
+        &self,
+        query: Option<&str>,
+        kind: Option<&str>,
+        file: Option<&str>,
+        project: Option<&str>,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<SymbolEntry>> {
+        // Check if file filter contains glob pattern
+        let file_has_glob = file.map(|f| f.contains('*')).unwrap_or(false);
+
+        match query {
+            // Search mode: use FTS5 with BM25 ranking
+            Some(q) if !q.is_empty() && !file_has_glob => {
+                self.search_symbols_fts(q, kind, file, project, limit, offset)
+            }
+            // List mode: plain SQL query (when no query or file has glob pattern)
+            _ => self.list_symbols(query, kind, file, project, limit, offset),
+        }
+    }
+
+    /// FTS5 search on symbol names (BM25-ranked).
+    fn search_symbols_fts(
         &self,
         query: &str,
         kind: Option<&str>,
         file: Option<&str>,
         project: Option<&str>,
+        limit: u32,
+        offset: u32,
     ) -> Result<Vec<SymbolEntry>> {
         // Build the FTS5 match expression, incorporating filters into the query
         let mut fts_parts = vec![format!("name : {}", fts5_quote(query))];
@@ -197,8 +227,8 @@ impl SearchDb {
         if let Some(f) = file {
             fts_parts.push(format!("file : {}", fts5_quote(f)));
         }
-        if let Some(r) = project {
-            fts_parts.push(format!("project : {}", fts5_quote(r)));
+        if let Some(p) = project {
+            fts_parts.push(format!("project : {}", fts5_quote(p)));
         }
         let fts_query = fts_parts.join(" AND ");
 
@@ -209,10 +239,96 @@ impl SearchDb {
              JOIN symbols s ON s.rowid = f.rowid
              WHERE symbols_fts MATCH ?1
              ORDER BY rank
-             LIMIT 100",
+             LIMIT ?2 OFFSET ?3",
         )?;
 
-        let rows = stmt.query_map([&fts_query], |row| {
+        let rows = stmt.query_map(rusqlite::params![&fts_query, limit, offset], |row| {
+            Ok(SymbolEntry {
+                project: row.get(0)?,
+                file: row.get(1)?,
+                name: row.get(2)?,
+                kind: row.get(3)?,
+                line: [row.get(4)?, row.get(5)?],
+                parent: row.get(6)?,
+                sig: row.get(7)?,
+                alias: row.get(8)?,
+                visibility: row.get(9)?,
+            })
+        })?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
+
+    /// List symbols matching filters (no FTS, ordered by file and line).
+    /// File filter supports SQLite GLOB patterns: * matches any sequence, ? matches single char.
+    /// Query performs substring match on symbol name when provided.
+    fn list_symbols(
+        &self,
+        query: Option<&str>,
+        kind: Option<&str>,
+        file: Option<&str>,
+        project: Option<&str>,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<SymbolEntry>> {
+        // Build WHERE clause dynamically
+        let mut conditions = Vec::new();
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        if let Some(q) = query
+            && !q.is_empty()
+        {
+            // Simple substring match on name when in list mode with glob file
+            conditions.push("name LIKE ?".to_string());
+            params.push(Box::new(format!("%{}%", q)));
+        }
+        if let Some(k) = kind {
+            conditions.push("kind = ?".to_string());
+            params.push(Box::new(k.to_string()));
+        }
+        if let Some(f) = file {
+            if f.contains('*') {
+                // Use GLOB for pattern matching (supports * wildcard)
+                conditions.push("file GLOB ?".to_string());
+                params.push(Box::new(f.to_string()));
+            } else {
+                conditions.push("file = ?".to_string());
+                params.push(Box::new(f.to_string()));
+            }
+        }
+        if let Some(p) = project {
+            conditions.push("project = ?".to_string());
+            params.push(Box::new(p.to_string()));
+        }
+
+        let where_clause = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+
+        let sql = format!(
+            "SELECT project, file, name, kind, line_start, line_end,
+                    parent, sig, alias, visibility
+             FROM symbols
+             {}
+             ORDER BY file, line_start
+             LIMIT ? OFFSET ?",
+            where_clause
+        );
+
+        let mut stmt = self.conn.prepare(&sql)?;
+
+        // Build params slice for query
+        let mut param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        param_refs.push(&limit);
+        param_refs.push(&offset);
+
+        let rows = stmt.query_map(rusqlite::params_from_iter(param_refs), |row| {
             Ok(SymbolEntry {
                 project: row.get(0)?,
                 file: row.get(1)?,
@@ -248,8 +364,8 @@ impl SearchDb {
         if let Some(f) = file {
             fts_parts.push(format!("file : {}", fts5_quote(f)));
         }
-        if let Some(r) = project {
-            fts_parts.push(format!("project : {}", fts5_quote(r)));
+        if let Some(p) = project {
+            fts_parts.push(format!("project : {}", fts5_quote(p)));
         }
         let fts_query = fts_parts.join(" AND ");
 
@@ -291,8 +407,8 @@ impl SearchDb {
         if let Some(l) = lang {
             fts_parts.push(format!("lang : {}", fts5_quote(l)));
         }
-        if let Some(r) = project {
-            fts_parts.push(format!("project : {}", fts5_quote(r)));
+        if let Some(p) = project {
+            fts_parts.push(format!("project : {}", fts5_quote(p)));
         }
         let fts_query = fts_parts.join(" AND ");
 
@@ -692,7 +808,7 @@ impl SearchDb {
         Ok((files, symbols, texts))
     }
 
-    /// List all unique repos (projects) in the database.
+    /// List all unique projects in the database.
     pub fn list_projects(&self) -> Result<Vec<String>> {
         let mut stmt = self
             .conn
