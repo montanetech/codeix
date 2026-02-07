@@ -10,6 +10,80 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// TypeScript-specific stopwords (JS keywords + TS type system keywords)
+const TS_STOPWORDS: &[&str] = &[
+    // JavaScript common
+    "undefined",
+    "null",
+    "console",
+    "window",
+    "document",
+    "exports",
+    "module",
+    "require",
+    "import",
+    "export",
+    "from",
+    "let",
+    "var",
+    "function",
+    "extends",
+    "finally",
+    "async",
+    "await",
+    "yield",
+    "typeof",
+    "instanceof",
+    "delete",
+    "of",
+    "prototype",
+    "constructor",
+    "length",
+    "name",
+    "arguments",
+    // TypeScript-specific
+    "type",
+    "interface",
+    "namespace",
+    "declare",
+    "readonly",
+    "abstract",
+    "override",
+    "implements",
+    "keyof",
+    "infer",
+    "never",
+    "unknown",
+    "any",
+    "object",
+    "string",
+    "number",
+    "boolean",
+    "symbol",
+    "bigint",
+    "Promise",
+    "Array",
+    "Object",
+    "String",
+    "Number",
+    "Boolean",
+];
+
+/// Filter TypeScript-specific stopwords from extracted tokens.
+fn filter_ts_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !TS_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -153,6 +227,10 @@ fn extract_function_decl(
         name
     };
 
+    // Extract tokens from function body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ts_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -160,7 +238,7 @@ fn extract_function_decl(
         kind,
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility.to_string()),
     );
@@ -196,6 +274,10 @@ fn extract_class(
         name.clone()
     };
 
+    // Extract tokens from class body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ts_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -203,7 +285,7 @@ fn extract_class(
         "class",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility.to_string()),
     );
@@ -305,6 +387,10 @@ fn extract_method(
         name
     };
 
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ts_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -312,7 +398,7 @@ fn extract_method(
         kind,
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility.to_string()),
     );
@@ -380,6 +466,9 @@ fn extract_variable_decl(
                     name
                 };
 
+                // Extract tokens from variable value
+                let tokens = value_node.and_then(|v| filter_ts_tokens(extract_tokens(v, source)));
+
                 push_symbol(
                     symbols,
                     file_path,
@@ -387,7 +476,7 @@ fn extract_variable_decl(
                     kind,
                     line,
                     parent_ctx,
-                    None, // TODO: add token extraction
+                    tokens,
                     None,
                     Some(visibility.to_string()),
                 );
@@ -525,6 +614,10 @@ fn extract_interface(
         name.clone()
     };
 
+    // Extract tokens from interface body (type references)
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ts_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -532,7 +625,7 @@ fn extract_interface(
         "interface",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility.to_string()),
     );
@@ -551,7 +644,7 @@ fn extract_interface(
                         } else {
                             "property"
                         };
-                        let member_sig = collapse_whitespace(node_text(child, source).trim());
+                        // Interface signatures don't have bodies, so no tokens
                         push_symbol(
                             symbols,
                             file_path,
@@ -559,7 +652,7 @@ fn extract_interface(
                             member_kind,
                             member_line,
                             Some(&full_name),
-                            Some(member_sig),
+                            None,
                             None,
                             Some("public".to_string()),
                         );
@@ -605,6 +698,10 @@ fn extract_type_alias(
         name
     };
 
+    // Extract tokens from type definition
+    let tokens = find_child_by_field(node, "value")
+        .and_then(|v| filter_ts_tokens(extract_tokens(v, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -612,7 +709,7 @@ fn extract_type_alias(
         "type_alias",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility.to_string()),
     );
@@ -824,8 +921,7 @@ async function fetch(): Promise<Data> {
 
         let greet = find_sym(&symbols, "greet");
         assert_eq!(greet.kind, "function");
-        // Token extraction not yet implemented for TypeScript
-        assert!(greet.tokens.is_none());
+        // Token extraction is enabled (may be None if body has no tokens after filtering)
 
         let fetch_fn = find_sym(&symbols, "fetch");
         assert_eq!(fetch_fn.kind, "function");

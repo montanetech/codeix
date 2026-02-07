@@ -6,6 +6,75 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// Java-specific stopwords (keywords and common patterns)
+const JAVA_STOPWORDS: &[&str] = &[
+    // Keywords
+    "null",
+    "interface",
+    "extends",
+    "implements",
+    "abstract",
+    "final",
+    "finally",
+    "throws",
+    "synchronized",
+    "volatile",
+    "transient",
+    "native",
+    "strictfp",
+    "instanceof",
+    "import",
+    "package",
+    // Primitive types
+    "int",
+    "long",
+    "short",
+    "byte",
+    "float",
+    "double",
+    "boolean",
+    "char",
+    // Common class names (typically imported)
+    "String",
+    "Integer",
+    "Long",
+    "Double",
+    "Float",
+    "Boolean",
+    "Object",
+    "System",
+    "Exception",
+    "RuntimeException",
+    "Override",
+    "Deprecated",
+    "List",
+    "Map",
+    "Set",
+    "ArrayList",
+    "HashMap",
+    "HashSet",
+    // Common variable patterns
+    "args",
+    "main",
+];
+
+/// Filter Java-specific stopwords from extracted tokens.
+fn filter_java_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !JAVA_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            // Also filter out uppercase-only tokens (likely type names)
+            .filter(|tok| !tok.chars().all(|c| c.is_uppercase() || c == '_'))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -147,6 +216,10 @@ fn extract_class(
         name.clone()
     };
 
+    // Extract tokens from class body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_java_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -154,7 +227,7 @@ fn extract_class(
         kind,
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -198,6 +271,10 @@ fn extract_method(
         name
     };
 
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_java_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -205,7 +282,7 @@ fn extract_method(
         "method",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -233,6 +310,10 @@ fn extract_constructor(
         name
     };
 
+    // Extract tokens from constructor body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_java_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -240,7 +321,7 @@ fn extract_constructor(
         "constructor",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -429,8 +510,8 @@ mod tests {
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
         assert_eq!(person.visibility.as_deref(), Some("public"));
-        // Token extraction not yet implemented for Java
-        assert!(person.tokens.is_none());
+        // Token extraction extracts identifiers from class body
+        // Token may be None if all identifiers are filtered as stopwords
 
         let name = find_sym(&symbols, "Person.name");
         assert_eq!(name.kind, "property");

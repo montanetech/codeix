@@ -6,12 +6,57 @@ use tree_sitter::Node;
 use crate::index::format::{SymbolEntry, TextEntry};
 
 /// Universal stopwords filtered from token extraction.
-/// Single-char identifiers are also filtered.
+/// These appear across most programming languages.
+/// Language-specific stopwords are handled in each parser.
+/// Single-char identifiers are also filtered (< 2 chars).
 const STOPWORDS: &[&str] = &[
-    // Common temporary/placeholder names
-    "tmp", "temp", "foo", "bar", "baz", "qux", // Generic names that add noise
-    "data", "result", "value", "item", "obj", "val", "ret", "res", "input", "output", "out", "err",
-    "error", "msg", "info",
+    // Placeholder/example names
+    "foo",
+    "bar",
+    "baz",
+    "qux",
+    "tmp",
+    "temp",
+    // Test assertions
+    "assert",
+    "assert_eq",
+    "assert_ne",
+    "assert_match",
+    "assert_equal",
+    "assert_kind_of",
+    // Control flow (9 languages)
+    "if",
+    "else",
+    "for",
+    "while",
+    "do",
+    "switch",
+    "case",
+    "break",
+    "continue",
+    "return",
+    // Common keywords (7+ languages)
+    "new",
+    "default",
+    "const",
+    "true",
+    "false",
+    // OOP keywords (5+ languages)
+    "class",
+    "struct",
+    "enum",
+    "static",
+    "void",
+    "super",
+    "this",
+    "public",
+    "private",
+    "protected",
+    // Exception handling (5+ languages)
+    "try",
+    "catch",
+    "throw",
+    "in",
 ];
 
 /// Get the text content of a tree-sitter node.
@@ -296,10 +341,15 @@ pub fn extract_tokens(node: Node, source: &[u8]) -> Option<String> {
         return None;
     }
 
-    // Filter stopwords and short tokens (keep 2+ chars for meaningful identifiers like id, db)
+    // Filter stopwords, short tokens, and invalid identifiers
     let filtered: Vec<&str> = tokens
         .iter()
         .filter(|t| t.len() >= 2)
+        // Must be valid identifier (alphanumeric + underscore, not starting with digit)
+        .filter(|t| {
+            t.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                && !t.starts_with(|c: char| c.is_ascii_digit())
+        })
         .filter(|t| !STOPWORDS.contains(&t.to_lowercase().as_str()))
         .map(|s| s.as_str())
         .collect();

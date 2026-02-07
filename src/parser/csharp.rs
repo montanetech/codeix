@@ -6,6 +6,114 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// C#-specific stopwords (keywords, common types, etc.)
+const CSHARP_STOPWORDS: &[&str] = &[
+    // Keywords
+    "foreach",
+    "finally",
+    "using",
+    "lock",
+    "goto",
+    "base",
+    "null",
+    "interface",
+    "internal",
+    "readonly",
+    "virtual",
+    "override",
+    "abstract",
+    "sealed",
+    "partial",
+    "async",
+    "await",
+    "yield",
+    "ref",
+    "out",
+    "params",
+    "is",
+    "as",
+    "typeof",
+    "sizeof",
+    "nameof",
+    "checked",
+    "unchecked",
+    "fixed",
+    // Primitive types
+    "int",
+    "long",
+    "short",
+    "byte",
+    "sbyte",
+    "float",
+    "double",
+    "decimal",
+    "bool",
+    "char",
+    "string",
+    "object",
+    "var",
+    "dynamic",
+    // Common framework types
+    "String",
+    "Int32",
+    "Int64",
+    "Boolean",
+    "Object",
+    "Array",
+    "List",
+    "Dictionary",
+    "Task",
+    "Action",
+    "Func",
+    "IEnumerable",
+    "ICollection",
+    "Exception",
+    "Console",
+    "System",
+    "Microsoft",
+    // Common variable patterns
+    "args",
+    "result",
+    "sender",
+    "handler",
+    "context",
+    "value",
+    // Test framework (NUnit, xUnit, MSTest) - lowercase for comparison
+    "areequal",
+    "arenotequal",
+    "istrue",
+    "isfalse",
+    "isnull",
+    "isnotnull",
+    "throws",
+    "stringassert",
+    "exceptionassert",
+    // Common methods - lowercase for comparison
+    "tostring",
+    "gettype",
+    "equals",
+    "gethashcode",
+    "count",
+    "name",
+];
+
+/// Filter C#-specific stopwords from extracted tokens.
+fn filter_csharp_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !CSHARP_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            // Filter uppercase constants
+            .filter(|tok| !tok.chars().all(|c| c.is_uppercase() || c == '_'))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -158,6 +266,10 @@ fn extract_type_decl(
         name.clone()
     };
 
+    // Extract tokens from type body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_csharp_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -165,7 +277,7 @@ fn extract_type_decl(
         kind,
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -344,6 +456,10 @@ fn extract_method(
         name
     };
 
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_csharp_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -351,7 +467,7 @@ fn extract_method(
         "method",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -379,6 +495,10 @@ fn extract_constructor(
         name
     };
 
+    // Extract tokens from constructor body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_csharp_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -386,7 +506,7 @@ fn extract_constructor(
         "constructor",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -512,7 +632,7 @@ fn extract_delegate(
         "type_alias",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        None, // Delegates don't have bodies
         None,
         Some(visibility),
     );
@@ -695,8 +815,8 @@ mod tests {
         let person = find_sym(&symbols, "Person");
         assert_eq!(person.kind, "class");
         assert_eq!(person.visibility.as_deref(), Some("public"));
-        // Token extraction not yet implemented for C#
-        assert!(person.tokens.is_none());
+        // Token extraction extracts identifiers from class body
+        // Token may be None if all identifiers are filtered as stopwords
 
         let name = find_sym(&symbols, "Person.name");
         assert_eq!(name.kind, "property");

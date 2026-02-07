@@ -6,6 +6,55 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// JavaScript-specific stopwords (common variable names, keywords, etc.)
+const JS_STOPWORDS: &[&str] = &[
+    "undefined",
+    "null",
+    "console",
+    "window",
+    "document",
+    "exports",
+    "module",
+    "require",
+    "import",
+    "export",
+    "from",
+    "let",
+    "var",
+    "function",
+    "extends",
+    "finally",
+    "async",
+    "await",
+    "yield",
+    "typeof",
+    "instanceof",
+    "delete",
+    "of",
+    "prototype",
+    "constructor",
+    "length",
+    "name",
+    "arguments",
+    "callee",
+    "caller",
+];
+
+/// Filter JavaScript-specific stopwords from extracted tokens.
+fn filter_js_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !JS_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -132,6 +181,10 @@ fn extract_function_decl(
         name
     };
 
+    // Extract tokens from function body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_js_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -139,7 +192,7 @@ fn extract_function_decl(
         kind,
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -180,6 +233,10 @@ fn extract_class(
         name.clone()
     };
 
+    // Extract tokens from class body (for class-level properties/static blocks)
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_js_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -187,7 +244,7 @@ fn extract_class(
         "class",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -284,6 +341,10 @@ fn extract_method(
         name
     };
 
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_js_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -291,7 +352,7 @@ fn extract_method(
         kind,
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -367,6 +428,9 @@ fn extract_variable_decl(
                     name
                 };
 
+                // Extract tokens from variable value (for arrow functions etc.)
+                let tokens = value_node.and_then(|v| filter_js_tokens(extract_tokens(v, source)));
+
                 push_symbol(
                     symbols,
                     file_path,
@@ -374,7 +438,7 @@ fn extract_variable_decl(
                     kind,
                     line,
                     parent_ctx,
-                    None, // TODO: add token extraction
+                    tokens,
                     None,
                     Some(visibility.clone()),
                 );
@@ -578,8 +642,7 @@ function* generator() {
 
         let hello = find_sym(&symbols, "hello");
         assert_eq!(hello.kind, "function");
-        // Token extraction not yet implemented for JavaScript
-        assert!(hello.tokens.is_none());
+        // Token extraction is enabled (may be None if body has no tokens after filtering)
         assert_eq!(hello.visibility.as_deref(), Some("private"));
 
         let fetch = find_sym(&symbols, "fetchData");

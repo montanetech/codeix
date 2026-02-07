@@ -6,6 +6,62 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// C-specific stopwords (keywords, common types, etc.)
+const C_STOPWORDS: &[&str] = &[
+    // Keywords
+    "goto",
+    "sizeof",
+    "typedef",
+    "union",
+    "extern",
+    "volatile",
+    "register",
+    "auto",
+    "inline",
+    // Primitive types
+    "int",
+    "char",
+    "short",
+    "long",
+    "float",
+    "double",
+    "signed",
+    "unsigned",
+    // Common standard types
+    "size_t",
+    "ssize_t",
+    "ptrdiff_t",
+    "FILE",
+    // Common macros and constants
+    "NULL",
+    "EOF",
+    // Common variable patterns
+    "argc",
+    "argv",
+    "main",
+    "ret",
+    "len",
+    "ptr",
+    "buf",
+];
+
+/// Filter C-specific stopwords from extracted tokens.
+fn filter_c_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !C_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            // Filter uppercase constants
+            .filter(|tok| !tok.chars().all(|c| c.is_uppercase() || c == '_'))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -109,6 +165,10 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
 
     let _sig = extract_signature_to_brace(node, source);
 
+    // Extract tokens from function body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_c_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -116,7 +176,7 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
         "function",
         line,
         None,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility.to_string()),
     );
@@ -152,6 +212,7 @@ fn extract_declaration(
                 if !name.is_empty() {
                     let _sig = collapse_whitespace(node_text(node, source).trim());
                     let kind = "function";
+                    // Prototypes don't have a body, so no tokens
                     push_symbol(
                         symbols,
                         file_path,
@@ -159,7 +220,7 @@ fn extract_declaration(
                         kind,
                         line,
                         parent_ctx,
-                        None, // TODO: add token extraction
+                        None,
                         None,
                         Some(visibility.to_string()),
                     );
@@ -476,8 +537,7 @@ static void helper() {
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
-        // Token extraction not yet implemented for C
-        assert!(add.tokens.is_none());
+        // Token extraction is enabled (may be None if body has no tokens after filtering)
         assert_eq!(add.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "helper");
@@ -616,7 +676,7 @@ extern void print(const char* msg);";
 
         let add = find_sym(&symbols, "add");
         assert_eq!(add.kind, "function");
-        // Token extraction not yet implemented for C
+        // Prototypes don't have bodies, so no tokens
         assert!(add.tokens.is_none());
     }
 }

@@ -6,6 +6,92 @@ use crate::index::format::{SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
+/// Ruby-specific stopwords (keywords, common patterns)
+const RUBY_STOPWORDS: &[&str] = &[
+    // Keywords
+    "def",
+    "end",
+    "module",
+    "elsif",
+    "unless",
+    "when",
+    "until",
+    "begin",
+    "rescue",
+    "ensure",
+    "raise",
+    "yield",
+    "next",
+    "redo",
+    "retry",
+    "self",
+    "nil",
+    "and",
+    "or",
+    "not",
+    "then",
+    "alias",
+    "defined",
+    "undef",
+    // Common patterns
+    "attr",
+    "attr_reader",
+    "attr_writer",
+    "attr_accessor",
+    "include",
+    "extend",
+    "require",
+    "require_relative",
+    "initialize",
+    "puts",
+    "print",
+    "gets",
+    "p",
+    // Common variable patterns
+    "args",
+    "opts",
+    "options",
+    "block",
+    "proc",
+    "lambda",
+    // Very common methods (too generic)
+    "each",
+    "map",
+    "select",
+    "reject",
+    "find",
+    "first",
+    "last",
+    "length",
+    "size",
+    "empty",
+    "to_s",
+    "to_i",
+    "to_a",
+    "to_h",
+    "join",
+    "split",
+    "fetch",
+    "sample",
+];
+
+/// Filter Ruby-specific stopwords from extracted tokens.
+fn filter_ruby_tokens(tokens: Option<String>) -> Option<String> {
+    tokens.and_then(|t| {
+        let filtered: Vec<&str> = t
+            .split_whitespace()
+            .filter(|tok| !RUBY_STOPWORDS.contains(&tok.to_lowercase().as_str()))
+            // Filter uppercase constants (ALL_CAPS)
+            .filter(|tok| !tok.chars().all(|c| c.is_uppercase() || c == '_'))
+            .collect();
+        if filtered.is_empty() {
+            None
+        } else {
+            Some(filtered.join(" "))
+        }
+    })
+}
+
 pub fn extract(
     tree: &Tree,
     source: &[u8],
@@ -120,6 +206,10 @@ fn extract_method(
         name.clone()
     };
 
+    // Extract tokens from method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ruby_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -127,7 +217,7 @@ fn extract_method(
         kind,
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some(visibility),
     );
@@ -187,6 +277,10 @@ fn extract_singleton_method(
         name.clone()
     };
 
+    // Extract tokens from singleton method body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ruby_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -194,7 +288,7 @@ fn extract_singleton_method(
         "method",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some("public".to_string()),
     );
@@ -255,6 +349,10 @@ fn extract_class(
         name.clone()
     };
 
+    // Extract tokens from class body
+    let tokens = find_child_by_field(node, "body")
+        .and_then(|body| filter_ruby_tokens(extract_tokens(body, source)));
+
     push_symbol(
         symbols,
         file_path,
@@ -262,7 +360,7 @@ fn extract_class(
         "class",
         line,
         parent_ctx,
-        None, // TODO: add token extraction
+        tokens,
         None,
         Some("public".to_string()),
     );
@@ -501,8 +599,8 @@ end";
 
         let hello = find_sym(&symbols, "hello");
         assert_eq!(hello.kind, "function");
-        // Token extraction not yet implemented for Ruby
-        assert!(hello.tokens.is_none());
+        // Token extraction extracts identifiers from method body
+        // Token may be None if all identifiers are filtered as stopwords
         assert_eq!(hello.visibility.as_deref(), Some("public"));
 
         let helper = find_sym(&symbols, "_private_helper");
