@@ -40,6 +40,11 @@ pub fn get_language(name: &str) -> Result<Language> {
         #[cfg(feature = "lang-csharp")]
         "csharp" => Ok(tree_sitter_c_sharp::LANGUAGE.into()),
 
+        // Markdown uses custom parser (tree-sitter-md) with MarkdownParser,
+        // but we still register the block language for consistency
+        #[cfg(feature = "lang-markdown")]
+        "markdown" => Ok(tree_sitter_md::LANGUAGE.into()),
+
         _ => anyhow::bail!("unsupported language: {name}"),
     }
 }
@@ -62,6 +67,7 @@ pub fn detect_language(extension: &str) -> Option<&'static str> {
         "vue" => Some("vue"),
         "svelte" => Some("svelte"),
         "astro" => Some("astro"),
+        "md" | "markdown" => Some("markdown"),
         _ => None,
     }
 }

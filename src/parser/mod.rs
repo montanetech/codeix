@@ -33,3 +33,6 @@ pub mod ruby;
 
 #[cfg(feature = "lang-csharp")]
 pub mod csharp;
+
+#[cfg(feature = "lang-markdown")]
+pub mod markdown;

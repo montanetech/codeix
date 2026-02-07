@@ -80,9 +80,11 @@ One line per source file tracked by the index. Includes all files in the project
 
 ### Language identifiers
 
-Language values are lowercase strings. Languages with tree-sitter symbol extraction: `"python"`, `"rust"`, `"javascript"`, `"typescript"`, `"tsx"`, `"go"`, `"java"`, `"c"`, `"cpp"`, `"ruby"`, `"csharp"`.
+Language values are lowercase strings. Languages with tree-sitter symbol extraction: `"python"`, `"rust"`, `"javascript"`, `"typescript"`, `"tsx"`, `"go"`, `"java"`, `"c"`, `"cpp"`, `"ruby"`, `"csharp"`, `"markdown"`.
 
 HTML files (`"html"`) and Single File Component formats (`"vue"`, `"svelte"`, `"astro"`) are preprocessed to extract embedded `<script>` blocks, which are then parsed as JavaScript or TypeScript.
+
+Markdown files (`"markdown"`) are parsed for headings (ATX and Setext styles) as `section` symbols with hierarchical parent-child relationships. Fenced code blocks are extracted as `code` text entries.
 
 The set is open — any string is valid. Consumers should handle unknown languages gracefully.
 
@@ -184,7 +186,7 @@ One line per comment, docstring, or string literal extracted from source files. 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `file` | string | yes | Relative path to the source file. |
-| `kind` | string | yes | One of: `"comment"`, `"docstring"`, `"string"`. |
+| `kind` | string | yes | One of: `"comment"`, `"docstring"`, `"string"`, `"sample"`. |
 | `line` | [integer, integer] | yes | Start and end line numbers (1-based, inclusive). |
 | `text` | string | yes | The extracted text content. Leading/trailing whitespace trimmed. Multi-line text joined with `\n`. |
 | `parent` | string | no | Name of the enclosing symbol, if any (e.g. a docstring's parent is the function it documents). Omitted for file-level comments or orphaned text. |
