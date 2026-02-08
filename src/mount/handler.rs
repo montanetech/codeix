@@ -18,8 +18,14 @@ use crate::server::db::SearchDb;
 use crate::utils::hasher::hash_bytes;
 
 const DEBOUNCE_DELAY: Duration = Duration::from_millis(500);
-const FLUSH_DELAY: Duration = Duration::from_secs(5);
 const POLL_INTERVAL: Duration = Duration::from_millis(1000);
+/// Trigger file name for external flush requests (e.g., from `codeix build` when server holds lock).
+/// Written at project root (not inside .codeindex/) so inotify picks it up.
+const FLUSH_TRIGGER_FILE: &str = ".codeindex.flush";
+/// How long to wait for server to flush before timing out
+const FLUSH_TIMEOUT: Duration = Duration::from_secs(30);
+/// How often to poll for trigger file deletion
+const FLUSH_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 /// Run the main event loop for file watching.
 ///
@@ -43,7 +49,6 @@ pub fn run_event_loop(
 
     // Debounce state: path -> (last event time, event kind, mount root)
     let mut pending: HashMap<PathBuf, (Instant, EventKind, PathBuf)> = HashMap::new();
-    let mut last_flush = Instant::now();
 
     loop {
         // Wait for events with timeout
@@ -62,8 +67,11 @@ pub fn run_event_loop(
             }
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
                 // Flush all dirty mounts before shutting down
-                flush_dirty_mounts(&mount_table, &db)?;
-                tracing::info!("event loop channel closed, shutting down");
+                let flushed = flush_dirty_mounts(&mount_table, &db)?;
+                tracing::info!(
+                    "event loop channel closed, flushed {} projects, shutting down",
+                    flushed
+                );
                 break;
             }
         }
@@ -86,13 +94,9 @@ pub fn run_event_loop(
             }
         }
 
-        // Flush dirty mounts to disk after quiet period
-        if now.duration_since(last_flush) >= FLUSH_DELAY && pending.is_empty() {
-            if let Err(e) = flush_dirty_mounts(&mount_table, &db) {
-                tracing::error!("failed to flush index to disk: {}", e);
-            }
-            last_flush = now;
-        }
+        // Note: Auto-flush disabled (issue #10). Use flush_index MCP tool to flush explicitly.
+        // Mounts are still marked dirty and will be flushed on graceful shutdown.
+        // External flush requests via .codeindex.flush are handled in handle_events().
     }
 
     Ok(())
@@ -109,8 +113,9 @@ pub fn run_event_loop(
 /// Flow:
 /// 1. If already mounted, skip
 /// 2. Try mount RW, fall back to RO if lock is held
-/// 3. If load_from_cache && .codeindex/ exists, load from disk
-/// 4. Otherwise, index files (walks and discovers subprojects)
+/// 3. In build mode with RO: request flush via trigger file and wait
+/// 4. If load_from_cache && .codeindex/ exists, load from disk
+/// 5. Otherwise, index files (walks and discovers subprojects)
 pub fn on_project_discovery(
     project_root: &Path,
     mount_table: &Arc<Mutex<MountTable>>,
@@ -141,16 +146,18 @@ pub fn on_project_discovery(
     let project_str = mt.relative_project(project_root);
     let mode_str = if is_read_only { "RO" } else { "RW" };
 
-    // In build mode (load_from_cache=false), skip RO projects entirely.
-    // We can't write .codeindex/ anyway, so no point walking/indexing.
+    // In build mode (load_from_cache=false), RO means lock is held by another process.
+    // Request flush via trigger file and wait for completion.
     if !load_from_cache && is_read_only {
-        tracing::info!(
-            "skipping '{}' (RO) - another process holds the lock",
-            project_name
-        );
         // Unmount since we won't use it
         let _ = mt.unmount(project_root);
-        return Ok(());
+        drop(mt);
+
+        tracing::info!(
+            "lock held by another process for '{}', requesting flush",
+            project_name
+        );
+        return request_flush_and_wait(project_root);
     }
 
     drop(mt);
@@ -400,6 +407,14 @@ fn handle_events(
     let mut mount_events: Vec<FsEvent> = Vec::new();
 
     for (path, kind, mount_root) in events {
+        // Check for flush trigger file (.codeindex.flush)
+        if path.file_name().is_some_and(|n| n == FLUSH_TRIGGER_FILE) {
+            if let Err(e) = handle_flush_trigger(path, mount_table, db) {
+                tracing::error!("failed to handle flush trigger: {}", e);
+            }
+            continue;
+        }
+
         // Early filter: skip .codeindex/ paths before expensive canonicalize()
         if path.components().any(|c| c.as_os_str() == ".codeindex") {
             continue;
@@ -591,11 +606,88 @@ pub fn process_file_change(
     Ok(())
 }
 
-/// Flush all dirty mounts to disk.
-fn flush_dirty_mounts(
+/// Request a flush from a running server by creating a trigger file.
+/// Waits for the server to delete the file (confirming flush) or times out.
+fn request_flush_and_wait(project_root: &Path) -> Result<()> {
+    let trigger_path = project_root.join(FLUSH_TRIGGER_FILE);
+
+    // Create trigger file
+    std::fs::write(&trigger_path, "").with_context(|| {
+        format!(
+            "failed to create flush trigger at {}",
+            trigger_path.display()
+        )
+    })?;
+
+    tracing::info!(
+        "requesting flush from server (trigger: {})",
+        trigger_path.display()
+    );
+
+    // Wait for server to delete the trigger file
+    let start = std::time::Instant::now();
+    while trigger_path.exists() {
+        if start.elapsed() > FLUSH_TIMEOUT {
+            // Clean up trigger file on timeout
+            let _ = std::fs::remove_file(&trigger_path);
+            anyhow::bail!(
+                "timeout waiting for server to flush ({}s). Is codeix serve running?",
+                FLUSH_TIMEOUT.as_secs()
+            );
+        }
+        std::thread::sleep(FLUSH_POLL_INTERVAL);
+    }
+
+    tracing::info!("flush completed by server");
+    Ok(())
+}
+
+/// Handle flush trigger file (.codeindex.flush) - flush and delete to signal completion.
+fn handle_flush_trigger(
+    trigger_path: &Path,
     mount_table: &Arc<Mutex<MountTable>>,
     db: &Arc<Mutex<SearchDb>>,
 ) -> Result<()> {
+    let mount_root = trigger_path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("trigger has no parent"))?;
+
+    tracing::info!(
+        "flush requested via trigger file for {}",
+        mount_root.display()
+    );
+
+    // Flush the mount
+    {
+        let mt = mount_table
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
+        flush_mount_to_disk(mount_root, &mt, db)?;
+    }
+
+    // Clear dirty flag
+    {
+        let mut mt = mount_table
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
+        if let Some(mount) = mt.find_mount_mut(mount_root) {
+            mount.clear_dirty();
+        }
+    }
+
+    // Delete trigger file to signal completion
+    std::fs::remove_file(trigger_path)?;
+    tracing::info!("flush completed for {}", mount_root.display());
+
+    Ok(())
+}
+
+/// Flush all dirty mounts to disk.
+/// Returns the number of mounts that were flushed.
+pub fn flush_dirty_mounts(
+    mount_table: &Arc<Mutex<MountTable>>,
+    db: &Arc<Mutex<SearchDb>>,
+) -> Result<usize> {
     let mut mt = mount_table
         .lock()
         .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
@@ -607,10 +699,12 @@ fn flush_dirty_mounts(
         .map(|(root, _)| root.clone())
         .collect();
 
+    let mut flushed_count = 0usize;
     for root in dirty_mounts {
         if let Err(e) = flush_mount_to_disk(&root, &mt, db) {
             tracing::error!("failed to flush {}: {}", root.display(), e);
         } else {
+            flushed_count += 1;
             // Clear dirty flag
             if let Some(mount) = mt.find_mount_mut(&root) {
                 mount.clear_dirty();
@@ -618,7 +712,7 @@ fn flush_dirty_mounts(
         }
     }
 
-    Ok(())
+    Ok(flushed_count)
 }
 
 /// Flush a single mount's index from memory to disk.
