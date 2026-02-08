@@ -1,12 +1,13 @@
 use std::path::Path;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
 use tracing::info;
 
-use crate::scanner::mount::MountTable;
+use crate::mount::handler::{flush_mount_to_disk, on_project_discovery};
+use crate::mount::{MountTable, MountedEvent};
 use crate::server::db::SearchDb;
-use crate::watcher::handler::{flush_mount_to_disk, on_project_discovery};
 
 /// Result type for build_index_to_db: (MountTable, SearchDb)
 pub type BuildResult = (Arc<Mutex<MountTable>>, Arc<Mutex<SearchDb>>);
@@ -15,13 +16,23 @@ pub type BuildResult = (Arc<Mutex<MountTable>>, Arc<Mutex<SearchDb>>);
 /// Returns MountTable + SearchDb for both build (flush to disk) and serve (keep in memory).
 ///
 /// Uses `on_project_discovery` which:
-/// 1. Loads from .codeindex/ if it exists
+/// 1. If load_from_cache=true: loads from .codeindex/ if it exists
 /// 2. Otherwise indexes files (stopping at subproject boundaries)
 /// 3. Recursively handles discovered subprojects
 ///
-/// When `enable_fts` is true, creates FTS5 tables for search (serve mode).
-/// When false, skips FTS to reduce memory on large repos (build mode).
-pub fn build_index_to_db(path: &Path, enable_fts: bool) -> Result<BuildResult> {
+/// Parameters:
+/// - `enable_fts`: If true, creates FTS5 tables for search (serve mode).
+///   If false, skips FTS to reduce memory on large repos (build mode).
+/// - `load_from_cache`: If true (serve), try loading from .codeindex/ first.
+///   If false (build), always re-index.
+/// - `tx`: If provided, initializes notify watchers during walk so directories
+///   are watched immediately (single walk strategy for serve --watch).
+pub fn build_index_to_db(
+    path: &Path,
+    enable_fts: bool,
+    load_from_cache: bool,
+    tx: Option<Sender<MountedEvent>>,
+) -> Result<BuildResult> {
     let root = path
         .canonicalize()
         .with_context(|| format!("cannot resolve path: {}", path.display()))?;
@@ -37,7 +48,9 @@ pub fn build_index_to_db(path: &Path, enable_fts: bool) -> Result<BuildResult> {
     }));
 
     // Process root project (will recursively discover and handle subprojects)
-    on_project_discovery(&root, &mount_table, &db).context("failed to process root project")?;
+    // Pass load_from_cache and tx (for notify watchers during walk, if provided)
+    on_project_discovery(&root, &mount_table, &db, load_from_cache, tx)
+        .context("failed to process root project")?;
 
     Ok((mount_table, db))
 }
@@ -49,7 +62,9 @@ pub fn build_index_to_db(path: &Path, enable_fts: bool) -> Result<BuildResult> {
 /// project found. Root is always treated as a project (with or without .git/).
 pub fn build_index(path: &Path) -> Result<()> {
     // Build mode: disable FTS to reduce memory on large repos
-    let (mount_table, db) = build_index_to_db(path, false)?;
+    // load_from_cache=false: always re-index (ignore .codeindex/)
+    // tx=None: no watcher
+    let (mount_table, db) = build_index_to_db(path, false, false, None)?;
 
     // Flush each dirty mount to disk
     let mt = mount_table

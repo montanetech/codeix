@@ -463,6 +463,43 @@ Git submodules:
 - Sibling repos handled without workspace-specific logic
 - `.gitignore` is respected per-project — each repo's ignore rules apply to its own tree
 
+**Mount-owned walker and watcher:**
+
+Each mount owns both its directory walker and file watcher. No global workspace-spanning walker exists.
+
+```
+Mount::walk(root)
+  ├── WalkDir with follow_links(false) — no symlink loops
+  ├── GitignoreBuilder — builds .gitignore rules incrementally during walk
+  ├── SKIP_ENTRIES — always excludes .git, .codeindex, .vscode, .idea, etc.
+  ├── notify watcher — watches directories discovered during walk
+  └── emits MountEvent to handler (FileAdded, FileRemoved, DirAdded, DirRemoved, ProjectAdded)
+```
+
+**Unified event model:** Both walker (initial scan) and watcher (ongoing changes) emit the same events:
+
+| Event | Trigger | Action |
+|-------|---------|--------|
+| `FileAdded` | File discovered or modified | Parse with tree-sitter, update DB |
+| `FileRemoved` | File deleted | Remove from DB |
+| `DirAdded` | Directory discovered or created | Add to notify watcher |
+| `DirRemoved` | Directory deleted | Remove from notify watcher |
+| `ProjectAdded` | `.git/` directory found | Create new Mount for subproject |
+
+**Why mount-owned:**
+
+1. **Correct `.gitignore` handling** — `GitignoreBuilder` accumulates rules as directories are entered. Each nested `.gitignore` extends the current ruleset.
+
+2. **Symlink safety** — `follow_links(false)` prevents CPU spin on pnpm-style `node_modules/` with circular symlinks.
+
+3. **Isolation** — Each mount is self-contained. Subproject discovery creates a child mount with its own walker/watcher, inheriting nothing from the parent.
+
+4. **SKIP_ENTRIES** — Hardcoded exclusions for `.git`, `.codeindex`, `.vscode`, `.idea`, `.vs`, `.DS_Store`, etc. These are never indexed regardless of `.gitignore` content.
+
+**Workspace root as a mount:**
+
+The workspace root (where codeix was launched) is treated as a mount like any other. If it contains `.git/`, it gets indexed. If not, it's a container for subprojects — the mount exists but has no files to index, only subprojects to discover.
+
 ---
 
 ## Future Considerations

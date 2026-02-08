@@ -1,9 +1,9 @@
 pub mod cli;
 pub mod index;
+pub mod mount;
 pub mod parser;
-pub mod scanner;
 pub mod server;
-pub mod watcher;
+pub mod utils;
 
 #[cfg(test)]
 mod gitignore_tests {
@@ -30,23 +30,6 @@ mod gitignore_tests {
         assert!(
             m2.is_ignore(),
             "target/ files should be ignored via matched_path_or_any_parents"
-        );
-    }
-}
-
-#[cfg(test)]
-mod walker_tests {
-    use crate::scanner::walker::walk_directory;
-    use std::path::Path;
-
-    #[test]
-    fn test_target_not_walked() {
-        let files = walk_directory(Path::new(".")).unwrap();
-        let target_files: Vec<_> = files.iter().filter(|p| p.starts_with("target")).collect();
-        println!("target files: {:?}", target_files);
-        assert!(
-            target_files.is_empty(),
-            "target/ should be ignored by walker"
         );
     }
 }

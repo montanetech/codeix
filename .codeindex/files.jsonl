@@ -1,69 +1,80 @@
-{"path":"CHANGELOG.md","lang":null,"hash":"2592f3b98b05afd7","lines":95}
-{"path":"Cargo.lock","lang":null,"hash":"55bc228c71c385fa","lines":1726}
-{"path":"Cargo.toml","lang":null,"hash":"0d03620f658c7255","lines":113}
+{"path":".claude/orders.json","lang":null,"hash":"6b2f21e701504c5d","lines":607}
+{"path":".claude/settings.json","lang":null,"hash":"76709f9ae8143429","lines":5}
+{"path":".githooks/pre-commit","lang":null,"hash":"30661761293df79d","lines":16}
+{"path":".github/workflows/ci.yml","lang":null,"hash":"9c6acbf3fb09bcb1","lines":37}
+{"path":".github/workflows/publish-wrappers.yml","lang":null,"hash":"d917b74a96e6f13a","lines":146}
+{"path":".github/workflows/release-please.yml","lang":null,"hash":"2227bb25da413cb8","lines":36}
+{"path":".github/workflows/release.yml","lang":null,"hash":"75ec87eec8c0fa60","lines":125}
+{"path":".github/workflows/site.yml","lang":null,"hash":"9887d7563c2228e1","lines":57}
+{"path":"CHANGELOG.md","lang":"markdown","hash":"2592f3b98b05afd7","lines":95,"title":"Changelog","description":"* Database schema changed with new project column."}
+{"path":"Cargo.lock","lang":null,"hash":"60f043458867dd84","lines":1799}
+{"path":"Cargo.toml","lang":null,"hash":"3b0bfbac4fb9f1f6","lines":122}
 {"path":"LICENSE-APACHE","lang":null,"hash":"ceb7f9582191e2d9","lines":190}
 {"path":"LICENSE-MIT","lang":null,"hash":"8ebd4140ca6a57ab","lines":21}
 {"path":"Makefile","lang":null,"hash":"bbe3774ad9bfad26","lines":37}
-{"path":"README.md","lang":null,"hash":"a71b2dfab29c977e","lines":181}
-{"path":"docs/architecture.md","lang":null,"hash":"1343a504702f5234","lines":584}
+{"path":"README.md","lang":"markdown","hash":"397b52c57bc11e47","lines":188,"title":"codeix","description":"**[codeix.dev](https://codeix.dev)** · Portable, composable code index."}
+{"path":"docs/architecture.md","lang":"markdown","hash":"ec9d1ac30f66915e","lines":621,"title":"Codeindex — Architecture Decisions","description":"Existing code indexing tools (e.g."}
 {"path":"npm/install.js","lang":"javascript","hash":"7c8e721255725e9f","lines":110}
 {"path":"npm/package.json","lang":null,"hash":"9c03c1f457884b9b","lines":35}
 {"path":"npm/run.js","lang":"javascript","hash":"e30c9632c57d1837","lines":20}
-{"path":"python/codeix/__init__.py","lang":"python","hash":"aca90f7a1de56671","lines":108}
-{"path":"python/codeix/__main__.py","lang":"python","hash":"8db5f1594887f279","lines":5}
+{"path":"python/codeix/__init__.py","lang":"python","hash":"aca90f7a1de56671","lines":108,"title":"codeix — Portable, composable code index."}
+{"path":"python/codeix/__main__.py","lang":"python","hash":"8db5f1594887f279","lines":5,"title":"Allow running as `python -m codeix`."}
 {"path":"python/pyproject.toml","lang":null,"hash":"620b94348d34ff1b","lines":31}
 {"path":"release-please-config.json","lang":null,"hash":"d5d71618c1dbd1fd","lines":25}
-{"path":"scripts/bench.py","lang":"python","hash":"ae7e5d25787fccd0","lines":20}
-{"path":"scripts/bench/__init__.py","lang":"python","hash":"05205ce451932962","lines":14}
-{"path":"scripts/bench/__main__.py","lang":"python","hash":"bd8254209156b307","lines":134}
-{"path":"scripts/bench/ab.py","lang":"python","hash":"7006f00c9c8b92d2","lines":506}
-{"path":"scripts/bench/common.py","lang":"python","hash":"b4eefbec97796e93","lines":308}
-{"path":"scripts/bench/index_speed.py","lang":"python","hash":"7f77a62516ce9737","lines":135}
+{"path":"scripts/bench.py","lang":"python","hash":"ae7e5d25787fccd0","lines":20,"title":"Codeix Benchmark Suite","description":"Usage:     python scripts/bench.py index-speed [--verbose]     python scripts/bench.py search-quality [--question ID]     python scripts/bench.py search-value [--question ID]"}
+{"path":"scripts/bench/__init__.py","lang":"python","hash":"05205ce451932962","lines":14,"title":"Codeix Benchmark Suite."}
+{"path":"scripts/bench/__main__.py","lang":"python","hash":"bd8254209156b307","lines":134,"title":"Entry point for python -m scripts.bench."}
+{"path":"scripts/bench/ab.py","lang":"python","hash":"7006f00c9c8b92d2","lines":506,"title":"A/B benchmark framework using claude CLI."}
+{"path":"scripts/bench/common.py","lang":"python","hash":"b4eefbec97796e93","lines":308,"title":"Common utilities for benchmark suite."}
+{"path":"scripts/bench/index_speed.py","lang":"python","hash":"7f77a62516ce9737","lines":135,"title":"Quantitative indexing speed benchmark."}
 {"path":"scripts/bench/questions.json","lang":null,"hash":"4a669f5a708bc99e","lines":122}
-{"path":"scripts/bench/search_quality.py","lang":"python","hash":"3d7338d297052535","lines":112}
-{"path":"scripts/bench/search_value.py","lang":"python","hash":"eb075e99b637d51f","lines":108}
+{"path":"scripts/bench/search_quality.py","lang":"python","hash":"3d7338d297052535","lines":112,"title":"Search quality benchmark: dev codeix vs prod codeix."}
+{"path":"scripts/bench/search_value.py","lang":"python","hash":"eb075e99b637d51f","lines":108,"title":"Search value benchmark: codeix vs raw Claude."}
 {"path":"site/config.toml","lang":null,"hash":"b66392e26e06bf80","lines":14}
-{"path":"site/content/_index.md","lang":null,"hash":"a1f5c280463bffad","lines":4}
+{"path":"site/content/_index.md","lang":"markdown","hash":"a1f5c280463bffad","lines":4}
 {"path":"site/static/CNAME","lang":null,"hash":"ace5aca4512d17d3","lines":1}
 {"path":"site/static/giallo.css","lang":null,"hash":"2031cf75c7fc2544","lines":91}
 {"path":"site/templates/index.html","lang":"html","hash":"3a1003d0226fc3d4","lines":1279}
 {"path":"site/templates/section.html","lang":"html","hash":"da66990d1007a74a","lines":12}
 {"path":"site/templates/spec.html","lang":"html","hash":"d86f18588efb4306","lines":496}
-{"path":"spec/codeindex.md","lang":null,"hash":"66d414d6d72693eb","lines":318}
+{"path":"spec/codeindex.md","lang":"markdown","hash":"458c8f987aed95c2","lines":320,"title":"`.codeindex` Format Specification","description":"**Version:** 1.0 (draft)"}
 {"path":"spec/files.schema.json","lang":null,"hash":"2d0a5fa29f8bf8ae","lines":32}
 {"path":"spec/index.schema.json","lang":null,"hash":"f311d3ac3354c5b2","lines":36}
 {"path":"spec/symbols.schema.json","lang":null,"hash":"b2a55feee1cccb74","lines":55}
 {"path":"spec/texts.schema.json","lang":null,"hash":"e967e56bffd6f807","lines":40}
-{"path":"src/cli/build.rs","lang":"rust","hash":"40dfd0e844633839","lines":107}
+{"path":"src/cli/build.rs","lang":"rust","hash":"3e58f78807b0b2a1","lines":121}
 {"path":"src/cli/mod.rs","lang":"rust","hash":"531c34954ce50258","lines":2}
-{"path":"src/cli/serve.rs","lang":"rust","hash":"dc55d171a37ffdb0","lines":55}
-{"path":"src/index/format.rs","lang":"rust","hash":"f15291874cf74c46","lines":53}
+{"path":"src/cli/serve.rs","lang":"rust","hash":"2e0bdd9a59a0666d","lines":70}
+{"path":"src/index/format.rs","lang":"rust","hash":"11a2f88a101a2609","lines":78}
 {"path":"src/index/mod.rs","lang":"rust","hash":"a44fb97118208dd8","lines":3}
-{"path":"src/index/reader.rs","lang":"rust","hash":"ca3069809eeb220d","lines":53}
-{"path":"src/index/writer.rs","lang":"rust","hash":"41ec75f6b80f46bf","lines":49}
-{"path":"src/lib.rs","lang":"rust","hash":"35b7612de65d859c","lines":52}
+{"path":"src/index/reader.rs","lang":"rust","hash":"d98dce7bc50bf4e4","lines":57}
+{"path":"src/index/writer.rs","lang":"rust","hash":"d0183e46b8776a3e","lines":51}
+{"path":"src/lib.rs","lang":"rust","hash":"6aaf29223f6ba11e","lines":36}
 {"path":"src/main.rs","lang":"rust","hash":"47505235a744073a","lines":67}
-{"path":"src/parser/c_lang.rs","lang":"rust","hash":"a26294e1554685a2","lines":622}
-{"path":"src/parser/cpp.rs","lang":"rust","hash":"0156e4e8d5572107","lines":922}
-{"path":"src/parser/csharp.rs","lang":"rust","hash":"d6e0093bf8d1f6b2","lines":890}
-{"path":"src/parser/go.rs","lang":"rust","hash":"c84e8b78b452f233","lines":659}
-{"path":"src/parser/helpers.rs","lang":"rust","hash":"5f0e4f4b01660cb2","lines":332}
-{"path":"src/parser/java.rs","lang":"rust","hash":"a9a4344068a55265","lines":577}
-{"path":"src/parser/javascript.rs","lang":"rust","hash":"129491f29676a7a1","lines":726}
-{"path":"src/parser/languages.rs","lang":"rust","hash":"ea42285b5700abb8","lines":67}
-{"path":"src/parser/mod.rs","lang":"rust","hash":"4d75cfae88782bed","lines":35}
-{"path":"src/parser/python.rs","lang":"rust","hash":"2201e2dbac9fcfa9","lines":668}
-{"path":"src/parser/ruby.rs","lang":"rust","hash":"8b4e029e25adface","lines":677}
-{"path":"src/parser/rust_lang.rs","lang":"rust","hash":"814d5730a4c9a09a","lines":564}
-{"path":"src/parser/sfc.rs","lang":"rust","hash":"de70d895b7dc712c","lines":319}
-{"path":"src/parser/treesitter.rs","lang":"rust","hash":"36864baa04dbca1a","lines":233}
-{"path":"src/parser/typescript.rs","lang":"rust","hash":"91f08d5c27383385","lines":988}
-{"path":"src/scanner/hasher.rs","lang":"rust","hash":"5d441e4b52b74aef","lines":25}
-{"path":"src/scanner/mod.rs","lang":"rust","hash":"00658be21f5adc2d","lines":3}
-{"path":"src/scanner/mount.rs","lang":"rust","hash":"7a6ccee9b6a78934","lines":379}
-{"path":"src/scanner/walker.rs","lang":"rust","hash":"c9bca9926123636c","lines":27}
-{"path":"src/server/db.rs","lang":"rust","hash":"4c4d751fe1bb396c","lines":830}
-{"path":"src/server/mcp.rs","lang":"rust","hash":"1faa362a9398b9b1","lines":288}
-{"path":"src/server/mod.rs","lang":"rust","hash":"932c0be7dbe106c9","lines":2}
-{"path":"src/watcher/handler.rs","lang":"rust","hash":"21b49bd90ce95552","lines":1040}
-{"path":"src/watcher/mod.rs","lang":"rust","hash":"a52cfe0eac7a55f5","lines":111}
+{"path":"src/mount/mod.rs","lang":"rust","hash":"40401c9d999129e0","lines":1001}
+{"path":"src/parser/c_lang.rs","lang":"rust","hash":"7ce235232bc0daaf","lines":682,"title":"C symbol and text extraction."}
+{"path":"src/parser/cpp.rs","lang":"rust","hash":"d52ba670ed37bf12","lines":1010,"title":"C++ symbol and text extraction.","description":"Extends C extraction with classes, namespaces, templates, and access specifiers."}
+{"path":"src/parser/csharp.rs","lang":"rust","hash":"167ddd1a7fd7d217","lines":1010,"title":"C# symbol and text extraction."}
+{"path":"src/parser/go.rs","lang":"rust","hash":"7fbdbe749067148a","lines":678,"title":"Go symbol and text extraction."}
+{"path":"src/parser/helpers.rs","lang":"rust","hash":"592e50749d0b571a","lines":382,"title":"Shared helpers for tree-sitter extraction across all languages."}
+{"path":"src/parser/java.rs","lang":"rust","hash":"fce4aeb862fde681","lines":658,"title":"Java symbol and text extraction."}
+{"path":"src/parser/javascript.rs","lang":"rust","hash":"edabbb9de9c68743","lines":789,"title":"JavaScript symbol and text extraction."}
+{"path":"src/parser/languages.rs","lang":"rust","hash":"42f09e482e1906b8","lines":73}
+{"path":"src/parser/markdown.rs","lang":"rust","hash":"5f2e2d928e99c920","lines":553,"title":"Markdown symbol and text extraction using tree-sitter-md.","description":"Headings are extracted as symbols with `kind=\"section\"` and parent relationships reflecting the document hierarchy."}
+{"path":"src/parser/metadata.rs","lang":"rust","hash":"3c087be5f76104e5","lines":733,"title":"File metadata extraction (title and description).","description":"Extracts file-level metadata from source code for improved search relevance."}
+{"path":"src/parser/mod.rs","lang":"rust","hash":"8187328497106ff0","lines":39}
+{"path":"src/parser/python.rs","lang":"rust","hash":"14fed2e3a0812e75","lines":867,"title":"Python symbol and text extraction."}
+{"path":"src/parser/ruby.rs","lang":"rust","hash":"5fa644d81f08348d","lines":775,"title":"Ruby symbol and text extraction."}
+{"path":"src/parser/rust_lang.rs","lang":"rust","hash":"9ed6dce60f502d7b","lines":554,"title":"Rust symbol and text extraction."}
+{"path":"src/parser/sfc.rs","lang":"rust","hash":"de70d895b7dc712c","lines":319,"title":"Single File Component (SFC) preprocessor.","description":"Extracts `<script>` blocks from Vue, Svelte, and Astro files so they can be fed to the existing TypeScript/JavaScript tree-sitter extractors."}
+{"path":"src/parser/treesitter.rs","lang":"rust","hash":"9d020873ae1ceaa4","lines":253}
+{"path":"src/parser/typescript.rs","lang":"rust","hash":"acd1d67594b86424","lines":1084,"title":"TypeScript symbol and text extraction.","description":"TypeScript extends JavaScript with type annotations, interfaces, enums, type aliases, and namespaces."}
+{"path":"src/server/db.rs","lang":"rust","hash":"2cb900b52239bdba","lines":1124}
+{"path":"src/server/mcp.rs","lang":"rust","hash":"e3b9194c1db1aa0e","lines":538}
+{"path":"src/server/mod.rs","lang":"rust","hash":"436ce3d83d69ba6f","lines":3}
+{"path":"src/server/snippet.rs","lang":"rust","hash":"a75bf5851e42c5c1","lines":214}
+{"path":"src/utils/hasher.rs","lang":"rust","hash":"5d441e4b52b74aef","lines":25}
+{"path":"src/utils/manifest.rs","lang":"rust","hash":"d3a2c9e703532cfd","lines":603,"title":"Package manifest parsing for project metadata extraction.","description":"Parses common package manifests (package.json, Cargo.toml, pyproject.toml, go.mod, pom.xml, *.gemspec) and returns both fixed metadata (name, description) and list of manifest files found."}
+{"path":"src/utils/mod.rs","lang":"rust","hash":"87d570cc1d563938","lines":2}
+{"path":"src/watcher/handler.rs","lang":"rust","hash":"0f6fa374cb4adb40","lines":1001}
+{"path":"src/watcher/mod.rs","lang":"rust","hash":"0090b244b9a2dc7a","lines":1}
