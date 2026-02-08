@@ -12,9 +12,9 @@ use crate::index::writer::write_index;
 use crate::parser::languages::detect_language;
 use crate::parser::metadata::extract_file_metadata;
 use crate::parser::treesitter::parse_file;
-use crate::scanner::hasher::hash_bytes;
 use crate::scanner::mount::{MountMode, MountTable};
 use crate::server::db::SearchDb;
+use crate::utils::hasher::hash_bytes;
 use crate::watcher::GitignoreWatcher;
 
 const DEBOUNCE_DELAY: Duration = Duration::from_millis(500);
