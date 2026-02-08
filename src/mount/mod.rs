@@ -1,4 +1,4 @@
-mod walker;
+pub mod handler;
 
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -7,10 +7,27 @@ use std::sync::mpsc::Sender;
 
 use anyhow::{Context, Result};
 use fs2::FileExt;
-use ignore::gitignore::Gitignore;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use notify::event::{CreateKind, EventKind, RemoveKind};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use walkdir::WalkDir;
 
-pub use walker::SKIP_ENTRIES;
+/// Built-in gitignore patterns (always applied).
+/// These are either internal directories, IDE config, or OS cruft.
+const BUILTIN_GITIGNORE: &[&str] = &[
+    // Git internals (but .git itself is used for project detection)
+    ".git/",
+    // Our own output
+    ".codeindex/",
+    // Editor/IDE directories
+    ".vscode/",
+    ".idea/",
+    ".vs/",
+    // OS cruft
+    ".DS_Store",
+    ".Spotlight-V100/",
+    ".Trashes/",
+];
 
 /// Mount mode determines whether the index can be written to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,37 +38,45 @@ pub enum MountMode {
     ReadOnly,
 }
 
-/// Events emitted during walking or watching a mount.
+/// Check if an EventKind represents a removal operation.
+/// Used to determine if we can canonicalize the path (removed files can't be canonicalized).
+pub fn is_removal_event(kind: &EventKind) -> bool {
+    matches!(
+        kind,
+        EventKind::Remove(RemoveKind::File) | EventKind::Remove(RemoveKind::Folder)
+    )
+}
+
+/// Filesystem events emitted to external consumers (handler/DB).
+/// These are the result of processing raw notify events through mount rules.
 #[derive(Debug, Clone)]
-pub enum MountEvent {
+pub enum FsEvent {
     /// A file was discovered or modified.
-    File {
-        /// Absolute path to the file.
-        abs_path: PathBuf,
+    FileAdded {
+        /// Absolute path to the mount root.
+        mount: PathBuf,
         /// Path relative to mount root.
-        rel_path: String,
+        path: String,
+    },
+    /// A file was deleted.
+    FileRemoved {
+        /// Absolute path to the mount root.
+        mount: PathBuf,
+        /// Path relative to mount root.
+        path: String,
     },
     /// A subproject (.git/ directory) was discovered.
-    Subproject {
+    ProjectAdded {
         /// Absolute path to the subproject root (parent of .git/).
         root: PathBuf,
     },
-    /// A directory was created.
-    DirCreated {
-        /// Absolute path to the directory.
-        path: PathBuf,
-    },
-    /// A directory was removed.
-    DirRemoved {
-        /// Absolute path to the directory.
-        path: PathBuf,
-    },
-    /// A file was deleted.
-    FileDeleted {
-        /// Path relative to mount root.
-        rel_path: String,
-    },
+    /// Directory should be skipped (gitignore match).
+    /// Walker should call skip_current_dir() to avoid descending.
+    DirIgnored,
 }
+
+/// Event with mount identity attached (avoids lookup in handler).
+pub type MountedEvent = (PathBuf, Result<Event, notify::Error>);
 
 /// A single mounted directory with its index.
 pub struct Mount {
@@ -66,6 +91,8 @@ pub struct Mount {
     /// Gitignore rules for this mount (built during walk, used by watcher).
     /// None until walk() is called.
     gitignore: Option<Gitignore>,
+    /// All gitignore files discovered (for rebuilding when new ones are added).
+    gitignore_files: Vec<PathBuf>,
     /// File system watcher (only present for ReadWrite mounts).
     watcher: Option<RecommendedWatcher>,
     /// Directories currently being watched.
@@ -86,15 +113,18 @@ impl std::fmt::Debug for Mount {
 impl Mount {
     /// Create a new read-only mount (no lock, no watcher).
     fn new_ro(root: PathBuf) -> Result<Self> {
-        Ok(Self {
+        let mut mount = Self {
             root,
             mode: MountMode::ReadOnly,
             lock: None,
             dirty: false,
-            gitignore: None, // Built during walk()
+            gitignore: None,
+            gitignore_files: Vec::new(),
             watcher: None,
             watched_dirs: HashSet::new(),
-        })
+        };
+        mount.init_gitignore()?;
+        Ok(mount)
     }
 
     /// Create a new read-write mount with exclusive flock.
@@ -123,31 +153,262 @@ impl Mount {
             .try_lock_exclusive()
             .with_context(|| format!("failed to acquire exclusive lock on {:?}", lock_path))?;
 
-        Ok(Self {
+        let mut mount = Self {
             root,
             mode: MountMode::ReadWrite,
             lock: Some(lock_file),
             dirty: false,
-            gitignore: None, // Built during walk()
+            gitignore: None,
+            gitignore_files: Vec::new(),
             watcher: None,
             watched_dirs: HashSet::new(),
+        };
+        mount.init_gitignore()?;
+        Ok(mount)
+    }
+
+    /// Initialize gitignore with .git/info/exclude and root .gitignore.
+    fn init_gitignore(&mut self) -> Result<()> {
+        self.gitignore_files.clear();
+
+        // Add .git/info/exclude if it exists
+        let exclude_path = self.root.join(".git/info/exclude");
+        if exclude_path.exists() {
+            self.gitignore_files.push(exclude_path);
+        }
+
+        // Add root .gitignore - must be loaded first before walking siblings
+        let root_gitignore = self.root.join(".gitignore");
+        if root_gitignore.exists() {
+            self.gitignore_files.push(root_gitignore);
+        }
+
+        self.build_gitignore()
+    }
+
+    /// Build gitignore from all tracked files plus built-in patterns.
+    fn build_gitignore(&mut self) -> Result<()> {
+        let mut builder = GitignoreBuilder::new(&self.root);
+
+        // Add built-in patterns first
+        for pattern in BUILTIN_GITIGNORE {
+            let _ = builder.add_line(None, pattern);
+        }
+
+        // Add user gitignore files
+        for file in &self.gitignore_files {
+            builder.add(file);
+        }
+
+        self.gitignore = Some(
+            builder
+                .build()
+                .with_context(|| format!("failed to build gitignore for {:?}", self.root))?,
+        );
+
+        Ok(())
+    }
+
+    /// Handle a filesystem event (from walker or notify).
+    ///
+    /// This is the central handler that applies ALL rules:
+    /// - Gitignore filtering
+    /// - Project detection (.git/)
+    /// - .gitignore file updates
+    /// - Watch management
+    ///
+    /// Takes notify's `EventKind` directly - both walker and notify use the same type.
+    /// Returns an external event if this should be forwarded to consumers.
+    /// Returns None for event types we don't care about.
+    pub fn on_fs_event(&mut self, abs_path: &Path, kind: &EventKind) -> Option<FsEvent> {
+        // Check if path is under mount root
+        if !abs_path.starts_with(&self.root) {
+            return None;
+        }
+
+        match kind {
+            EventKind::Create(CreateKind::Folder) => self.on_dir_added(abs_path),
+            EventKind::Remove(RemoveKind::Folder) => self.on_dir_removed(abs_path),
+            EventKind::Create(CreateKind::File) | EventKind::Modify(_) => {
+                self.on_file_added(abs_path)
+            }
+            EventKind::Remove(RemoveKind::File) => self.on_file_removed(abs_path),
+            _ => None, // Ignore other event types
+        }
+    }
+
+    fn on_dir_added(&mut self, abs_path: &Path) -> Option<FsEvent> {
+        let name = abs_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+        // Check if this is a .git directory -> project discovery
+        // (must check before gitignore since .git/ is in BUILTIN_GITIGNORE)
+        if name == ".git" {
+            return abs_path.parent().map(|root| FsEvent::ProjectAdded {
+                root: root.to_path_buf(),
+            });
+        }
+
+        // Check gitignore - return DirIgnored so walker can skip subtree
+        if self.is_ignored(abs_path) {
+            return Some(FsEvent::DirIgnored);
+        }
+
+        // Check if directory contains .git (file or dir) -> it's a subproject root
+        // Git submodules use a .git file pointing to parent's .git/modules/
+        if abs_path.join(".git").exists() {
+            return Some(FsEvent::ProjectAdded {
+                root: abs_path.to_path_buf(),
+            });
+        }
+
+        // Check for .gitignore in this directory : must be loaded first before walking siblings
+        let dir_gitignore = abs_path.join(".gitignore");
+        if dir_gitignore.exists() {
+            self.add_gitignore(&dir_gitignore);
+        }
+
+        // Add watch for new directory
+        let _ = self.watch_dir(abs_path);
+        None // DirAdded is internal only
+    }
+
+    fn on_dir_removed(&mut self, abs_path: &Path) -> Option<FsEvent> {
+        self.remove_watch(abs_path);
+        None // DirRemoved is internal only
+    }
+
+    fn on_file_added(&mut self, abs_path: &Path) -> Option<FsEvent> {
+        let name = abs_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+        // Check gitignore
+        if self.is_ignored(abs_path) {
+            return None;
+        }
+
+        // Check if it's a .gitignore file -> update rules
+        if name == ".gitignore" {
+            self.add_gitignore(abs_path);
+            return None; // Don't index .gitignore files themselves
+        }
+
+        // Skip hidden files (dotfiles)
+        if name.starts_with('.') {
+            return None;
+        }
+
+        let rel_path = abs_path
+            .strip_prefix(&self.root)
+            .map(|p| p.to_string_lossy().replace('\\', "/"))
+            .unwrap_or_default();
+
+        Some(FsEvent::FileAdded {
+            mount: self.root.clone(),
+            path: rel_path,
         })
+    }
+
+    fn on_file_removed(&mut self, abs_path: &Path) -> Option<FsEvent> {
+        let name = abs_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+        // Skip hidden files
+        if name.starts_with('.') {
+            return None;
+        }
+
+        let rel_path = abs_path
+            .strip_prefix(&self.root)
+            .map(|p| p.to_string_lossy().replace('\\', "/"))
+            .unwrap_or_default();
+
+        Some(FsEvent::FileRemoved {
+            mount: self.root.clone(),
+            path: rel_path,
+        })
+    }
+
+    /// Add a .gitignore file to the rules.
+    fn add_gitignore(&mut self, gitignore_path: &Path) {
+        // Track the file
+        if !self.gitignore_files.contains(&gitignore_path.to_path_buf()) {
+            self.gitignore_files.push(gitignore_path.to_path_buf());
+            // Rebuild gitignore with all known files
+            let _ = self.build_gitignore();
+        }
+    }
+
+    /// Remove watch for a directory.
+    fn remove_watch(&mut self, path: &Path) {
+        if self.watched_dirs.remove(path)
+            && let Some(ref mut watcher) = self.watcher
+        {
+            let _ = watcher.unwatch(path);
+        }
     }
 
     /// Walk all files in this mount, emitting events via callback.
     ///
-    /// Builds gitignore incrementally during the walk - when entering a directory,
-    /// checks for `.gitignore` and adds it before processing contents.
-    ///
-    /// Stops at subproject boundaries (directories containing `.git/`) and
-    /// emits `MountEvent::Subproject` for each discovered subproject.
+    /// This is a dumb walker - it just iterates and calls on_fs_event for each entry.
+    /// All the smart logic (gitignore, skip entries, project detection) is in on_fs_event.
     ///
     /// After walk completes, the built gitignore is stored for use by the watcher.
-    pub fn walk<F>(&mut self, on_event: F) -> Result<()>
+    pub fn walk<F>(&mut self, mut on_event: F) -> Result<()>
     where
-        F: FnMut(MountEvent) -> Result<()>,
+        F: FnMut(FsEvent) -> Result<()>,
     {
-        self.gitignore = Some(walker::walk_mount(&self.root, on_event)?);
+        let root = self.root.clone();
+
+        tracing::debug!("walking mount at {}", root.display());
+
+        // Add watch for mount root
+        let _ = self.watch_dir(&root);
+
+        let mut iter = WalkDir::new(&root).follow_links(false).into_iter();
+
+        while let Some(result) = iter.next() {
+            let entry = result?;
+            let abs_path = entry.path();
+
+            // Skip mount root itself
+            if abs_path == root {
+                continue;
+            }
+
+            // Skip entries inside subprojects: if parent has .git (file or dir), skip this entry
+            // (but the subproject dir itself is allowed since its parent won't have .git)
+            // Git submodules use a .git file pointing to parent's .git/modules/
+            if let Some(parent) = abs_path.parent()
+                && parent != root
+                && parent.join(".git").exists()
+            {
+                if entry.file_type().is_dir() {
+                    iter.skip_current_dir();
+                }
+                continue;
+            }
+
+            // Determine event kind (same as notify would emit)
+            let kind = if entry.file_type().is_dir() {
+                EventKind::Create(CreateKind::Folder)
+            } else if entry.file_type().is_file() {
+                EventKind::Create(CreateKind::File)
+            } else {
+                continue; // Skip symlinks, etc.
+            };
+
+            // Let on_fs_event handle all the logic
+            if let Some(event) = self.on_fs_event(abs_path, &kind) {
+                match event {
+                    FsEvent::DirIgnored => {
+                        // Skip the entire subtree
+                        iter.skip_current_dir();
+                    }
+                    _ => {
+                        on_event(event)?;
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -156,16 +417,19 @@ impl Mount {
     /// Must be called BEFORE walk() so that DirCreated events can add directories.
     /// Does nothing for read-only mounts.
     ///
-    /// Events are sent to the provided channel (shared with event loop).
-    pub fn init_notify(&mut self, tx: Sender<Result<Event, notify::Error>>) -> Result<()> {
+    /// Events are sent to the provided channel with mount root attached,
+    /// avoiding the need for mount lookup in the handler.
+    pub fn init_notify(&mut self, tx: Sender<MountedEvent>) -> Result<()> {
         if self.mode == MountMode::ReadOnly {
             return Ok(()); // No watcher for read-only mounts
         }
 
+        // Capture mount root for the callback
+        let mount_root = self.root.clone();
         let config = Config::default();
         let watcher = RecommendedWatcher::new(
             move |res| {
-                let _ = tx.send(res);
+                let _ = tx.send((mount_root.clone(), res));
             },
             config,
         )
@@ -188,42 +452,6 @@ impl Mount {
             self.watched_dirs.insert(path.to_path_buf());
         }
         Ok(())
-    }
-
-    /// Called when a new directory is created - add watch if not ignored.
-    pub fn on_dir_created(&mut self, path: &Path) -> Result<()> {
-        // Check if path is under mount root
-        if !path.starts_with(&self.root) {
-            return Ok(());
-        }
-
-        // Check if ignored by gitignore
-        if self.is_ignored(path) {
-            return Ok(());
-        }
-
-        // Check if hidden (dotfile)
-        if path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .is_some_and(|n| n.starts_with('.'))
-        {
-            return Ok(());
-        }
-
-        if path.is_dir() {
-            self.watch_dir(path)?;
-        }
-        Ok(())
-    }
-
-    /// Called when a directory is removed - stop watching.
-    pub fn on_dir_removed(&mut self, path: &Path) {
-        if self.watched_dirs.remove(path)
-            && let Some(ref mut watcher) = self.watcher
-        {
-            let _ = watcher.unwatch(path); // May fail if already gone
-        }
     }
 
     /// Get the number of watched directories.
@@ -594,8 +822,8 @@ mod tests {
         let mut files = Vec::new();
         mount
             .walk(|event| {
-                if let MountEvent::File { rel_path, .. } = event {
-                    files.push(rel_path);
+                if let FsEvent::FileAdded { path, .. } = event {
+                    files.push(path);
                 }
                 Ok(())
             })
@@ -640,13 +868,10 @@ mod tests {
 
         // Walk should complete without hanging (symlinks not followed)
         let mut files = Vec::new();
-        let mut dirs = Vec::new();
         mount
             .walk(|event| {
-                match event {
-                    MountEvent::File { rel_path, .. } => files.push(rel_path),
-                    MountEvent::DirCreated { path } => dirs.push(path),
-                    _ => {}
+                if let FsEvent::FileAdded { path, .. } = event {
+                    files.push(path);
                 }
                 Ok(())
             })
@@ -663,10 +888,9 @@ mod tests {
     }
 
     #[test]
-    fn test_walk_emits_dir_created_events() {
-        // Verify DirCreated events are emitted for watcher registration
+    fn test_walk_adds_watches_internally() {
+        // Verify walk adds watches internally (no DirAdded events emitted)
         let tmp = TempDir::new().unwrap();
-        // Canonicalize for macOS where /var -> /private/var
         let tmp_path = tmp.path().canonicalize().unwrap();
 
         fs::create_dir_all(tmp_path.join("src/components")).unwrap();
@@ -675,32 +899,36 @@ mod tests {
         fs::write(tmp_path.join("src/components/button.rs"), "// button").unwrap();
 
         let mut table = MountTable::new(tmp_path.clone());
-        table.mount_ro(&tmp_path).unwrap();
+        table.mount_rw(&tmp_path).unwrap(); // RW to get watcher
 
         let mount = table.find_mount_mut(&tmp_path).unwrap();
 
-        let mut dir_events = Vec::new();
+        // Init watcher
+        let (tx, _rx) = std::sync::mpsc::channel::<MountedEvent>();
+        mount.init_notify(tx).unwrap();
+
+        let mut file_count = 0;
         mount
             .walk(|event| {
-                if let MountEvent::DirCreated { path } = event {
-                    dir_events.push(path);
+                match event {
+                    FsEvent::FileAdded { .. } => file_count += 1,
+                    FsEvent::ProjectAdded { .. } => {}
+                    FsEvent::FileRemoved { .. } | FsEvent::DirIgnored => {}
                 }
                 Ok(())
             })
             .unwrap();
 
-        // Should emit DirCreated for mount root
-        assert!(dir_events.iter().any(|p| *p == tmp_path));
+        // Should have files
+        assert!(file_count >= 2);
 
-        // Should emit DirCreated for subdirectories
-        assert!(dir_events.iter().any(|p| p.ends_with("src")));
-        assert!(dir_events.iter().any(|p| p.ends_with("components")));
-        assert!(dir_events.iter().any(|p| p.ends_with("tests")));
+        // Should have watches registered internally
+        assert!(mount.watched_count() >= 4); // root, src, components, tests
     }
 
     #[test]
-    fn test_gitignore_built_during_walk() {
-        // Verify gitignore is available after walk (for watcher use)
+    fn test_gitignore_built_on_mount() {
+        // Verify gitignore is available immediately after mounting
         let tmp = TempDir::new().unwrap();
         // Canonicalize for macOS where /var -> /private/var
         let tmp_path = tmp.path().canonicalize().unwrap();
@@ -714,12 +942,7 @@ mod tests {
 
         let mount = table.find_mount_mut(&tmp_path).unwrap();
 
-        // Before walk: no gitignore
-        assert!(mount.gitignore().is_none());
-
-        mount.walk(|_| Ok(())).unwrap();
-
-        // After walk: gitignore built and stored
+        // Gitignore is built during mount creation
         assert!(mount.gitignore().is_some());
 
         // Can use is_ignored() for watcher filtering
@@ -755,8 +978,8 @@ mod tests {
         let mut files = Vec::new();
         mount
             .walk(|event| {
-                if let MountEvent::File { rel_path, .. } = event {
-                    files.push(rel_path);
+                if let FsEvent::FileAdded { path, .. } = event {
+                    files.push(path);
                 }
                 Ok(())
             })

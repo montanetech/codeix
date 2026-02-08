@@ -1,10 +1,11 @@
 {
   "version": "1.0",
-  "name": "codeix-issue-27",
+  "name": "codeix-issue-36",
   "root": ".",
   "languages": [
     "html",
     "javascript",
+    "markdown",
     "python",
     "rust"
   ]

@@ -5,8 +5,9 @@ use std::sync::mpsc;
 use anyhow::{Context, Result};
 
 use crate::cli::build::build_index_to_db;
+use crate::mount::MountedEvent;
+use crate::mount::handler::{flush_mount_to_disk, run_event_loop};
 use crate::server::mcp::start_server;
-use crate::watcher::handler::{flush_mount_to_disk, run_event_loop};
 
 /// Run the `serve` subcommand: load the index into an in-memory SQLite FTS5
 /// database and start the MCP server over stdio.
@@ -17,7 +18,11 @@ pub fn run(path: &Path, watch: bool) -> Result<()> {
 
     // If watch mode: create channel BEFORE building
     // This way directories are watched during the single walk (no second walk needed)
-    let (tx, rx) = if watch {
+    // Channel carries (mount_root, event) tuples for direct mount lookup
+    let (tx, rx): (
+        Option<mpsc::Sender<MountedEvent>>,
+        Option<mpsc::Receiver<MountedEvent>>,
+    ) = if watch {
         tracing::info!("starting watch mode");
         let (tx, rx) = mpsc::channel();
         (Some(tx), Some(rx))
@@ -27,9 +32,10 @@ pub fn run(path: &Path, watch: bool) -> Result<()> {
 
     // Build index with FTS enabled (loads from .codeindex/ if exists, otherwise parses files)
     // Serve mode needs FTS for search functionality
+    // load_from_cache=true: load from .codeindex/ if available
     // Pass tx to initialize notify watchers during walk (single walk strategy)
     let (mount_table, db) =
-        build_index_to_db(path, true, tx.clone()).context("failed to build/load index")?;
+        build_index_to_db(path, true, true, tx.clone()).context("failed to build/load index")?;
 
     // Flush any dirty mounts to disk (projects that were indexed, not loaded)
     {

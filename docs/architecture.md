@@ -468,32 +468,33 @@ Git submodules:
 Each mount owns both its directory walker and file watcher. No global workspace-spanning walker exists.
 
 ```
-Mount::new(root)
-  ├── WalkBuilder scoped to mount root
-  │     └── respects .gitignore tree automatically (ignore crate handles nested .gitignore)
-  ├── notify watcher scoped to mount root
-  │     └── watches only directories within this mount
-  └── emits unified events to handler
+Mount::walk(root)
+  ├── WalkDir with follow_links(false) — no symlink loops
+  ├── GitignoreBuilder — builds .gitignore rules incrementally during walk
+  ├── SKIP_ENTRIES — always excludes .git, .codeindex, .vscode, .idea, etc.
+  ├── notify watcher — watches directories discovered during walk
+  └── emits MountEvent to handler (FileAdded, FileRemoved, DirAdded, DirRemoved, ProjectAdded)
 ```
 
 **Unified event model:** Both walker (initial scan) and watcher (ongoing changes) emit the same events:
 
 | Event | Trigger | Action |
 |-------|---------|--------|
-| `on_file(path)` | File discovered or modified | Parse with tree-sitter, update DB |
-| `on_subproject(path)` | `.git/` directory found | Create new Mount for subproject |
-| `on_dir_created(path)` | New directory created | Add to notify watcher |
-| `on_dir_removed(path)` | Directory deleted | Remove from notify watcher |
+| `FileAdded` | File discovered or modified | Parse with tree-sitter, update DB |
+| `FileRemoved` | File deleted | Remove from DB |
+| `DirAdded` | Directory discovered or created | Add to notify watcher |
+| `DirRemoved` | Directory deleted | Remove from notify watcher |
+| `ProjectAdded` | `.git/` directory found | Create new Mount for subproject |
 
 **Why mount-owned:**
 
-1. **Correct `.gitignore` handling** — The `ignore` crate's `WalkBuilder` handles nested `.gitignore` files automatically when scoped to a root. A global walker starting at workspace root may not see subproject `.gitignore` files before walking into ignored directories.
+1. **Correct `.gitignore` handling** — `GitignoreBuilder` accumulates rules as directories are entered. Each nested `.gitignore` extends the current ruleset.
 
-2. **Isolation** — Each mount is self-contained. Subproject discovery creates a child mount with its own walker/watcher, inheriting nothing from the parent.
+2. **Symlink safety** — `follow_links(false)` prevents CPU spin on pnpm-style `node_modules/` with circular symlinks.
 
-3. **Simplicity** — One walker per mount, one watcher per mount. No need for a separate `build_gitignore()` function or manual `.gitignore` aggregation.
+3. **Isolation** — Each mount is self-contained. Subproject discovery creates a child mount with its own walker/watcher, inheriting nothing from the parent.
 
-4. **Performance** — Avoids walking into ignored directories (e.g., pnpm `node_modules/` with thousands of symlinks) that would trigger expensive `readlink` syscalls.
+4. **SKIP_ENTRIES** — Hardcoded exclusions for `.git`, `.codeindex`, `.vscode`, `.idea`, `.vs`, `.DS_Store`, etc. These are never indexed regardless of `.gitignore` content.
 
 **Workspace root as a mount:**
 

@@ -4,7 +4,6 @@ pub mod mount;
 pub mod parser;
 pub mod server;
 pub mod utils;
-pub mod watcher;
 
 #[cfg(test)]
 mod gitignore_tests {
