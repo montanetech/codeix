@@ -16,6 +16,7 @@ use super::db::SearchDb;
 use super::snippet::SnippetExtractor;
 use crate::index::format::SymbolEntry;
 use crate::mount::MountTable;
+use crate::mount::handler::flush_dirty_mounts;
 use crate::utils::manifest::{self, ProjectMetadata};
 
 // Parameter structs for each tool
@@ -489,6 +490,23 @@ impl CodeIndexServer {
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
+
+    /// Flush pending index changes to disk.
+    #[tool(
+        description = "Flush pending index changes to .codeindex/ files on disk. Call this when you need the index persisted (e.g., before git operations). Returns the number of projects flushed."
+    )]
+    async fn flush_index(&self) -> Result<CallToolResult, McpError> {
+        let flushed = flush_dirty_mounts(&self.mount_table, &self.db)
+            .map_err(|e| McpError::internal_error(format!("flush_index failed: {e}"), None))?;
+
+        let message = if flushed == 0 {
+            "No pending changes to flush.".to_string()
+        } else {
+            format!("Flushed {} project(s) to disk.", flushed)
+        };
+
+        Ok(CallToolResult::success(vec![Content::text(message)]))
+    }
 }
 
 /// Project info returned by list_projects, combining path with manifest metadata.
@@ -511,7 +529,8 @@ impl ServerHandler for CodeIndexServer {
                  (optionally filtered by project). Use get_file_symbols, get_symbol_children, \
                  and get_imports for structural lookups. Use get_callers to find who calls \
                  a symbol, get_callees to find what a symbol calls, and search_references \
-                 for full-text search across all references."
+                 for full-text search across all references. Use flush_index to persist \
+                 pending changes to disk (e.g., before git operations)."
                     .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
