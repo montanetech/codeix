@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use super::db::SearchDb;
 use super::snippet::SnippetExtractor;
 use crate::index::format::SymbolEntry;
-use crate::scanner::mount::MountTable;
+use crate::mount::MountTable;
 use crate::utils::manifest::{self, ProjectMetadata};
 
 // Parameter structs for each tool

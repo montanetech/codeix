@@ -1,51 +1,44 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
+use notify::Event;
 use notify::event::{CreateKind, EventKind, RemoveKind};
 
 use crate::index::format::{FileEntry, IndexManifest};
 use crate::index::reader::read_index;
 use crate::index::writer::write_index;
+use crate::mount::{MountMode, MountTable};
 use crate::parser::languages::detect_language;
 use crate::parser::metadata::extract_file_metadata;
 use crate::parser::treesitter::parse_file;
-use crate::scanner::mount::{MountMode, MountTable};
 use crate::server::db::SearchDb;
 use crate::utils::hasher::hash_bytes;
-use crate::watcher::GitignoreWatcher;
 
 const DEBOUNCE_DELAY: Duration = Duration::from_millis(500);
 const FLUSH_DELAY: Duration = Duration::from_secs(5);
 
-/// Start watching the given directory for file changes and trigger
-/// re-indexing when files are modified.
+/// Run the main event loop for file watching.
 ///
-/// Uses `GitignoreWatcher` for efficient watching that respects `.gitignore` rules.
-/// Routes events to the appropriate mount via `MountTable`.
-pub fn start_watcher(
-    root: PathBuf,
+/// Receives events from all mounts via `rx` (notify watchers already initialized).
+/// Uses `tx` for passing to new project discoveries.
+pub fn run_event_loop(
+    rx: Receiver<Result<Event, notify::Error>>,
+    tx: Sender<Result<Event, notify::Error>>,
     mount_table: Arc<Mutex<MountTable>>,
     db: Arc<Mutex<SearchDb>>,
 ) -> Result<()> {
-    let root_canonical = root
-        .canonicalize()
-        .with_context(|| format!("cannot resolve path: {}", root.display()))?;
+    let total_watched = {
+        let mt = mount_table
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
+        mt.iter().map(|(_, m)| m.watched_count()).sum::<usize>()
+    };
 
-    tracing::info!("starting file watcher on {}", root_canonical.display());
-
-    // Channel for receiving events
-    let (tx, rx) = std::sync::mpsc::channel();
-
-    // Create gitignore-aware watcher (non-recursive, respects .gitignore)
-    let mut watcher = GitignoreWatcher::new(&root_canonical, tx)?;
-
-    tracing::info!(
-        "file watcher ready ({} directories watched)",
-        watcher.watched_count()
-    );
+    tracing::info!("event loop ready ({} directories watched)", total_watched);
 
     // Debounce state: path -> (last event time, event kind)
     let mut pending: HashMap<PathBuf, (Instant, EventKind)> = HashMap::new();
@@ -61,7 +54,7 @@ pub fn start_watcher(
                 }
             }
             Ok(Err(e)) => {
-                tracing::warn!("watcher error: {}", e);
+                tracing::warn!("notify error: {}", e);
             }
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
                 // Check for debounced events ready to process
@@ -69,7 +62,7 @@ pub fn start_watcher(
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
                 // Flush all dirty mounts before shutting down
                 flush_dirty_mounts(&mount_table, &db)?;
-                tracing::info!("watcher channel closed, shutting down");
+                tracing::info!("event loop channel closed, shutting down");
                 break;
             }
         }
@@ -87,7 +80,7 @@ pub fn start_watcher(
                 pending.remove(path);
             }
 
-            if let Err(e) = handle_events(&ready, &mount_table, &db, &mut watcher) {
+            if let Err(e) = handle_events(&ready, &mount_table, &db, tx.clone()) {
                 tracing::error!("error handling watch events: {}", e);
             }
         }
@@ -108,13 +101,16 @@ pub fn start_watcher(
 /// Mounts the project (parent of .git/) and loads/indexes it.
 ///
 /// 1. If already mounted, skip
-/// 2. Mount in RW mode
+/// 2. Try mount RW, fall back to RO if lock is held by another process
 /// 3. If .codeindex/ exists, load from disk
-/// 4. Otherwise, index files (stopping at subproject boundaries)
+/// 4. Otherwise, index files (stopping at subproject boundaries) - only if RW
+///
+/// When `tx` is provided, initializes file watcher during walk.
 pub fn on_project_discovery(
     project_root: &Path,
     mount_table: &Arc<Mutex<MountTable>>,
     db: &Arc<Mutex<SearchDb>>,
+    tx: Option<Sender<Result<Event, notify::Error>>>,
 ) -> Result<()> {
     let mut mt = mount_table
         .lock()
@@ -128,14 +124,16 @@ pub fn on_project_discovery(
         return Ok(());
     }
 
-    // Mount the new project in read-write mode
-    mt.mount_rw(project_root)?;
+    // Mount the new project (tries RW, falls back to RO if lock held)
+    let mount = mt.mount(project_root)?;
+    let is_read_only = mount.mode == MountMode::ReadOnly;
 
     let project_name = project_root
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
     let project_str = mt.relative_project(project_root);
+    let mode_str = if is_read_only { "RO" } else { "RW" };
 
     drop(mt);
 
@@ -159,8 +157,9 @@ pub fn on_project_discovery(
                 drop(db_guard);
 
                 tracing::info!(
-                    "loaded '{}' from .codeindex/: {} files, {} symbols, {} texts, {} refs",
+                    "loaded '{}' ({}) from .codeindex/: {} files, {} symbols, {} texts, {} refs",
                     manifest.name,
+                    mode_str,
                     idx_files.len(),
                     idx_symbols.len(),
                     idx_texts.len(),
@@ -168,11 +167,23 @@ pub fn on_project_discovery(
                 );
 
                 // Still need to discover subprojects (they might not be in .codeindex/)
-                discover_subprojects(project_root, mount_table, db)?;
+                // Use single walk strategy: walk but skip file processing
+                walk_project(project_root, mount_table, db, false, tx.clone())?;
 
                 return Ok(());
             }
             Err(e) => {
+                if is_read_only {
+                    // Can't rebuild in RO mode, just warn
+                    tracing::warn!(
+                        "failed to read .codeindex/ for '{}' (read-only): {}",
+                        project_name,
+                        e
+                    );
+                    // Still walk to discover subprojects (single walk strategy)
+                    walk_project(project_root, mount_table, db, false, tx.clone())?;
+                    return Ok(());
+                }
                 tracing::warn!(
                     "failed to read .codeindex/ for '{}', rebuilding: {}",
                     project_name,
@@ -181,71 +192,39 @@ pub fn on_project_discovery(
                 // Fall through to index files
             }
         }
+    } else if is_read_only {
+        // No .codeindex/ and read-only - still walk to discover subprojects
+        tracing::info!(
+            "mounted '{}' ({}) - no .codeindex/, subprojects only",
+            project_name,
+            mode_str
+        );
+        walk_project(project_root, mount_table, db, false, tx)?;
+        return Ok(());
     }
 
-    tracing::info!("indexing '{}'", project_name);
+    tracing::info!("indexing '{}' ({})", project_name, mode_str);
 
-    // Index all files in the new project (also discovers subprojects)
-    index_project_files(project_root, mount_table, db)?;
+    // Walk and index all files in the new project (also discovers subprojects)
+    walk_project(project_root, mount_table, db, true, tx)?;
 
     Ok(())
 }
 
-/// Discover subprojects without indexing files (used when loading from .codeindex/).
-/// Walks to find .git/ directories and calls on_project_discovery for each.
-fn discover_subprojects(
-    project_root: &Path,
-    mount_table: &Arc<Mutex<MountTable>>,
-    db: &Arc<Mutex<SearchDb>>,
-) -> Result<()> {
-    use ignore::WalkBuilder;
-
-    let mut subprojects: HashSet<PathBuf> = HashSet::new();
-
-    for entry in WalkBuilder::new(project_root)
-        .hidden(false) // Need to see .git/ directories
-        .git_ignore(true)
-        .git_global(true)
-        .git_exclude(true)
-        .build()
-    {
-        let entry = entry?;
-        let abs_path = entry.path();
-        let file_name = abs_path.file_name().and_then(|n| n.to_str());
-
-        // Check if this is a .git directory (subproject marker)
-        if file_name == Some(".git")
-            && abs_path.is_dir()
-            && let Some(subproject_root) = abs_path.parent()
-            // Don't treat root's own .git as a subproject
-            && subproject_root != project_root
-            && !subprojects.iter().any(|sp| subproject_root.starts_with(sp))
-        {
-            subprojects.insert(subproject_root.to_path_buf());
-            // Recursively handle the subproject
-            if let Err(e) = on_project_discovery(subproject_root, mount_table, db) {
-                tracing::warn!(
-                    "failed to handle subproject {}: {}",
-                    subproject_root.display(),
-                    e
-                );
-            }
-        }
-    }
-
-    Ok(())
-}
-
-/// Index all files in a project directory, stopping at subproject boundaries.
+/// Walk a project directory, optionally indexing files and starting watcher.
 ///
-/// When a `.git/` directory is found in a subdirectory (indicating a subproject),
-/// calls `on_project_discovery` for that subproject and skips its files.
-fn index_project_files(
+/// Uses Mount's `walk()` method which handles gitignore filtering and subproject discovery.
+/// When `process_files` is true, indexes files. When false, only discovers subprojects.
+/// When `tx` is provided, initializes watcher and adds directories during walk.
+/// This implements the "single walk per mount" strategy.
+fn walk_project(
     project_root: &Path,
     mount_table: &Arc<Mutex<MountTable>>,
     db: &Arc<Mutex<SearchDb>>,
+    process_files: bool,
+    tx: Option<Sender<Result<Event, notify::Error>>>,
 ) -> Result<()> {
-    use ignore::WalkBuilder;
+    use crate::mount::MountEvent;
 
     // Use relative project path from workspace root
     let project_str = {
@@ -255,91 +234,104 @@ fn index_project_files(
         mt.relative_project(project_root)
     };
 
-    // Track discovered subprojects to skip their files
-    let mut subprojects: HashSet<PathBuf> = HashSet::new();
-    let mut file_count = 0u32;
+    // Collect events first, then process them
+    // This allows us to release the mount table lock before recursive calls
+    let mut files: Vec<(PathBuf, String)> = Vec::new();
+    let mut subprojects: Vec<PathBuf> = Vec::new();
+    let mut dirs: Vec<PathBuf> = Vec::new();
 
-    for entry in WalkBuilder::new(project_root)
-        .hidden(true) // Skip hidden files, we'll check for .git manually
-        .git_ignore(true)
-        .git_global(true)
-        .git_exclude(true)
-        .build()
     {
-        let entry = entry?;
-        let abs_path = entry.path();
+        let mut mt = mount_table
+            .lock()
+            .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
 
-        // For directories, check if they contain .git (subproject marker)
-        if entry.file_type().is_some_and(|ft| ft.is_dir()) {
-            // Skip project root itself
-            if abs_path == project_root {
-                continue;
-            }
+        let mount = mt
+            .find_mount_mut(project_root)
+            .ok_or_else(|| anyhow::anyhow!("no mount found for {}", project_root.display()))?;
 
-            // Check if this directory is a subproject (has .git/)
-            let git_dir = abs_path.join(".git");
-            if git_dir.is_dir() {
-                tracing::info!("discovered subproject: {}", abs_path.display());
-                subprojects.insert(abs_path.to_path_buf());
-                // Recursively handle the subproject
-                if let Err(e) = on_project_discovery(abs_path, mount_table, db) {
-                    tracing::warn!("failed to handle subproject {}: {}", abs_path.display(), e);
+        // Initialize watcher before walk (if tx provided)
+        if let Some(ref tx) = tx {
+            mount.init_notify(tx.clone())?;
+        }
+
+        // Walk the mount, collecting events
+        mount.walk(|event| {
+            match event {
+                MountEvent::File { abs_path, rel_path } => {
+                    if process_files {
+                        files.push((abs_path, rel_path));
+                    }
                 }
+                MountEvent::Subproject { root } => {
+                    subprojects.push(root);
+                }
+                MountEvent::DirCreated { path } => {
+                    dirs.push(path);
+                }
+                _ => {} // DirRemoved, FileDeleted not emitted during walk
             }
-            continue;
-        }
+            Ok(())
+        })?;
 
-        // Skip files inside subprojects (they're handled by their own index_project_files)
-        let in_subproject = subprojects.iter().any(|sp| abs_path.starts_with(sp));
-        if in_subproject {
-            continue;
+        // Add watches for discovered directories (watcher was initialized above)
+        if tx.is_some() {
+            for dir in &dirs {
+                let _ = mount.watch_dir(dir);
+            }
         }
+    } // MountTable lock released here
 
-        // Only process regular files
-        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
-            continue;
-        }
-
-        let rel_path = abs_path
-            .strip_prefix(project_root)
-            .map(|p| p.to_string_lossy().replace('\\', "/"))
-            .unwrap_or_default();
-
-        // Skip .codeindex/ files
-        if rel_path.starts_with(".codeindex/") || rel_path == ".codeindex" {
-            continue;
-        }
-
-        file_count += 1;
-        if file_count.is_multiple_of(100) {
-            tracing::info!(
-                "processed {} files so far for project '{}'",
-                file_count,
-                project_str
-            );
-        }
-        if let Err(e) = process_file_change(abs_path, &rel_path, &project_str, db) {
-            tracing::warn!("failed to index {}: {}", rel_path, e);
+    // Process files (only if process_files is true)
+    let mut file_count = 0u32;
+    if process_files {
+        for (abs_path, rel_path) in &files {
+            file_count += 1;
+            if file_count.is_multiple_of(100) {
+                tracing::info!(
+                    "processed {} files so far for project '{}'",
+                    file_count,
+                    project_str
+                );
+            }
+            if let Err(e) = process_file_change(abs_path, rel_path, &project_str, db) {
+                tracing::warn!("failed to index {}: {}", rel_path, e);
+            }
         }
     }
 
-    tracing::info!(
-        "finished walking project '{}': {} files total",
-        project_str,
-        file_count
-    );
+    // Process subprojects (always - this is the single walk strategy)
+    for root in &subprojects {
+        tracing::info!("discovered subproject: {}", root.display());
+        if let Err(e) = on_project_discovery(root, mount_table, db, tx.clone()) {
+            tracing::warn!("failed to handle subproject {}: {}", root.display(), e);
+        }
+    }
 
-    // Rebuild FTS after batch indexing
-    let db_guard = db
-        .lock()
-        .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
-    db_guard.rebuild_fts()?;
+    if process_files {
+        tracing::info!(
+            "finished indexing project '{}': {} files",
+            project_str,
+            file_count
+        );
 
-    // Mark mount as dirty
-    mount_table
-        .lock()
-        .ok()
-        .map(|mut mt| mt.mark_dirty(project_root));
+        // Rebuild FTS after batch indexing
+        let db_guard = db
+            .lock()
+            .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+        db_guard.rebuild_fts()?;
+
+        // Mark mount as dirty
+        mount_table
+            .lock()
+            .ok()
+            .map(|mut mt| mt.mark_dirty(project_root));
+    } else if !subprojects.is_empty() {
+        tracing::debug!(
+            "walked project '{}' (subprojects only): {} subprojects found",
+            project_str,
+            subprojects.len()
+        );
+    }
 
     Ok(())
 }
@@ -349,7 +341,7 @@ fn handle_events(
     events: &[(PathBuf, EventKind)],
     mount_table: &Arc<Mutex<MountTable>>,
     db: &Arc<Mutex<SearchDb>>,
-    watcher: &mut GitignoreWatcher,
+    tx: Sender<Result<Event, notify::Error>>,
 ) -> Result<()> {
     if events.is_empty() {
         return Ok(());
@@ -365,10 +357,13 @@ fn handle_events(
             EventKind::Create(CreateKind::Folder) => {
                 // Check if this is a .git directory (new project discovered)
                 if path.file_name().and_then(|n| n.to_str()) == Some(".git") {
-                    if let Some(project_root) = path.parent()
-                        && let Err(e) = on_project_discovery(project_root, mount_table, db)
-                    {
-                        tracing::warn!("failed to handle project discovery: {}", e);
+                    if let Some(project_root) = path.parent() {
+                        // Discover the new project (watcher is initialized during walk)
+                        if let Err(e) =
+                            on_project_discovery(project_root, mount_table, db, Some(tx.clone()))
+                        {
+                            tracing::warn!("failed to handle project discovery: {}", e);
+                        }
                     }
                     continue;
                 }
@@ -379,24 +374,25 @@ fn handle_events(
                     Err(_) => continue,
                 };
 
-                // Add watch for new directory if not ignored
-                let mt = mount_table
+                // Add watch for new directory if not ignored (via mount's on_dir_created)
+                let mut mt = mount_table
                     .lock()
                     .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
-                if let Some(mount) = mt.find_mount_canonical(&canonical)
-                    && !mount.is_ignored(path)
-                    && !path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .is_some_and(|n| n.starts_with('.'))
-                    && let Err(e) = watcher.watch_dir_if_valid(path)
+                if let Some(mount) = mt.find_mount_mut_canonical(&canonical)
+                    && let Err(e) = mount.on_dir_created(path)
                 {
                     tracing::debug!("failed to watch new dir: {}", e);
                 }
                 continue;
             }
             EventKind::Remove(RemoveKind::Folder) => {
-                watcher.on_dir_removed(path);
+                // Remove watch via mount's on_dir_removed
+                let mut mt = mount_table
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
+                if let Some(mount) = mt.find_mount_mut(path) {
+                    mount.on_dir_removed(path);
+                }
                 continue;
             }
             _ => {}
@@ -776,10 +772,11 @@ mod tests {
     #[test]
     fn test_single_project_indexing() {
         let tmp = TempDir::new().unwrap();
-        let root = tmp.path();
+        // Canonicalize for macOS where /var -> /private/var
+        let root = tmp.path().canonicalize().unwrap();
 
         // Create a simple project structure
-        create_git_marker(root);
+        create_git_marker(&root);
         create_source_file(
             &root.join("src/main.rs"),
             "fn main() {\n    println!(\"hello\");\n}\n",
@@ -790,10 +787,10 @@ mod tests {
         );
 
         // Index the project
-        let mount_table = Arc::new(Mutex::new(MountTable::new(root.to_path_buf())));
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
         let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
 
-        on_project_discovery(root, &mount_table, &db).unwrap();
+        on_project_discovery(&root, &mount_table, &db, None).unwrap();
 
         // Verify: should have 2 files indexed
         let db_guard = db.lock().unwrap();
@@ -825,10 +822,11 @@ mod tests {
     #[test]
     fn test_subproject_discovery() {
         let tmp = TempDir::new().unwrap();
-        let root = tmp.path();
+        // Canonicalize for macOS where /var -> /private/var
+        let root = tmp.path().canonicalize().unwrap();
 
         // Create root project
-        create_git_marker(root);
+        create_git_marker(&root);
         create_source_file(&root.join("app.rs"), "fn app_main() {}\n");
 
         // Create a subproject
@@ -837,10 +835,10 @@ mod tests {
         create_source_file(&subproject.join("src/lib.rs"), "pub fn utility() {}\n");
 
         // Index from root
-        let mount_table = Arc::new(Mutex::new(MountTable::new(root.to_path_buf())));
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
         let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
 
-        on_project_discovery(root, &mount_table, &db).unwrap();
+        on_project_discovery(&root, &mount_table, &db, None).unwrap();
 
         // Verify: should have 2 projects
         let db_guard = db.lock().unwrap();
@@ -867,10 +865,11 @@ mod tests {
     #[test]
     fn test_nested_subprojects() {
         let tmp = TempDir::new().unwrap();
-        let root = tmp.path();
+        // Canonicalize for macOS where /var -> /private/var
+        let root = tmp.path().canonicalize().unwrap();
 
         // Create root project
-        create_git_marker(root);
+        create_git_marker(&root);
         create_source_file(&root.join("root.rs"), "fn root_fn() {}\n");
 
         // Create nested subprojects: root > libs/core > libs/core/nested
@@ -883,10 +882,10 @@ mod tests {
         create_source_file(&nested.join("nested.rs"), "fn nested_fn() {}\n");
 
         // Index from root
-        let mount_table = Arc::new(Mutex::new(MountTable::new(root.to_path_buf())));
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
         let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
 
-        on_project_discovery(root, &mount_table, &db).unwrap();
+        on_project_discovery(&root, &mount_table, &db, None).unwrap();
 
         // Verify: should have 3 projects
         let db_guard = db.lock().unwrap();
@@ -921,10 +920,11 @@ mod tests {
     #[test]
     fn test_files_not_duplicated_across_projects() {
         let tmp = TempDir::new().unwrap();
-        let root = tmp.path();
+        // Canonicalize for macOS where /var -> /private/var
+        let root = tmp.path().canonicalize().unwrap();
 
         // Create root with a subproject
-        create_git_marker(root);
+        create_git_marker(&root);
         create_source_file(&root.join("root.rs"), "fn root_fn() {}\n");
 
         let sub = root.join("sub");
@@ -932,10 +932,10 @@ mod tests {
         create_source_file(&sub.join("sub.rs"), "fn sub_fn() {}\n");
 
         // Index
-        let mount_table = Arc::new(Mutex::new(MountTable::new(root.to_path_buf())));
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
         let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
 
-        on_project_discovery(root, &mount_table, &db).unwrap();
+        on_project_discovery(&root, &mount_table, &db, None).unwrap();
 
         // Verify: sub.rs should NOT appear in root project
         let db_guard = db.lock().unwrap();
@@ -961,10 +961,11 @@ mod tests {
     #[test]
     fn test_mount_table_tracks_all_projects() {
         let tmp = TempDir::new().unwrap();
-        let root = tmp.path();
+        // Canonicalize for macOS where /var -> /private/var
+        let root = tmp.path().canonicalize().unwrap();
 
         // Create root with two subprojects
-        create_git_marker(root);
+        create_git_marker(&root);
         create_source_file(&root.join("main.rs"), "fn main() {}\n");
 
         let lib_a = root.join("libs/a");
@@ -976,29 +977,30 @@ mod tests {
         create_source_file(&lib_b.join("b.rs"), "fn b() {}\n");
 
         // Index
-        let mount_table = Arc::new(Mutex::new(MountTable::new(root.to_path_buf())));
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
         let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
 
-        on_project_discovery(root, &mount_table, &db).unwrap();
+        on_project_discovery(&root, &mount_table, &db, None).unwrap();
 
         // Verify mount table has all 3 mounts
         let mt = mount_table.lock().unwrap();
         let mounts: Vec<_> = mt.iter().collect();
         assert_eq!(mounts.len(), 3);
 
-        // All should be mounted
-        assert!(mt.is_mounted(&root.canonicalize().unwrap()));
-        assert!(mt.is_mounted(&lib_a.canonicalize().unwrap()));
-        assert!(mt.is_mounted(&lib_b.canonicalize().unwrap()));
+        // All should be mounted (lib_a/lib_b are already based on canonicalized root)
+        assert!(mt.is_mounted(&root));
+        assert!(mt.is_mounted(&lib_a));
+        assert!(mt.is_mounted(&lib_b));
     }
 
     #[test]
     fn test_project_filter_in_search() {
         let tmp = TempDir::new().unwrap();
-        let root = tmp.path();
+        // Canonicalize for macOS where /var -> /private/var
+        let root = tmp.path().canonicalize().unwrap();
 
         // Create two projects with same-named function
-        create_git_marker(root);
+        create_git_marker(&root);
         create_source_file(&root.join("util.rs"), "fn helper() {}\n");
 
         let sub = root.join("sub");
@@ -1006,10 +1008,10 @@ mod tests {
         create_source_file(&sub.join("util.rs"), "fn helper() {}\n");
 
         // Index
-        let mount_table = Arc::new(Mutex::new(MountTable::new(root.to_path_buf())));
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
         let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
 
-        on_project_discovery(root, &mount_table, &db).unwrap();
+        on_project_discovery(&root, &mount_table, &db, None).unwrap();
 
         let db_guard = db.lock().unwrap();
 
@@ -1036,19 +1038,20 @@ mod tests {
     #[test]
     fn test_relative_project_paths() {
         let tmp = TempDir::new().unwrap();
-        let root = tmp.path();
+        // Canonicalize for macOS where /var -> /private/var
+        let root = tmp.path().canonicalize().unwrap();
 
         // Create deeply nested subproject
-        create_git_marker(root);
+        create_git_marker(&root);
         let deep = root.join("path/to/deep/project");
         create_git_marker(&deep);
         create_source_file(&deep.join("deep.rs"), "fn deep_fn() {}\n");
 
         // Index
-        let mount_table = Arc::new(Mutex::new(MountTable::new(root.to_path_buf())));
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
         let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
 
-        on_project_discovery(root, &mount_table, &db).unwrap();
+        on_project_discovery(&root, &mount_table, &db, None).unwrap();
 
         // Verify relative path is correct
         let db_guard = db.lock().unwrap();

@@ -443,7 +443,7 @@ impl Foo {
 
         let _impl_sym = find_sym(&symbols, "Foo");
         // First is struct, second is impl
-        let impl_entry = symbols.iter().find(|s| s.kind == "impl").unwrap();
+        let _impl_entry = symbols.iter().find(|s| s.kind == "impl").unwrap();
         // Impl tokens now contain the signature "impl Foo"
 
         let new = find_sym(&symbols, "Foo.new");

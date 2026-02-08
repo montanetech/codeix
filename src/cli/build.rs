@@ -1,10 +1,12 @@
 use std::path::Path;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
+use notify::Event;
 use tracing::info;
 
-use crate::scanner::mount::MountTable;
+use crate::mount::MountTable;
 use crate::server::db::SearchDb;
 use crate::watcher::handler::{flush_mount_to_disk, on_project_discovery};
 
@@ -21,7 +23,14 @@ pub type BuildResult = (Arc<Mutex<MountTable>>, Arc<Mutex<SearchDb>>);
 ///
 /// When `enable_fts` is true, creates FTS5 tables for search (serve mode).
 /// When false, skips FTS to reduce memory on large repos (build mode).
-pub fn build_index_to_db(path: &Path, enable_fts: bool) -> Result<BuildResult> {
+///
+/// When `tx` is provided, initializes notify watchers during walk so directories
+/// are watched immediately (single walk strategy for serve --watch).
+pub fn build_index_to_db(
+    path: &Path,
+    enable_fts: bool,
+    tx: Option<Sender<Result<Event, notify::Error>>>,
+) -> Result<BuildResult> {
     let root = path
         .canonicalize()
         .with_context(|| format!("cannot resolve path: {}", path.display()))?;
@@ -37,7 +46,8 @@ pub fn build_index_to_db(path: &Path, enable_fts: bool) -> Result<BuildResult> {
     }));
 
     // Process root project (will recursively discover and handle subprojects)
-    on_project_discovery(&root, &mount_table, &db).context("failed to process root project")?;
+    // Pass tx to initialize notify watchers during walk (if provided)
+    on_project_discovery(&root, &mount_table, &db, tx).context("failed to process root project")?;
 
     Ok((mount_table, db))
 }
@@ -48,8 +58,8 @@ pub fn build_index_to_db(path: &Path, enable_fts: bool) -> Result<BuildResult> {
 /// Discovers .git/ boundaries and creates separate .codeindex/ for each
 /// project found. Root is always treated as a project (with or without .git/).
 pub fn build_index(path: &Path) -> Result<()> {
-    // Build mode: disable FTS to reduce memory on large repos
-    let (mount_table, db) = build_index_to_db(path, false)?;
+    // Build mode: disable FTS to reduce memory on large repos, no watcher
+    let (mount_table, db) = build_index_to_db(path, false, None)?;
 
     // Flush each dirty mount to disk
     let mt = mount_table
