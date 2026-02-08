@@ -142,7 +142,6 @@ def build_index(codeix_bin: str, repo_path: Path) -> bool:
     else:
         cmd = [codeix_bin, "build", str(repo_path)]
 
-    log(f"Building index: {repo_path.name}...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         log_error(f"  Failed to build index: {result.stderr[:200]}")
@@ -156,7 +155,6 @@ def clone_repo_to(repo: Repo, dest: Path) -> bool:
         return True
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    log(f"Cloning {repo.name} to {dest.name}...")
 
     for branch in ["main", "master", None]:
         cmd = ["git", "clone", "--depth=1", "--single-branch", "--quiet"]
@@ -171,10 +169,9 @@ def clone_repo_to(repo: Repo, dest: Path) -> bool:
         log_error(f"Failed to clone {repo.name}")
         return False
 
-    # Shallow submodules if present
+    # Shallow submodules if present (silently)
     gitmodules = dest / ".gitmodules"
     if gitmodules.exists():
-        log(f"  Submodules: {repo.name}...")
         subprocess.run(
             ["git", "submodule", "update", "--init", "--depth=1", "--recursive", "--quiet"],
             cwd=dest,
@@ -271,17 +268,54 @@ def get_cache_key_from_cmd(cmd: list[str]) -> str:
     return hashlib.sha256(cmd_str.encode()).hexdigest()[:16]
 
 
+# Runtime errors that should invalidate cached responses
+# These indicate transient failures, not actual API responses
+# NOTE: Patterns must be specific enough to avoid false positives
+RUNTIME_ERROR_PATTERNS = [
+    "Separator is not found, and chunk exceed the limit",
+    "Separator is found, but chunk is longer than limit",
+    "Connection reset by peer",
+    "Connection refused",
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ECONNREFUSED",
+    "read timeout",
+    "connect timeout",
+    "request timeout",
+]
+
+
+def _is_runtime_error(response: dict | list) -> bool:
+    """Check if response contains a runtime error that should not be cached."""
+    if not isinstance(response, dict):
+        return False
+    error = response.get("error")
+    if not error:
+        return False
+    if not isinstance(error, str):
+        return False
+    for pattern in RUNTIME_ERROR_PATTERNS:
+        if pattern.lower() in error.lower():
+            return True
+    return False
+
+
 def get_cached_response(cache_key: str) -> dict | None:
     """Get cached response if exists and is valid.
 
-    Accepts error responses (they'll be busted when the error is fixed).
-    Only rejects truly invalid cache (corrupted JSON, missing response).
+    Rejects:
+    - Corrupted JSON or missing response field
+    - Runtime errors (transient failures that should be retried)
     """
     cache_file = RESPONSE_CACHE_DIR / f"{cache_key}.json"
     if cache_file.exists():
         try:
             data = json.loads(cache_file.read_text())
             if "response" not in data:
+                cache_file.unlink()
+                return None
+            # Reject runtime errors (transient failures)
+            if _is_runtime_error(data["response"]):
                 cache_file.unlink()
                 return None
             return data
@@ -299,7 +333,14 @@ def delete_cached_response(cache_key: str) -> None:
 
 
 def save_cached_response(cache_key: str, response: dict, metadata: dict | None = None) -> None:
-    """Save response to cache."""
+    """Save response to cache.
+
+    Does NOT cache runtime errors (transient failures that should be retried).
+    """
+    # Don't cache runtime errors
+    if _is_runtime_error(response):
+        return
+
     RESPONSE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_file = RESPONSE_CACHE_DIR / f"{cache_key}.json"
     data = {"response": response}
