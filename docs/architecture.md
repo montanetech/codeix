@@ -463,6 +463,42 @@ Git submodules:
 - Sibling repos handled without workspace-specific logic
 - `.gitignore` is respected per-project — each repo's ignore rules apply to its own tree
 
+**Mount-owned walker and watcher:**
+
+Each mount owns both its directory walker and file watcher. No global workspace-spanning walker exists.
+
+```
+Mount::new(root)
+  ├── WalkBuilder scoped to mount root
+  │     └── respects .gitignore tree automatically (ignore crate handles nested .gitignore)
+  ├── notify watcher scoped to mount root
+  │     └── watches only directories within this mount
+  └── emits unified events to handler
+```
+
+**Unified event model:** Both walker (initial scan) and watcher (ongoing changes) emit the same events:
+
+| Event | Trigger | Action |
+|-------|---------|--------|
+| `on_file(path)` | File discovered or modified | Parse with tree-sitter, update DB |
+| `on_subproject(path)` | `.git/` directory found | Create new Mount for subproject |
+| `on_dir_created(path)` | New directory created | Add to notify watcher |
+| `on_dir_removed(path)` | Directory deleted | Remove from notify watcher |
+
+**Why mount-owned:**
+
+1. **Correct `.gitignore` handling** — The `ignore` crate's `WalkBuilder` handles nested `.gitignore` files automatically when scoped to a root. A global walker starting at workspace root may not see subproject `.gitignore` files before walking into ignored directories.
+
+2. **Isolation** — Each mount is self-contained. Subproject discovery creates a child mount with its own walker/watcher, inheriting nothing from the parent.
+
+3. **Simplicity** — One walker per mount, one watcher per mount. No need for a separate `build_gitignore()` function or manual `.gitignore` aggregation.
+
+4. **Performance** — Avoids walking into ignored directories (e.g., pnpm `node_modules/` with thousands of symlinks) that would trigger expensive `readlink` syscalls.
+
+**Workspace root as a mount:**
+
+The workspace root (where codeix was launched) is treated as a mount like any other. If it contains `.git/`, it gets indexed. If not, it's a container for subprojects — the mount exists but has no files to index, only subprojects to discover.
+
 ---
 
 ## Future Considerations

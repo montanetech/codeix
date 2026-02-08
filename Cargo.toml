@@ -47,8 +47,9 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# File walking (respects .gitignore)
+# File walking and gitignore
 ignore = "0.4"
+walkdir = "2"
 
 # File locking (flock)
 fs2 = "0.4"
