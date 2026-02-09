@@ -21,6 +21,7 @@ use crate::mount::handler::flush_dirty_mounts;
 use crate::utils::manifest::{self, ProjectMetadata};
 
 // Parameter structs for each tool - shared between MCP and REPL
+// NOTE: When adding/removing/renaming tools, also update src/cli/query.rs (QueryCommand enum)
 #[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct SearchSymbolsParams {
     /// Search query for symbol names. If omitted, lists all symbols matching the filters.

@@ -20,6 +20,7 @@ use crate::server::mcp::{
 };
 
 /// REPL commands matching the MCP tools.
+/// NOTE: When adding/removing/renaming tools, also update src/server/mcp.rs (tool implementations)
 #[derive(Debug, Parser)]
 #[command(name = "")]
 pub enum QueryCommand {
