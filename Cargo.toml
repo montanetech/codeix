@@ -15,6 +15,7 @@ exclude = ["npm/", "python/", ".github/", "spec/", "tests/fixtures/"]
 [dependencies]
 # CLI
 clap = { version = "4", features = ["derive"] }
+clap-repl = "0.3"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

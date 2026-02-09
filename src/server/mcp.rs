@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
+use clap::Args;
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{tool::ToolRouter, wrapper::Parameters},
@@ -19,104 +20,126 @@ use crate::mount::MountTable;
 use crate::mount::handler::flush_dirty_mounts;
 use crate::utils::manifest::{self, ProjectMetadata};
 
-// Parameter structs for each tool
-#[derive(Debug, Deserialize, JsonSchema)]
+// Parameter structs for each tool - shared between MCP and REPL
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct SearchSymbolsParams {
     /// Search query for symbol names. If omitted, lists all symbols matching the filters.
     pub query: Option<String>,
     /// Filter by symbol kind (e.g. function, struct, class, method)
+    #[arg(short, long)]
     pub kind: Option<String>,
     /// Filter by file path. Supports glob patterns with * (e.g. "src/utils/*.py")
+    #[arg(short, long)]
     pub file: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    #[arg(short, long)]
     pub project: Option<String>,
     /// Maximum number of results to return (default: 100)
+    #[arg(short, long)]
     pub limit: Option<u32>,
     /// Number of results to skip for pagination (default: 0)
+    #[arg(short, long)]
     pub offset: Option<u32>,
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    #[arg(short, long)]
     pub snippet_lines: Option<i32>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct SearchFilesParams {
     /// Search query for file paths
     pub query: String,
     /// Filter by language (e.g. python, rust, javascript)
+    #[arg(short = 'L', long)]
     pub lang: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    #[arg(short, long)]
     pub project: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct SearchTextsParams {
     /// Search query for text content
     pub query: String,
     /// Filter by text kind (e.g. docstring, comment)
+    #[arg(short, long)]
     pub kind: Option<String>,
     /// Filter by file path
+    #[arg(short, long)]
     pub file: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    #[arg(short, long)]
     pub project: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct GetFileSymbolsParams {
     /// File path to get symbols for
     pub file: String,
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    #[arg(short, long)]
     pub snippet_lines: Option<i32>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct GetSymbolChildrenParams {
     /// File path containing the parent symbol
     pub file: String,
     /// Name of the parent symbol
     pub parent: String,
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    #[arg(short, long)]
     pub snippet_lines: Option<i32>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct GetImportsParams {
     /// File path to get imports for
     pub file: String,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct GetCallersParams {
     /// Symbol name to find callers for (e.g. "my_function", "MyClass.method")
     pub name: String,
     /// Filter by reference kind (e.g. "call", "import", "type_annotation")
+    #[arg(short, long)]
     pub kind: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    #[arg(short, long)]
     pub project: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct GetCalleesParams {
     /// Symbol name to find callees for (e.g. "my_function", "MyClass.method")
     pub caller: String,
     /// Filter by reference kind (e.g. "call", "import", "type_annotation")
+    #[arg(short, long)]
     pub kind: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    #[arg(short, long)]
     pub project: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct SearchReferencesParams {
     /// Search query for reference names
     pub query: String,
     /// Filter by reference kind (e.g. "call", "import", "type_annotation")
+    #[arg(short, long)]
     pub kind: Option<String>,
     /// Filter by file path
+    #[arg(short, long)]
     pub file: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
+    #[arg(short, long)]
     pub project: Option<String>,
     /// Maximum number of results to return (default: 100)
+    #[arg(short, long)]
     pub limit: Option<u32>,
     /// Number of results to skip for pagination (default: 0)
+    #[arg(short, long)]
     pub offset: Option<u32>,
 }
 
@@ -193,7 +216,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Search or list symbols. Provide query for full-text search, or omit to list all symbols matching filters. File filter supports glob patterns (e.g. 'src/*.py'). Returns code snippets by default."
     )]
-    async fn search_symbols(
+    pub async fn search_symbols(
         &self,
         Parameters(params): Parameters<SearchSymbolsParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -227,7 +250,7 @@ impl CodeIndexServer {
 
     /// Search files by path using FTS5 full-text search (BM25-ranked).
     #[tool(description = "Search files by path with optional language filter")]
-    async fn search_files(
+    pub async fn search_files(
         &self,
         Parameters(params): Parameters<SearchFilesParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -253,7 +276,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Search text entries (docstrings, comments) with optional kind/file filters"
     )]
-    async fn search_texts(
+    pub async fn search_texts(
         &self,
         Parameters(params): Parameters<SearchTextsParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -280,7 +303,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Get all symbols in a file, ordered by line number. Returns code snippets by default."
     )]
-    async fn get_file_symbols(
+    pub async fn get_file_symbols(
         &self,
         Parameters(params): Parameters<GetFileSymbolsParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -307,7 +330,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Get direct children of a symbol (e.g. methods of a class). Returns code snippets by default."
     )]
-    async fn get_symbol_children(
+    pub async fn get_symbol_children(
         &self,
         Parameters(params): Parameters<GetSymbolChildrenParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -334,7 +357,7 @@ impl CodeIndexServer {
 
     /// Get all import statements for a file.
     #[tool(description = "Get all import statements for a file")]
-    async fn get_imports(
+    pub async fn get_imports(
         &self,
         Parameters(params): Parameters<GetImportsParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -356,7 +379,7 @@ impl CodeIndexServer {
     #[tool(
         description = "List all indexed projects with metadata extracted from package manifests (package.json, Cargo.toml, pyproject.toml, go.mod, pom.xml, *.gemspec). Returns name, description, and list of manifest files found."
     )]
-    async fn list_projects(&self) -> Result<CallToolResult, McpError> {
+    pub async fn list_projects(&self) -> Result<CallToolResult, McpError> {
         let db = self
             .db
             .lock()
@@ -410,7 +433,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Find all places that call or reference a symbol. Returns references sorted by file and line. Useful for understanding symbol usage and finding callers of a function."
     )]
-    async fn get_callers(
+    pub async fn get_callers(
         &self,
         Parameters(params): Parameters<GetCallersParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -436,7 +459,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Find all symbols that a given function/method calls or references. Returns references sorted by file and line. Useful for understanding dependencies and call chains."
     )]
-    async fn get_callees(
+    pub async fn get_callees(
         &self,
         Parameters(params): Parameters<GetCalleesParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -462,7 +485,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Search for symbol references (calls, imports, type annotations) using full-text search. Filter by kind, file, or project."
     )]
-    async fn search_references(
+    pub async fn search_references(
         &self,
         Parameters(params): Parameters<SearchReferencesParams>,
     ) -> Result<CallToolResult, McpError> {
@@ -495,7 +518,7 @@ impl CodeIndexServer {
     #[tool(
         description = "Flush pending index changes to .codeindex/ files on disk. Call this when you need the index persisted (e.g., before git operations). Returns the number of projects flushed."
     )]
-    async fn flush_index(&self) -> Result<CallToolResult, McpError> {
+    pub async fn flush_index(&self) -> Result<CallToolResult, McpError> {
         let flushed = flush_dirty_mounts(&self.mount_table, &self.db)
             .map_err(|e| McpError::internal_error(format!("flush_index failed: {e}"), None))?;
 
@@ -537,6 +560,20 @@ impl ServerHandler for CodeIndexServer {
             ..Default::default()
         }
     }
+}
+
+/// Extract text content from a CallToolResult.
+pub fn extract_result_text(result: &CallToolResult) -> String {
+    use rmcp::model::RawContent;
+    result
+        .content
+        .iter()
+        .filter_map(|c| match &c.raw {
+            RawContent::Text(t) => Some(t.text.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Start the MCP server over stdio with the given search database and mount table.
