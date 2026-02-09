@@ -72,9 +72,9 @@ Eight tools, zero setup. The agent queries immediately — no init, no config, n
 | `get_file_symbols` | List all symbols in a file |
 | `get_symbol_children` | Get children of a class/module |
 | `get_imports` | List imports for a file |
-| `get_callers` | Find all call sites and references to a symbol |
-| `get_callees` | Find all symbols that a function calls |
-| `flush_index` | Persist pending index changes to disk |
+| `get_callers` | Find all places that call or reference a symbol |
+| `get_callees` | Find all symbols that a function/method calls |
+| `flush_index` | Flush pending index changes to disk |
 
 ## Project discovery
 
