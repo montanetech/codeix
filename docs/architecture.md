@@ -303,13 +303,18 @@ $ git commit -m "feat: ..."
 
 **Context:** The MCP server exposes tools to AI agents. Competing servers (code-index-mcp: 13 tools, claude-context: 4 tools, Serena: 21 tools) mix search tools with management plumbing (init, refresh, configure watcher, temp directories). This forces agents to manage infrastructure before they can query.
 
-**Decision:** 8 tools, split into discovery (list projects), search (unified FTS), lookup (exact, structural), and graph (callers/callees). Zero management tools — the index is pre-built, the server loads it automatically.
+**Decision:** 8 tools, split into discovery (explore), search (unified FTS), lookup (exact, structural), and graph (callers/callees). Zero management tools — the index is pre-built, the server loads it automatically.
 
 ### Discovery tool
 
 | Tool | Input | Returns |
 |---|---|---|
-| `list_projects` | — | All indexed projects with metadata |
+| `explore` | optional `path`, `project`, `max_entries` | Project metadata, subprojects, files grouped by directory |
+
+**Parameters:**
+- `path`: Scope exploration to a subdirectory (auto-resolves to subproject if matching)
+- `project`: Explicit project filter (relative path from workspace root)
+- `max_entries`: Budget for files to display (default: 200). If total exceeds budget, files are capped per directory with "+N files" indicators
 
 ### Unified search tool (FTS5, BM25-ranked)
 
@@ -666,6 +671,6 @@ Auto-mount `.codeindex/` from resolved dependencies — declared in ADR-003 but 
 - [x] **Imports**: included in `symbols.jsonl` as `kind: "import"`. References (usage sites) excluded — unreliable without type resolution.
 - [x] **Search strategy**: all JSONL loaded into in-memory SQLite + FTS5 at serve time — one query engine for symbols, files, and text search. Raw code search left to the consumer (agent's own grep tools). Embedding `rg` as a library is a future option if needed.
 - [x] **File watching**: `serve --watch` keeps index in sync on disk — commit it with your code
-- [x] **MCP tools**: 8 tools — 1 discovery (list projects) + 1 unified search + 3 lookup (file symbols, children, imports) + 2 graph (callers, callees) + 1 index management (flush). Zero management plumbing.
+- [x] **MCP tools**: 8 tools — 1 discovery (explore) + 1 unified search + 3 lookup (file symbols, children, imports) + 2 graph (callers, callees) + 1 index management (flush). Zero management plumbing.
 - [x] **Remote indexes**: deferred. Start local only. Future option: git-based references (`git+https://...#ref:.codeindex/`) with local caching. No dedicated registry — piggyback on git.
 - [x] **File hashing**: BLAKE3 truncated to 64-bit, hex-encoded (16 chars). Change detection only — collision worst case is a missed re-index, self-heals on next edit. Birthday bound at ~4B files — safe for any project. Hex over base64 for readability/tooling (grep, jq).

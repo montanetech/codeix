@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
@@ -101,6 +102,17 @@ pub struct GetCalleesParams {
     pub project: Option<String>,
 }
 
+#[derive(Debug, Deserialize, JsonSchema, Args)]
+pub struct ExploreParams {
+    /// Filter to directory path (relative to project root, e.g. "src/server")
+    pub path: Option<String>,
+    /// Filter by project (relative path from workspace root, defaults to root project)
+    #[arg(short, long)]
+    pub project: Option<String>,
+    /// Max files to display (default: 200). If exceeded, files are capped per directory with "+N files" indicators.
+    #[arg(short, long, default_value = "200")]
+    pub max_entries: u32,
+}
 /// Response wrapper for SymbolEntry with optional snippet.
 #[derive(Debug, Serialize)]
 struct SymbolWithSnippet {
@@ -330,55 +342,194 @@ impl CodeIndexServer {
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    /// List all indexed projects with metadata from package manifests.
+    /// Explore project structure: files grouped by directory with metadata.
     #[tool(
-        description = "List all indexed projects with metadata extracted from package manifests (package.json, Cargo.toml, pyproject.toml, go.mod, pom.xml, *.gemspec). Returns name, description, and list of manifest files found."
+        description = "Explore a project's file structure. Returns project metadata, subprojects (if any), and files grouped by directory. Use 'path' to scope to a subdirectory. Files are capped per directory if total exceeds max_entries (default: 200)."
     )]
-    pub async fn list_projects(&self) -> Result<CallToolResult, McpError> {
+    pub async fn explore(
+        &self,
+        Parameters(params): Parameters<ExploreParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let mut project_path = params.project.as_deref().unwrap_or("").to_string();
+        let mut path_filter = params.path.clone();
+
         let db = self
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
-        let project_paths = db
-            .list_projects()
-            .map_err(|e| McpError::internal_error(format!("list_projects failed: {e}"), None))?;
+
+        // If path is specified but no project, check if path matches a subproject
+        // e.g., `explore flask` should explore the flask subproject, not flask/ in root
+        if params.project.is_none()
+            && let Some(ref path) = path_filter
+        {
+            let all_projects = db.list_projects().map_err(|e| {
+                McpError::internal_error(format!("list_projects failed: {e}"), None)
+            })?;
+
+            // Check if path exactly matches a subproject, or starts with one
+            for proj in &all_projects {
+                if proj.is_empty() {
+                    continue;
+                }
+                if path == proj {
+                    // Exact match: explore the subproject root
+                    project_path = proj.clone();
+                    path_filter = None;
+                    break;
+                } else if path.starts_with(&format!("{}/", proj)) {
+                    // Path is inside a subproject: explore that subproject with remaining path
+                    project_path = proj.clone();
+                    path_filter = Some(path[proj.len() + 1..].to_string());
+                    break;
+                }
+            }
+        }
+
         drop(db);
 
         let mt = self.mount_table.lock().map_err(|e| {
             McpError::internal_error(format!("mount table lock poisoned: {e}"), None)
         })?;
 
-        // For each project path, get its root and extract metadata
-        let results: Vec<ProjectInfo> = project_paths
-            .into_iter()
-            .map(|path| {
-                let metadata = match mt.project_root(&path) {
-                    Some(project_root) => manifest::extract_metadata(&project_root),
-                    None => {
-                        // Project in DB but not mounted - use path as name, no manifest files
-                        let name = if path.is_empty() {
-                            mt.workspace_root()
-                                .file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or("root")
-                                .to_string()
-                        } else {
-                            path.split('/').next_back().unwrap_or(&path).to_string()
-                        };
-                        ProjectMetadata {
-                            name,
-                            description: None,
-                            manifest_files: Vec::new(),
-                        }
-                    }
-                };
-                ProjectInfo { path, metadata }
-            })
-            .collect();
+        // Resolve project root for metadata extraction
+        let project_root = mt.project_root(&project_path).ok_or_else(|| {
+            McpError::invalid_params(format!("Project not found: '{}'", project_path), None)
+        })?;
+
+        // Extract project metadata
+        let metadata = manifest::extract_metadata(&project_root);
 
         drop(mt);
 
-        let json = serde_json::to_string_pretty(&results)
+        let db = self
+            .db
+            .lock()
+            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+
+        // Find subprojects when exploring without path filter
+        let subprojects: Vec<String> = if path_filter.is_none() {
+            db.list_projects()
+                .map_err(|e| McpError::internal_error(format!("list_projects failed: {e}"), None))?
+                .into_iter()
+                .filter(|p| {
+                    if project_path.is_empty() {
+                        // Root project: include all non-empty projects (subprojects at any depth)
+                        !p.is_empty()
+                    } else {
+                        // Subproject: include projects that start with this path + '/'
+                        p.starts_with(&format!("{}/", project_path))
+                    }
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        // Get overview: count per (parent_path, lang)
+        let max_entries = params.max_entries as usize;
+        let overview = db
+            .explore_dir_overview(&project_path, path_filter.as_deref())
+            .map_err(|e| {
+                McpError::internal_error(format!("explore_dir_overview failed: {e}"), None)
+            })?;
+
+        // Count files with known language (code + markdown), excluding lang=NULL
+        let mut total_known_files = 0usize;
+        let mut num_known_groups = 0usize;
+        // Store overview by (dir, lang) -> count
+        let mut overview_map: BTreeMap<(String, Option<String>), usize> = BTreeMap::new();
+        for (dir, lang, count) in &overview {
+            overview_map.insert((dir.clone(), lang.clone()), *count);
+            // Count files with known language (lang is set)
+            if lang.is_some() {
+                total_known_files += count;
+                num_known_groups += 1;
+            }
+        }
+
+        // Compute cap: if total known files fit, no cap needed (use large number)
+        let cap = if total_known_files <= max_entries {
+            usize::MAX
+        } else {
+            // Distribute budget evenly across known groups, minimum 1
+            (max_entries / num_known_groups.max(1)).max(1)
+        };
+
+        // Fetch files with known language, capped at cap per (dir, lang)
+        let files = db
+            .explore_files_capped(&project_path, path_filter.as_deref(), cap)
+            .map_err(|e| {
+                McpError::internal_error(format!("explore_files_capped failed: {e}"), None)
+            })?;
+
+        drop(db);
+
+        // Group files by directory
+        let mut files_by_dir: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        // Track how many files we got per (dir, lang) to compute remainder
+        let mut fetched_counts: BTreeMap<(String, Option<String>), usize> = BTreeMap::new();
+        for (dir, filename, lang) in files {
+            files_by_dir.entry(dir.clone()).or_default().push(filename);
+            *fetched_counts.entry((dir, lang)).or_default() += 1;
+        }
+
+        // Build result with "+N lang files" indicators for truncated groups
+        let mut result_dirs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+
+        // First, collect all directories from overview (including those with only markdown)
+        let mut all_dirs: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        for (dir, _lang, _count) in &overview {
+            all_dirs.insert(dir.clone());
+        }
+
+        for dir in all_dirs {
+            let mut entries = files_by_dir.remove(&dir).unwrap_or_default();
+
+            // Check each (dir, lang) group for remainder
+            let mut remainders: BTreeMap<String, usize> = BTreeMap::new(); // lang -> remaining count
+            for ((d, lang), total) in &overview_map {
+                if d != &dir {
+                    continue;
+                }
+                let fetched = fetched_counts
+                    .get(&(d.clone(), lang.clone()))
+                    .copied()
+                    .unwrap_or(0);
+                let remaining = total.saturating_sub(fetched);
+                if remaining > 0 {
+                    let lang_name = lang.as_deref().unwrap_or("other");
+                    *remainders.entry(lang_name.to_string()).or_default() += remaining;
+                }
+            }
+
+            // Add remainder indicators
+            for (lang, count) in remainders {
+                entries.push(format!("+{} {} files", count, lang));
+            }
+
+            if !entries.is_empty() {
+                result_dirs.insert(dir, entries);
+            }
+        }
+
+        // Build response
+        let result = ExploreResult {
+            project: if project_path.is_empty() {
+                None
+            } else {
+                Some(project_path.to_string())
+            },
+            metadata,
+            subprojects: if subprojects.is_empty() {
+                None
+            } else {
+                Some(subprojects)
+            },
+            directories: result_dirs,
+        };
+
+        let json = serde_json::to_string_pretty(&result)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
@@ -454,14 +605,20 @@ impl CodeIndexServer {
     }
 }
 
-/// Project info returned by list_projects, combining path with manifest metadata.
+/// Result of explore tool: project metadata + files grouped by directory.
 #[derive(Debug, Serialize)]
-struct ProjectInfo {
-    /// Relative path from workspace root (empty string for root project)
-    path: String,
+struct ExploreResult {
+    /// Relative path from workspace root (omitted for root project)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project: Option<String>,
     /// Metadata extracted from package manifests
     #[serde(flatten)]
     metadata: ProjectMetadata,
+    /// Subprojects (direct children only, omitted if none)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    subprojects: Option<Vec<String>>,
+    /// Files grouped by directory path ("." for root, "src/server" for nested)
+    directories: BTreeMap<String, Vec<String>>,
 }
 
 #[tool_handler]
@@ -469,7 +626,10 @@ impl ServerHandler for CodeIndexServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             instructions: Some(
-                "Code index providing full-text search and structural navigation over indexed codebases.\n\n\
+"Code index providing full-text search and structural navigation over indexed codebases.\n\n\
+                 **Discovery:**\n\
+                 - `explore`: Project structure — metadata, subprojects, files grouped by directory. \
+                 Use path to scope, depth to control traversal.\n\n\
                  **Primary search tool:**\n\
                  - `search`: Unified FTS across symbols (functions, classes, methods), files, and texts (docstrings, comments). \
                  Filter by scope, kind, path (glob), project. Returns BM25-ranked results with code snippets.\n\n\
@@ -481,7 +641,6 @@ impl ServerHandler for CodeIndexServer {
                  - `get_callers`: Find all places that call/reference a symbol.\n\
                  - `get_callees`: Find all symbols that a function/method calls.\n\n\
                  **Utilities:**\n\
-                 - `list_projects`: List indexed projects with metadata.\n\
                  - `flush_index`: Persist pending changes to .codeindex/ files."
                     .into(),
             ),
