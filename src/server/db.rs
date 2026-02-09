@@ -459,7 +459,7 @@ impl SearchDb {
     }
 
     /// Get direct children of a symbol in a file.
-    pub fn get_symbol_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>> {
+    pub fn get_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
             "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
              FROM symbols
