@@ -1,8 +1,39 @@
-.PHONY: build site site-serve site-clean bench bench-speed bench-quality bench-value
+.PHONY: all build run check test lint fmt clean site site-serve site-clean bench bench-speed bench-quality bench-value
+
+# Default
+all: check test build
 
 # Build
 build:
 	cargo build --release
+
+# Run (debug mode) - use: make run ARGS="serve"
+run:
+	cargo run -- $(ARGS)
+
+# Check (fast compile check without codegen)
+check:
+	cargo check
+
+# Test
+test:
+	cargo test
+
+# Lint
+lint:
+	cargo clippy -- -D warnings
+
+# Format
+fmt:
+	cargo fmt
+
+# Format check (for CI)
+fmt-check:
+	cargo fmt -- --check
+
+# Clean
+clean:
+	cargo clean
 
 # Site
 site: site-prep
