@@ -13,7 +13,7 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::db::SearchDb;
+use super::db::{SearchDb, SearchResult};
 use super::snippet::SnippetExtractor;
 use crate::index::format::SymbolEntry;
 use crate::mount::MountTable;
@@ -22,16 +22,21 @@ use crate::utils::manifest::{self, ProjectMetadata};
 
 // Parameter structs for each tool - shared between MCP and REPL
 // NOTE: When adding/removing/renaming tools, also update src/cli/query.rs (QueryCommand enum)
+
+/// Parameters for the unified search tool.
 #[derive(Debug, Deserialize, JsonSchema, Args)]
-pub struct SearchSymbolsParams {
-    /// Search query for symbol names. If omitted, lists all symbols matching the filters.
-    pub query: Option<String>,
-    /// Filter by symbol kind (e.g. function, struct, class, method)
+pub struct SearchParams {
+    /// Search query (FTS5 syntax, supports * wildcards)
+    pub query: String,
+    /// Scope: types to search. Comma-separated: "symbol", "file", "text". Default: all.
+    #[arg(short, long, value_delimiter = ',')]
+    pub scope: Option<Vec<String>>,
+    /// Filter by kind (symbol kind, text kind, or file language)
     #[arg(short, long)]
     pub kind: Option<String>,
-    /// Filter by file path. Supports glob patterns with * (e.g. "src/utils/*.py")
-    #[arg(short, long)]
-    pub file: Option<String>,
+    /// Filter by file path. Supports glob patterns with * (e.g. "src/*.py")
+    #[arg(short = 'f', long)]
+    pub path: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
@@ -41,36 +46,9 @@ pub struct SearchSymbolsParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
-    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
-    #[arg(short, long)]
+    /// Number of code snippet lines for symbols: 0=none, -1=all, N=N lines (default: 10)
+    #[arg(long)]
     pub snippet_lines: Option<i32>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema, Args)]
-pub struct SearchFilesParams {
-    /// Search query for file paths
-    pub query: String,
-    /// Filter by language (e.g. python, rust, javascript)
-    #[arg(short = 'L', long)]
-    pub lang: Option<String>,
-    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
-    #[arg(short, long)]
-    pub project: Option<String>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema, Args)]
-pub struct SearchTextsParams {
-    /// Search query for text content
-    pub query: String,
-    /// Filter by text kind (e.g. docstring, comment)
-    #[arg(short, long)]
-    pub kind: Option<String>,
-    /// Filter by file path
-    #[arg(short, long)]
-    pub file: Option<String>,
-    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
-    #[arg(short, long)]
-    pub project: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -123,27 +101,6 @@ pub struct GetCalleesParams {
     pub project: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema, Args)]
-pub struct SearchReferencesParams {
-    /// Search query for reference names
-    pub query: String,
-    /// Filter by reference kind (e.g. "call", "import", "type_annotation")
-    #[arg(short, long)]
-    pub kind: Option<String>,
-    /// Filter by file path
-    #[arg(short, long)]
-    pub file: Option<String>,
-    /// Filter by project (relative path from workspace root, e.g. "libs/utils")
-    #[arg(short, long)]
-    pub project: Option<String>,
-    /// Maximum number of results to return (default: 100)
-    #[arg(short, long)]
-    pub limit: Option<u32>,
-    /// Number of results to skip for pagination (default: 0)
-    #[arg(short, long)]
-    pub offset: Option<u32>,
-}
-
 /// Response wrapper for SymbolEntry with optional snippet.
 #[derive(Debug, Serialize)]
 struct SymbolWithSnippet {
@@ -151,6 +108,20 @@ struct SymbolWithSnippet {
     symbol: SymbolEntry,
     #[serde(skip_serializing_if = "Option::is_none")]
     snippet: Option<String>,
+}
+
+/// Enriched search result with type discriminator and optional snippet for symbols.
+#[derive(Debug, Serialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+enum EnrichedSearchResult {
+    Symbol {
+        #[serde(flatten)]
+        symbol: SymbolEntry,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        snippet: Option<String>,
+    },
+    File(crate::index::format::FileEntry),
+    Text(crate::index::format::TextEntry),
 }
 
 /// MCP server exposing code-index query tools.
@@ -213,88 +184,65 @@ impl CodeIndexServer {
 
 #[tool_router]
 impl CodeIndexServer {
-    /// Search or list symbols. With query: FTS5 search (BM25-ranked). Without query: list all matching filters.
+    /// Unified search across symbols, files, and texts.
     #[tool(
-        description = "Search or list symbols. Provide query for full-text search, or omit to list all symbols matching filters. File filter supports glob patterns (e.g. 'src/*.py'). Returns code snippets by default."
+        description = "Unified full-text search across symbols, files, and texts with BM25 ranking. Returns results ordered by relevance with code snippets for symbols.\n\nParameters:\n- query (required): Search terms. Supports FTS5 syntax: \"foo bar\" (AND), \"foo OR bar\", \"foo*\" (prefix), \"foo -bar\" (exclude).\n- scope: Filter by type. Array of: \"symbol\" (functions, classes, etc.), \"file\" (by path/title/description), \"text\" (docstrings, comments). Default: all.\n- kind: Filter by kind. For symbols: \"function\", \"class\", \"method\", \"struct\", \"import\", etc. For texts: \"docstring\", \"comment\". For files: language like \"python\", \"rust\".\n- path: Filter by file path. Supports glob patterns: \"*.py\", \"src/**/*.rs\", \"tests/*\".\n- project: Filter by project (relative path from workspace root, e.g. \"libs/utils\").\n- limit: Max results (default: 100).\n- offset: Skip N results for pagination.\n- snippet_lines: Lines of code context for symbols: 0=none, -1=all, N=N lines (default: 10).\n\nExamples:\n- Find all async functions: query=\"async\", scope=[\"symbol\"], kind=\"function\"\n- Search Python files: query=\"parse\", path=\"*.py\"\n- Find tests in a project: query=\"test\", project=\"libs/core\", scope=[\"symbol\"]"
     )]
-    pub async fn search_symbols(
+    pub async fn search(
         &self,
-        Parameters(params): Parameters<SearchSymbolsParams>,
+        Parameters(params): Parameters<SearchParams>,
     ) -> Result<CallToolResult, McpError> {
         let db = self
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
+
+        let scope = params.scope.unwrap_or_default();
         let limit = params.limit.unwrap_or(100);
         let offset = params.offset.unwrap_or(0);
+
         let results = db
-            .search_symbols(
-                params.query.as_deref(),
+            .search(
+                &params.query,
+                &scope,
                 params.kind.as_deref(),
-                params.file.as_deref(),
+                params.path.as_deref(),
                 params.project.as_deref(),
                 limit,
                 offset,
             )
-            .map_err(|e| McpError::internal_error(format!("search_symbols failed: {e}"), None))?;
+            .map_err(|e| McpError::internal_error(format!("search failed: {e}"), None))?;
 
         drop(db); // Release lock before file I/O
 
+        // Enrich symbol results with snippets
         let snippet_lines = params.snippet_lines.unwrap_or(10);
-        let enriched = self.enrich_with_snippets(results, snippet_lines);
+        let enriched: Vec<EnrichedSearchResult> = results
+            .into_iter()
+            .filter_map(|result| match result {
+                SearchResult::Symbol(symbol) => {
+                    // Filter out symbols whose files are missing
+                    if !self
+                        .snippet_extractor
+                        .file_exists(&symbol.project, &symbol.file)
+                    {
+                        return None;
+                    }
+                    let snippet = self.snippet_extractor.extract_snippet(
+                        &symbol.project,
+                        &symbol.file,
+                        symbol.line[0],
+                        symbol.line[1],
+                        snippet_lines,
+                    );
+                    Some(EnrichedSearchResult::Symbol { symbol, snippet })
+                }
+                SearchResult::File(file) => Some(EnrichedSearchResult::File(file)),
+                SearchResult::Text(text) => Some(EnrichedSearchResult::Text(text)),
+            })
+            .collect();
 
         let json = serde_json::to_string_pretty(&enriched)
-            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
-
-        Ok(CallToolResult::success(vec![Content::text(json)]))
-    }
-
-    /// Search files by path using FTS5 full-text search (BM25-ranked).
-    #[tool(description = "Search files by path with optional language filter")]
-    pub async fn search_files(
-        &self,
-        Parameters(params): Parameters<SearchFilesParams>,
-    ) -> Result<CallToolResult, McpError> {
-        let db = self
-            .db
-            .lock()
-            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
-        let results = db
-            .search_files(
-                &params.query,
-                params.lang.as_deref(),
-                params.project.as_deref(),
-            )
-            .map_err(|e| McpError::internal_error(format!("search_files failed: {e}"), None))?;
-
-        let json = serde_json::to_string_pretty(&results)
-            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
-
-        Ok(CallToolResult::success(vec![Content::text(json)]))
-    }
-
-    /// Search text entries (docstrings, comments) using FTS5 full-text search (BM25-ranked).
-    #[tool(
-        description = "Search text entries (docstrings, comments) with optional kind/file filters"
-    )]
-    pub async fn search_texts(
-        &self,
-        Parameters(params): Parameters<SearchTextsParams>,
-    ) -> Result<CallToolResult, McpError> {
-        let db = self
-            .db
-            .lock()
-            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
-        let results = db
-            .search_text(
-                &params.query,
-                params.kind.as_deref(),
-                params.file.as_deref(),
-                params.project.as_deref(),
-            )
-            .map_err(|e| McpError::internal_error(format!("search_texts failed: {e}"), None))?;
-
-        let json = serde_json::to_string_pretty(&results)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
@@ -482,39 +430,6 @@ impl CodeIndexServer {
         Ok(CallToolResult::success(vec![Content::text(json)]))
     }
 
-    /// Search references by name using FTS5.
-    #[tool(
-        description = "Search for symbol references (calls, imports, type annotations) using full-text search. Filter by kind, file, or project."
-    )]
-    pub async fn search_references(
-        &self,
-        Parameters(params): Parameters<SearchReferencesParams>,
-    ) -> Result<CallToolResult, McpError> {
-        let db = self
-            .db
-            .lock()
-            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
-        let limit = params.limit.unwrap_or(100);
-        let offset = params.offset.unwrap_or(0);
-        let results = db
-            .search_references(
-                &params.query,
-                params.kind.as_deref(),
-                params.file.as_deref(),
-                params.project.as_deref(),
-                limit,
-                offset,
-            )
-            .map_err(|e| {
-                McpError::internal_error(format!("search_references failed: {e}"), None)
-            })?;
-
-        let json = serde_json::to_string_pretty(&results)
-            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
-
-        Ok(CallToolResult::success(vec![Content::text(json)]))
-    }
-
     /// Flush pending index changes to disk.
     #[tool(
         description = "Flush pending index changes to .codeindex/ files on disk. Call this when you need the index persisted (e.g., before git operations). Returns the number of projects flushed."
@@ -548,13 +463,20 @@ impl ServerHandler for CodeIndexServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             instructions: Some(
-                "Code index query tools. Use list_projects to see indexed projects. \
-                 Use search_symbols, search_files, and search_texts for full-text search \
-                 (optionally filtered by project). Use get_file_symbols, get_symbol_children, \
-                 and get_imports for structural lookups. Use get_callers to find who calls \
-                 a symbol, get_callees to find what a symbol calls, and search_references \
-                 for full-text search across all references. Use flush_index to persist \
-                 pending changes to disk (e.g., before git operations)."
+                "Code index providing full-text search and structural navigation over indexed codebases.\n\n\
+                 **Primary search tool:**\n\
+                 - `search`: Unified FTS across symbols (functions, classes, methods), files, and texts (docstrings, comments). \
+                 Filter by scope, kind, path (glob), project. Returns BM25-ranked results with code snippets.\n\n\
+                 **Structural navigation:**\n\
+                 - `get_file_symbols`: All symbols in a file, ordered by line number.\n\
+                 - `get_symbol_children`: Direct children of a symbol (e.g., methods of a class).\n\
+                 - `get_imports`: Import statements in a file.\n\n\
+                 **Reference tracking:**\n\
+                 - `get_callers`: Find all places that call/reference a symbol.\n\
+                 - `get_callees`: Find all symbols that a function/method calls.\n\n\
+                 **Utilities:**\n\
+                 - `list_projects`: List indexed projects with metadata.\n\
+                 - `flush_index`: Persist pending changes to .codeindex/ files."
                     .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
