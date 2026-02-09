@@ -75,6 +75,7 @@ def export_results(results: list[dict], config_name: str, output_path: str | Non
 
         tests.append({
             "nodeid": f"{config_name}:{q.get('id', 'unknown')}",
+            "question": q.get("question"),
             "category": q.get("category"),
             "project": q.get("project"),
             "winner": winner,

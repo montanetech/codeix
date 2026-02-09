@@ -186,7 +186,13 @@ impl CodeIndexServer {
 impl CodeIndexServer {
     /// Unified search across symbols, files, and texts.
     #[tool(
-        description = "Unified full-text search across symbols, files, and texts with BM25 ranking. Returns results ordered by relevance with code snippets for symbols.\n\nParameters:\n- query (required): Search terms. Supports FTS5 syntax: \"foo bar\" (AND), \"foo OR bar\", \"foo*\" (prefix), \"foo -bar\" (exclude).\n- scope: Filter by type. Array of: \"symbol\" (functions, classes, etc.), \"file\" (by path/title/description), \"text\" (docstrings, comments). Default: all.\n- kind: Filter by kind. For symbols: \"function\", \"class\", \"method\", \"struct\", \"import\", etc. For texts: \"docstring\", \"comment\". For files: language like \"python\", \"rust\".\n- path: Filter by file path. Supports glob patterns: \"*.py\", \"src/**/*.rs\", \"tests/*\".\n- project: Filter by project (relative path from workspace root, e.g. \"libs/utils\").\n- limit: Max results (default: 100).\n- offset: Skip N results for pagination.\n- snippet_lines: Lines of code context for symbols: 0=none, -1=all, N=N lines (default: 10).\n\nExamples:\n- Find all async functions: query=\"async\", scope=[\"symbol\"], kind=\"function\"\n- Search Python files: query=\"parse\", path=\"*.py\"\n- Find tests in a project: query=\"test\", project=\"libs/core\", scope=[\"symbol\"]"
+        description = "Search symbols, files, and texts. FTS5 with BM25 ranking.\n\n\
+**Query:** FTS5 syntax — `foo`, `foo OR bar`, `foo*` (prefix), `\"exact phrase\"`, `foo -exclude`\n\n\
+**Symbol kinds:** `function`, `method`, `class`, `struct`, `interface`, `enum`, `constant`, `variable`, `property`, `module`, `import`, `impl`, `section`\n\
+- Go/Rust/C: use `struct` not `class`\n\
+- Rust: use `interface` for traits\n\n\
+**Text kinds:** `docstring`, `comment`, `string`, `sample`\n\n\
+**Params:** query (required), scope ([\"symbol\"]/[\"file\"]/[\"text\"]), kind, path (glob), project, limit (default 10), offset, snippet_lines (default 10)"
     )]
     pub async fn search(
         &self,
@@ -198,7 +204,7 @@ impl CodeIndexServer {
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
 
         let scope = params.scope.unwrap_or_default();
-        let limit = params.limit.unwrap_or(100);
+        let limit = params.limit.unwrap_or(10);
         let offset = params.offset.unwrap_or(0);
 
         let results = db

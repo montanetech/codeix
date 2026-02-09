@@ -320,11 +320,38 @@ $ git commit -m "feat: ..."
 **Parameters:**
 - `query` (required): FTS5 search terms — supports `"foo bar"` (AND), `"foo OR bar"`, `"foo*"` (prefix), `"foo -bar"` (exclude)
 - `scope`: Filter by type — array of `"symbol"`, `"file"`, `"text"`. Default: all three
-- `kind`: Filter by kind — `"function"`, `"class"`, `"docstring"`, etc. (depends on scope)
+- `kind`: Filter by kind (see table below)
 - `path`: Glob pattern for file paths — `"src/**/*.rs"`, `"**/test_*.py"`
 - `project`: Limit to a specific indexed project (relative path from workspace root)
-- `limit`/`offset`: Pagination (default limit: 100)
+- `limit`/`offset`: Pagination (default limit: 10)
 - `snippet_lines`: Code context lines per result (default: 10, use 0 for none, -1 for full)
+
+**Symbol kinds by language:**
+
+| Kind | Languages | Notes |
+|------|-----------|-------|
+| `function` | All | Top-level functions |
+| `method` | All | Functions inside class/struct/impl |
+| `class` | Python, Ruby, JS/TS, Java, C#, C++ | Class declarations |
+| `struct` | C, C++, Go, Rust, C#, Java | **Go/Rust/C use `struct`, not `class`** |
+| `interface` | Go, Java, C#, TypeScript | **Rust uses `interface` for traits** |
+| `enum` | All | Enumeration types |
+| `constant` | All | Constants, static finals |
+| `variable` | All | Variables, let bindings |
+| `property` | All | Fields, attributes, members |
+| `module` | Go, Java, C++, Ruby, TS | Package (Go/Java), namespace (C++), module |
+| `import` | All | Import statements |
+| `impl` | Rust | Impl blocks |
+| `section` | Markdown | Headings |
+
+**Text kinds:**
+
+| Kind | Description |
+|------|-------------|
+| `docstring` | Documentation strings (Python, JS/TS JSDoc) |
+| `comment` | Code comments |
+| `string` | String literals |
+| `sample` | Markdown fenced code blocks |
 
 ### Lookup tools (exact, structural)
 

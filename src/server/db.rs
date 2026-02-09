@@ -1019,8 +1019,19 @@ impl SearchDb {
     }
 }
 
-/// Quote a string for use in an FTS5 MATCH expression.
-/// Wraps in double quotes and escapes any internal double quotes.
+/// Pass through FTS5 query as-is.
+///
+/// The LLM is expected to emit valid FTS5 syntax directly.
+/// See: https://www.sqlite.org/fts5.html#full_text_query_syntax
+///
+/// FTS5 syntax examples:
+/// - `parseAsync` — single term
+/// - `parseAsync OR safeParseAsync` — match either term
+/// - `parseAsync AND safeParseAsync` — match both terms (implicit for space-separated)
+/// - `parse*` — prefix search (matches parseAsync, parseString, etc.)
+/// - `"safe parse"` — phrase search (exact sequence)
+/// - `parse -test` — exclude results containing "test"
+/// - `NEAR(parse async, 5)` — terms within 5 tokens of each other
 fn fts5_quote(s: &str) -> String {
-    format!("\"{}\"", s.replace('"', "\"\""))
+    s.to_string()
 }
