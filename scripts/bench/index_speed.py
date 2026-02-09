@@ -130,6 +130,6 @@ def run(verbose: bool = False) -> None:
     print()
     log_success("Benchmark complete!")
     print()
-    print(f"{CYAN}Languages tested:{NC} TypeScript, Go, C++, Rust, Python, Java, C, Ruby, Zig")
-    print(f"{CYAN}Structural tests:{NC} Small/Medium/Large repos, with/without submodules, polyglot")
+    print(f"{CYAN}Languages tested:{NC} TypeScript, Go, C++, Rust, Python, Java, C, Ruby, C#, JavaScript")
+    print(f"{CYAN}Structural tests:{NC} Small/Medium repos, with/without submodules")
     print()

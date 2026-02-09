@@ -65,12 +65,12 @@ REPOS = [
     # Medium repos
     Repo("tokio", "https://github.com/tokio-rs/tokio", "Rust", "medium", "Async runtime"),
     Repo("flask", "https://github.com/pallets/flask", "Python", "medium", "Web micro-framework"),
-    Repo("FizzBuzzEnterpriseEdition", "https://github.com/EnterpriseQualityCoding/FizzBuzzEnterpriseEdition", "Java", "small", "Satirical over-engineering"),
+    Repo("junit5", "https://github.com/junit-team/junit5", "Java", "medium", "Testing framework"),
     Repo("libsodium", "https://github.com/jedisct1/libsodium", "C", "medium", "Crypto library"),
     Repo("faker", "https://github.com/faker-ruby/faker", "Ruby", "medium", "Data generation"),
     Repo("Newtonsoft.Json", "https://github.com/JamesNK/Newtonsoft.Json", "C#", "medium", "JSON library"),
-    # Zig repo
-    Repo("zls", "https://github.com/zigtools/zls", "Zig", "small", "Zig Language Server"),
+    # Additional TypeScript
+    Repo("koa", "https://github.com/koajs/koa", "JavaScript", "small", "Minimalist web framework"),
 ]
 
 # Colors
