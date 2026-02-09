@@ -30,7 +30,7 @@ AI coding agents spend most of their token budget *finding* code before they can
 - **Shareable** — library authors can ship `.codeindex` in their npm/PyPI/crates.io package. Consumers get instant navigation of dependencies.
 - **Composable** — the MCP server auto-discovers dependency indexes and mounts them. Query your code and your dependencies in one place.
 - **Structured for LLMs** — symbols have kinds, signatures, parent relationships, and line ranges. The agent gets exactly what it needs in one tool call instead of piecing it together from raw text.
-- **Prose search** — `search_texts` targets comments, docstrings, and string literals specifically. Find TODOs, find the error message a user reported, find what a function's docstring says — without noise from code.
+- **Prose search** — `search --scope text` targets comments, docstrings, and string literals specifically. Find TODOs, find the error message a user reported, find what a function's docstring says — without noise from code.
 - **Fast** — builds in seconds, queries in milliseconds. Rust + tree-sitter + in-memory SQLite FTS5 under the hood.
 
 ## The `.codeindex` format
@@ -63,17 +63,18 @@ Works with Git repos, npm, PyPI, and crates.io.
 
 ## MCP tools
 
-Seven tools, zero setup. The agent queries immediately — no init, no config, no refresh.
+Eight tools, zero setup. The agent queries immediately — no init, no config, no refresh.
 
 | Tool | What it does |
 |---|---|
 | `list_projects` | List all indexed projects |
-| `search_symbols` | Fuzzy search across all symbols (FTS5, BM25-ranked), optionally filtered by project |
-| `search_files` | Find files by name, path, or language, optionally filtered by project |
-| `search_texts` | Full-text search on comments, docstrings, strings, optionally filtered by project |
+| `search` | Unified full-text search across symbols, files, and texts (FTS5, BM25-ranked) with scope/kind/path/project filters |
 | `get_file_symbols` | List all symbols in a file |
 | `get_symbol_children` | Get children of a class/module |
 | `get_imports` | List imports for a file |
+| `get_callers` | Find all places that call or reference a symbol |
+| `get_callees` | Find all symbols that a function/method calls |
+| `flush_index` | Flush pending index changes to disk |
 
 ## Project discovery
 

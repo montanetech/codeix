@@ -1,7 +1,17 @@
 use anyhow::{Context, Result};
 use rusqlite::Connection;
+use serde::Serialize;
 
 use crate::index::format::{FileEntry, ReferenceEntry, SymbolEntry, TextEntry};
+
+/// Unified search result with type discriminator.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum SearchResult {
+    Symbol(SymbolEntry),
+    File(FileEntry),
+    Text(TextEntry),
+}
 
 /// An in-memory SQLite database with FTS5 virtual tables for fast text search
 /// over the code index.
@@ -92,51 +102,22 @@ impl SearchDb {
         )
         .context("failed to create database schema")?;
 
-        // FTS5 virtual tables for full-text search (only when enabled)
+        // Unified FTS5 virtual table for full-text search (only when enabled)
+        // Replaces separate files_fts, symbols_fts, texts_fts tables
         if fts_enabled {
             conn.execute_batch(
                 "
-                CREATE VIRTUAL TABLE files_fts USING fts5(
-                    project,
-                    path,
-                    lang,
-                    title,
-                    description,
-                    content='files',
-                    content_rowid='rowid'
-                );
-
-                CREATE VIRTUAL TABLE symbols_fts USING fts5(
-                    project,
-                    name,
-                    tokens,
-                    file,
-                    kind,
-                    content='symbols',
-                    content_rowid='rowid'
-                );
-
-                CREATE VIRTUAL TABLE texts_fts USING fts5(
-                    project,
-                    text,
-                    file,
-                    kind,
-                    content='texts',
-                    content_rowid='rowid'
-                );
-
-                CREATE VIRTUAL TABLE refs_fts USING fts5(
-                    project,
-                    name,
-                    kind,
-                    file,
-                    caller,
-                    content='refs',
-                    content_rowid='rowid'
+                CREATE VIRTUAL TABLE search_fts USING fts5(
+                    content,            -- searchable text (type-specific, includes path)
+                    type UNINDEXED,     -- 'symbol', 'file', 'text'
+                    rowid_ref UNINDEXED,-- rowid in source table
+                    path UNINDEXED,     -- file path (for GLOB filtering)
+                    kind UNINDEXED,     -- symbol/text kind, or file lang
+                    project UNINDEXED   -- project filter
                 );
                 ",
             )
-            .context("failed to create FTS5 tables")?;
+            .context("failed to create FTS5 table")?;
         }
 
         Ok(Self { conn, fts_enabled })
@@ -219,14 +200,42 @@ impl SearchDb {
             }
         }
 
-        // Populate FTS5 indexes from content tables (only when FTS enabled)
+        // Populate unified FTS5 index from content tables (only when FTS enabled)
         if self.fts_enabled {
             tx.execute_batch(
                 "
-                INSERT INTO files_fts(files_fts) VALUES('rebuild');
-                INSERT INTO symbols_fts(symbols_fts) VALUES('rebuild');
-                INSERT INTO texts_fts(texts_fts) VALUES('rebuild');
-                INSERT INTO refs_fts(refs_fts) VALUES('rebuild');
+                -- Insert files: content = path + title + description
+                INSERT INTO search_fts(content, type, rowid_ref, path, kind, project)
+                SELECT
+                    COALESCE(path, '') || ' ' || COALESCE(title, '') || ' ' || COALESCE(description, ''),
+                    'file',
+                    rowid,
+                    path,
+                    lang,
+                    project
+                FROM files;
+
+                -- Insert symbols: content = file + name + tokens
+                INSERT INTO search_fts(content, type, rowid_ref, path, kind, project)
+                SELECT
+                    COALESCE(file, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(tokens, ''),
+                    'symbol',
+                    rowid,
+                    file,
+                    kind,
+                    project
+                FROM symbols;
+
+                -- Insert texts: content = file + text
+                INSERT INTO search_fts(content, type, rowid_ref, path, kind, project)
+                SELECT
+                    COALESCE(file, '') || ' ' || COALESCE(text, ''),
+                    'text',
+                    rowid,
+                    file,
+                    kind,
+                    project
+                FROM texts;
                 ",
             )?;
         }
@@ -235,154 +244,129 @@ impl SearchDb {
         Ok(())
     }
 
-    /// Search or list symbols.
-    /// - With query (no glob in file): FTS5 full-text search on symbol names (BM25-ranked)
-    /// - Without query OR with glob file pattern: List matching symbols (ordered by file, line)
+    /// Unified search across symbols, files, and texts.
     ///
-    /// File filter supports glob patterns with * (e.g. "src/*.py").
-    /// Note: When file contains glob patterns, uses SQL GLOB for filtering (case-sensitive).
-    pub fn search_symbols(
-        &self,
-        query: Option<&str>,
-        kind: Option<&str>,
-        file: Option<&str>,
-        project: Option<&str>,
-        limit: u32,
-        offset: u32,
-    ) -> Result<Vec<SymbolEntry>> {
-        // Check if file filter contains glob pattern
-        let file_has_glob = file.map(|f| f.contains('*')).unwrap_or(false);
-
-        match query {
-            // Search mode: use FTS5 with BM25 ranking
-            Some(q) if !q.is_empty() && !file_has_glob => {
-                self.search_symbols_fts(q, kind, file, project, limit, offset)
-            }
-            // List mode: plain SQL query (when no query or file has glob pattern)
-            _ => self.list_symbols(query, kind, file, project, limit, offset),
-        }
-    }
-
-    /// FTS5 search on symbol names (BM25-ranked).
-    fn search_symbols_fts(
+    /// Parameters:
+    /// - query: FTS5 search query (supports * wildcards)
+    /// - scope: Types to search ("symbol", "file", "text"). Empty = all.
+    /// - kind: Filter by kind (symbol kind, text kind, or file lang)
+    /// - path: Filter by file path (supports GLOB patterns with *)
+    /// - project: Filter by project
+    /// - limit: Max results (default 100)
+    /// - offset: Pagination offset
+    ///
+    /// Returns results ordered by BM25 relevance.
+    #[allow(clippy::too_many_arguments)]
+    pub fn search(
         &self,
         query: &str,
+        scope: &[String],
         kind: Option<&str>,
-        file: Option<&str>,
+        path: Option<&str>,
         project: Option<&str>,
         limit: u32,
         offset: u32,
-    ) -> Result<Vec<SymbolEntry>> {
-        // Build the FTS5 match expression, incorporating filters into the query
-        let mut fts_parts = vec![format!("name : {}", fts5_quote(query))];
-        if let Some(k) = kind {
-            fts_parts.push(format!("kind : {}", fts5_quote(k)));
-        }
-        if let Some(f) = file {
-            fts_parts.push(format!("file : {}", fts5_quote(f)));
-        }
-        if let Some(p) = project {
-            fts_parts.push(format!("project : {}", fts5_quote(p)));
-        }
-        let fts_query = fts_parts.join(" AND ");
+    ) -> Result<Vec<SearchResult>> {
+        // Build FTS5 MATCH expression
+        let fts_query = format!("content : {}", fts5_quote(query));
 
-        let mut stmt = self.conn.prepare(
-            "SELECT s.project, s.file, s.name, s.kind, s.line_start, s.line_end,
-                    s.parent, s.tokens, s.alias, s.visibility
-             FROM symbols_fts f
-             JOIN symbols s ON s.rowid = f.rowid
-             WHERE symbols_fts MATCH ?1
-             ORDER BY rank
-             LIMIT ?2 OFFSET ?3",
-        )?;
+        // Build WHERE clause for filters
+        let mut conditions = vec!["search_fts MATCH ?1".to_string()];
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(fts_query)];
 
-        let rows = stmt.query_map(rusqlite::params![&fts_query, limit, offset], |row| {
-            Ok(SymbolEntry {
-                project: row.get(0)?,
-                file: row.get(1)?,
-                name: row.get(2)?,
-                kind: row.get(3)?,
-                line: [row.get(4)?, row.get(5)?],
-                parent: row.get(6)?,
-                tokens: row.get(7)?,
-                alias: row.get(8)?,
-                visibility: row.get(9)?,
-            })
-        })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
-    }
-
-    /// List symbols matching filters (no FTS, ordered by file and line).
-    /// File filter supports SQLite GLOB patterns: * matches any sequence, ? matches single char.
-    /// Query performs substring match on symbol name when provided.
-    fn list_symbols(
-        &self,
-        query: Option<&str>,
-        kind: Option<&str>,
-        file: Option<&str>,
-        project: Option<&str>,
-        limit: u32,
-        offset: u32,
-    ) -> Result<Vec<SymbolEntry>> {
-        // Build WHERE clause dynamically
-        let mut conditions = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-
-        if let Some(q) = query
-            && !q.is_empty()
-        {
-            // Simple substring match on name when in list mode with glob file
-            conditions.push("name LIKE ?".to_string());
-            params.push(Box::new(format!("%{}%", q)));
-        }
-        if let Some(k) = kind {
-            conditions.push("kind = ?".to_string());
-            params.push(Box::new(k.to_string()));
-        }
-        if let Some(f) = file {
-            if f.contains('*') {
-                // Use GLOB for pattern matching (supports * wildcard)
-                conditions.push("file GLOB ?".to_string());
-                params.push(Box::new(f.to_string()));
-            } else {
-                conditions.push("file = ?".to_string());
-                params.push(Box::new(f.to_string()));
+        // Scope filter (type)
+        if !scope.is_empty() {
+            let placeholders: Vec<String> = scope
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", i + 2))
+                .collect();
+            conditions.push(format!("type IN ({})", placeholders.join(", ")));
+            for s in scope {
+                params.push(Box::new(s.clone()));
             }
         }
-        if let Some(p) = project {
-            conditions.push("project = ?".to_string());
+
+        let next_param = params.len() + 1;
+
+        // Kind filter
+        if let Some(k) = kind {
+            conditions.push(format!("kind = ?{}", next_param));
+            params.push(Box::new(k.to_string()));
+        }
+
+        let next_param = params.len() + 1;
+
+        // Path filter (supports GLOB)
+        if let Some(p) = path {
+            if p.contains('*') {
+                conditions.push(format!("path GLOB ?{}", next_param));
+            } else {
+                conditions.push(format!("path = ?{}", next_param));
+            }
             params.push(Box::new(p.to_string()));
         }
 
-        let where_clause = if conditions.is_empty() {
-            String::new()
-        } else {
-            format!("WHERE {}", conditions.join(" AND "))
-        };
+        let next_param = params.len() + 1;
+
+        // Project filter
+        if let Some(proj) = project {
+            conditions.push(format!("project = ?{}", next_param));
+            params.push(Box::new(proj.to_string()));
+        }
+
+        let next_param = params.len() + 1;
+
+        // Add limit and offset
+        params.push(Box::new(limit));
+        params.push(Box::new(offset));
 
         let sql = format!(
-            "SELECT project, file, name, kind, line_start, line_end,
-                    parent, tokens, alias, visibility
-             FROM symbols
-             {}
-             ORDER BY file, line_start
-             LIMIT ? OFFSET ?",
-            where_clause
+            "SELECT type, rowid_ref FROM search_fts WHERE {} ORDER BY rank LIMIT ?{} OFFSET ?{}",
+            conditions.join(" AND "),
+            next_param,
+            next_param + 1
         );
 
         let mut stmt = self.conn.prepare(&sql)?;
-
-        // Build params slice for query
-        let mut param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-        param_refs.push(&limit);
-        param_refs.push(&offset);
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
 
         let rows = stmt.query_map(rusqlite::params_from_iter(param_refs), |row| {
+            let entry_type: String = row.get(0)?;
+            let rowid: i64 = row.get(1)?;
+            Ok((entry_type, rowid))
+        })?;
+
+        // Collect (type, rowid) pairs
+        let mut type_rowid_pairs = Vec::new();
+        for row in rows {
+            type_rowid_pairs.push(row?);
+        }
+
+        // Fetch full records from content tables
+        let mut results = Vec::new();
+        for (entry_type, rowid) in type_rowid_pairs {
+            let result = match entry_type.as_str() {
+                "symbol" => self.get_symbol_by_rowid(rowid).map(SearchResult::Symbol),
+                "file" => self.get_file_by_rowid(rowid).map(SearchResult::File),
+                "text" => self.get_text_by_rowid(rowid).map(SearchResult::Text),
+                _ => continue,
+            };
+            if let Ok(r) = result {
+                results.push(r);
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// Fetch a symbol by rowid.
+    fn get_symbol_by_rowid(&self, rowid: i64) -> Result<SymbolEntry> {
+        let mut stmt = self.conn.prepare(
+            "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
+             FROM symbols WHERE rowid = ?1",
+        )?;
+        stmt.query_row([rowid], |row| {
             Ok(SymbolEntry {
                 project: row.get(0)?,
                 file: row.get(1)?,
@@ -394,94 +378,17 @@ impl SearchDb {
                 alias: row.get(8)?,
                 visibility: row.get(9)?,
             })
-        })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
+        })
+        .context("failed to fetch symbol by rowid")
     }
 
-    /// FTS5 search on text content, with optional kind, file, and project filters.
-    pub fn search_text(
-        &self,
-        query: &str,
-        kind: Option<&str>,
-        file: Option<&str>,
-        project: Option<&str>,
-    ) -> Result<Vec<TextEntry>> {
-        let mut fts_parts = vec![format!("text : {}", fts5_quote(query))];
-        if let Some(k) = kind {
-            fts_parts.push(format!("kind : {}", fts5_quote(k)));
-        }
-        if let Some(f) = file {
-            fts_parts.push(format!("file : {}", fts5_quote(f)));
-        }
-        if let Some(p) = project {
-            fts_parts.push(format!("project : {}", fts5_quote(p)));
-        }
-        let fts_query = fts_parts.join(" AND ");
-
+    /// Fetch a file by rowid.
+    fn get_file_by_rowid(&self, rowid: i64) -> Result<FileEntry> {
         let mut stmt = self.conn.prepare(
-            "SELECT t.project, t.file, t.kind, t.line_start, t.line_end, t.text, t.parent
-             FROM texts_fts f
-             JOIN texts t ON t.rowid = f.rowid
-             WHERE texts_fts MATCH ?1
-             ORDER BY rank
-             LIMIT 100",
+            "SELECT project, path, lang, hash, lines, title, description
+             FROM files WHERE rowid = ?1",
         )?;
-
-        let rows = stmt.query_map([&fts_query], |row| {
-            Ok(TextEntry {
-                project: row.get(0)?,
-                file: row.get(1)?,
-                kind: row.get(2)?,
-                line: [row.get(3)?, row.get(4)?],
-                text: row.get(5)?,
-                parent: row.get(6)?,
-            })
-        })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
-    }
-
-    /// FTS5 search on file paths, titles, and descriptions, with optional language and project filters.
-    pub fn search_files(
-        &self,
-        query: &str,
-        lang: Option<&str>,
-        project: Option<&str>,
-    ) -> Result<Vec<FileEntry>> {
-        // Search across path, title, and description fields
-        let mut fts_parts = vec![format!(
-            "(path : {} OR title : {} OR description : {})",
-            fts5_quote(query),
-            fts5_quote(query),
-            fts5_quote(query)
-        )];
-        if let Some(l) = lang {
-            fts_parts.push(format!("lang : {}", fts5_quote(l)));
-        }
-        if let Some(p) = project {
-            fts_parts.push(format!("project : {}", fts5_quote(p)));
-        }
-        let fts_query = fts_parts.join(" AND ");
-
-        let mut stmt = self.conn.prepare(
-            "SELECT fl.project, fl.path, fl.lang, fl.hash, fl.lines, fl.title, fl.description
-             FROM files_fts f
-             JOIN files fl ON fl.rowid = f.rowid
-             WHERE files_fts MATCH ?1
-             ORDER BY rank
-             LIMIT 100",
-        )?;
-
-        let rows = stmt.query_map([&fts_query], |row| {
+        stmt.query_row([rowid], |row| {
             Ok(FileEntry {
                 project: row.get(0)?,
                 path: row.get(1)?,
@@ -491,13 +398,27 @@ impl SearchDb {
                 title: row.get(5)?,
                 description: row.get(6)?,
             })
-        })?;
+        })
+        .context("failed to fetch file by rowid")
+    }
 
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
+    /// Fetch a text by rowid.
+    fn get_text_by_rowid(&self, rowid: i64) -> Result<TextEntry> {
+        let mut stmt = self.conn.prepare(
+            "SELECT project, file, kind, line_start, line_end, text, parent
+             FROM texts WHERE rowid = ?1",
+        )?;
+        stmt.query_row([rowid], |row| {
+            Ok(TextEntry {
+                project: row.get(0)?,
+                file: row.get(1)?,
+                kind: row.get(2)?,
+                line: [row.get(3)?, row.get(4)?],
+                text: row.get(5)?,
+                parent: row.get(6)?,
+            })
+        })
+        .context("failed to fetch text by rowid")
     }
 
     /// Get all symbols in a file, ordered by start line.
@@ -688,55 +609,6 @@ impl SearchDb {
         Ok(results)
     }
 
-    /// Search references by name using FTS5 (BM25-ranked).
-    pub fn search_references(
-        &self,
-        query: &str,
-        kind: Option<&str>,
-        file: Option<&str>,
-        project: Option<&str>,
-        limit: u32,
-        offset: u32,
-    ) -> Result<Vec<ReferenceEntry>> {
-        let mut fts_parts = vec![format!("name : {}", fts5_quote(query))];
-        if let Some(k) = kind {
-            fts_parts.push(format!("kind : {}", fts5_quote(k)));
-        }
-        if let Some(f) = file {
-            fts_parts.push(format!("file : {}", fts5_quote(f)));
-        }
-        if let Some(p) = project {
-            fts_parts.push(format!("project : {}", fts5_quote(p)));
-        }
-        let fts_query = fts_parts.join(" AND ");
-
-        let mut stmt = self.conn.prepare(
-            "SELECT r.project, r.file, r.name, r.kind, r.line_start, r.line_end, r.caller
-             FROM refs_fts f
-             JOIN refs r ON r.rowid = f.rowid
-             WHERE refs_fts MATCH ?1
-             ORDER BY rank
-             LIMIT ?2 OFFSET ?3",
-        )?;
-
-        let rows = stmt.query_map(rusqlite::params![&fts_query, limit, offset], |row| {
-            Ok(ReferenceEntry {
-                project: row.get(0)?,
-                file: row.get(1)?,
-                name: row.get(2)?,
-                kind: row.get(3)?,
-                line: [row.get(4)?, row.get(5)?],
-                caller: row.get(6)?,
-            })
-        })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
-    }
-
     /// Get the hash of a file from the DB (for change detection).
     pub fn get_file_hash(&self, project: &str, path: &str) -> Result<Option<String>> {
         let mut stmt = self
@@ -865,7 +737,7 @@ impl SearchDb {
         Ok(())
     }
 
-    /// Rebuild all FTS5 indexes.
+    /// Rebuild unified FTS5 index.
     /// Call this after batch upsert/remove operations.
     /// No-op when FTS is disabled (build mode).
     pub fn rebuild_fts(&self) -> Result<()> {
@@ -874,10 +746,40 @@ impl SearchDb {
         }
         self.conn.execute_batch(
             "
-            INSERT INTO files_fts(files_fts) VALUES('rebuild');
-            INSERT INTO symbols_fts(symbols_fts) VALUES('rebuild');
-            INSERT INTO texts_fts(texts_fts) VALUES('rebuild');
-            INSERT INTO refs_fts(refs_fts) VALUES('rebuild');
+            DELETE FROM search_fts;
+
+            -- Insert files: content = path + title + description
+            INSERT INTO search_fts(content, type, rowid_ref, path, kind, project)
+            SELECT
+                COALESCE(path, '') || ' ' || COALESCE(title, '') || ' ' || COALESCE(description, ''),
+                'file',
+                rowid,
+                path,
+                lang,
+                project
+            FROM files;
+
+            -- Insert symbols: content = file + name + tokens
+            INSERT INTO search_fts(content, type, rowid_ref, path, kind, project)
+            SELECT
+                COALESCE(file, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(tokens, ''),
+                'symbol',
+                rowid,
+                file,
+                kind,
+                project
+            FROM symbols;
+
+            -- Insert texts: content = file + text
+            INSERT INTO search_fts(content, type, rowid_ref, path, kind, project)
+            SELECT
+                COALESCE(file, '') || ' ' || COALESCE(text, ''),
+                'text',
+                rowid,
+                file,
+                kind,
+                project
+            FROM texts;
             ",
         )?;
         Ok(())
@@ -1117,8 +1019,19 @@ impl SearchDb {
     }
 }
 
-/// Quote a string for use in an FTS5 MATCH expression.
-/// Wraps in double quotes and escapes any internal double quotes.
+/// Pass through FTS5 query as-is.
+///
+/// The LLM is expected to emit valid FTS5 syntax directly.
+/// See: https://www.sqlite.org/fts5.html#full_text_query_syntax
+///
+/// FTS5 syntax examples:
+/// - `parseAsync` — single term
+/// - `parseAsync OR safeParseAsync` — match either term
+/// - `parseAsync AND safeParseAsync` — match both terms (implicit for space-separated)
+/// - `parse*` — prefix search (matches parseAsync, parseString, etc.)
+/// - `"safe parse"` — phrase search (exact sequence)
+/// - `parse -test` — exclude results containing "test"
+/// - `NEAR(parse async, 5)` — terms within 5 tokens of each other
 fn fts5_quote(s: &str) -> String {
-    format!("\"{}\"", s.replace('"', "\"\""))
+    s.to_string()
 }

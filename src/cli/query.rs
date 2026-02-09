@@ -15,8 +15,7 @@ use crate::mount::MountedEvent;
 use crate::mount::handler::{flush_mount_to_disk, run_event_loop};
 use crate::server::mcp::{
     CodeIndexServer, GetCalleesParams, GetCallersParams, GetFileSymbolsParams, GetImportsParams,
-    GetSymbolChildrenParams, SearchFilesParams, SearchReferencesParams, SearchSymbolsParams,
-    SearchTextsParams, extract_result_text,
+    GetSymbolChildrenParams, SearchParams, extract_result_text,
 };
 
 /// REPL commands matching the MCP tools.
@@ -24,12 +23,8 @@ use crate::server::mcp::{
 #[derive(Debug, Parser)]
 #[command(name = "")]
 pub enum QueryCommand {
-    /// Search or list symbols
-    SearchSymbols(#[command(flatten)] SearchSymbolsParams),
-    /// Search files by path
-    SearchFiles(#[command(flatten)] SearchFilesParams),
-    /// Search text entries (docstrings, comments)
-    SearchTexts(#[command(flatten)] SearchTextsParams),
+    /// Unified search across symbols, files, and texts
+    Search(#[command(flatten)] SearchParams),
     /// Get all symbols in a file
     GetFileSymbols(#[command(flatten)] GetFileSymbolsParams),
     /// Get children of a symbol
@@ -42,8 +37,6 @@ pub enum QueryCommand {
     GetCallers(#[command(flatten)] GetCallersParams),
     /// Find what a symbol calls
     GetCallees(#[command(flatten)] GetCalleesParams),
-    /// Search references
-    SearchReferences(#[command(flatten)] SearchReferencesParams),
     /// Flush index to disk
     FlushIndex,
     /// Exit the REPL
@@ -107,11 +100,7 @@ pub fn run(root: &Path, watch: bool, command: Vec<String>) -> Result<()> {
     let execute_command = |cmd: QueryCommand| {
         rt.block_on(async {
             let result = match cmd {
-                QueryCommand::SearchSymbols(params) => {
-                    server.search_symbols(Parameters(params)).await
-                }
-                QueryCommand::SearchFiles(params) => server.search_files(Parameters(params)).await,
-                QueryCommand::SearchTexts(params) => server.search_texts(Parameters(params)).await,
+                QueryCommand::Search(params) => server.search(Parameters(params)).await,
                 QueryCommand::GetFileSymbols(params) => {
                     server.get_file_symbols(Parameters(params)).await
                 }
@@ -122,9 +111,6 @@ pub fn run(root: &Path, watch: bool, command: Vec<String>) -> Result<()> {
                 QueryCommand::ListProjects => server.list_projects().await,
                 QueryCommand::GetCallers(params) => server.get_callers(Parameters(params)).await,
                 QueryCommand::GetCallees(params) => server.get_callees(Parameters(params)).await,
-                QueryCommand::SearchReferences(params) => {
-                    server.search_references(Parameters(params)).await
-                }
                 QueryCommand::FlushIndex => server.flush_index().await,
                 QueryCommand::Exit => unreachable!(),
             };
@@ -200,21 +186,35 @@ mod tests {
         let cmd = QueryCommand::try_parse_from(["", "flush-index"]).unwrap();
         assert!(matches!(cmd, QueryCommand::FlushIndex));
 
-        // Test search-symbols with query (positional arg)
-        let cmd = QueryCommand::try_parse_from(["", "search-symbols", "foo"]).unwrap();
-        if let QueryCommand::SearchSymbols(params) = cmd {
-            assert_eq!(params.query, Some("foo".to_string()));
+        // Test search with query (positional arg)
+        let cmd = QueryCommand::try_parse_from(["", "search", "foo"]).unwrap();
+        if let QueryCommand::Search(params) = cmd {
+            assert_eq!(params.query, "foo");
         } else {
-            panic!("Expected SearchSymbols");
+            panic!("Expected Search");
         }
 
-        // Test search-symbols with options
+        // Test search with options
         let cmd =
-            QueryCommand::try_parse_from(["", "search-symbols", "--kind", "function"]).unwrap();
-        if let QueryCommand::SearchSymbols(params) = cmd {
+            QueryCommand::try_parse_from(["", "search", "foo", "--kind", "function"]).unwrap();
+        if let QueryCommand::Search(params) = cmd {
+            assert_eq!(params.query, "foo");
             assert_eq!(params.kind, Some("function".to_string()));
         } else {
-            panic!("Expected SearchSymbols");
+            panic!("Expected Search");
+        }
+
+        // Test search with scope
+        let cmd =
+            QueryCommand::try_parse_from(["", "search", "foo", "--scope", "symbol,file"]).unwrap();
+        if let QueryCommand::Search(params) = cmd {
+            assert_eq!(params.query, "foo");
+            assert_eq!(
+                params.scope,
+                Some(vec!["symbol".to_string(), "file".to_string()])
+            );
+        } else {
+            panic!("Expected Search");
         }
 
         // Test get-file-symbols with file (positional required arg)

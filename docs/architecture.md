@@ -299,25 +299,59 @@ $ git commit -m "feat: ..."
 
 ---
 
-## ADR-009: MCP tool surface — 7 tools, zero plumbing
+## ADR-009: MCP tool surface — 8 tools, zero plumbing
 
 **Context:** The MCP server exposes tools to AI agents. Competing servers (code-index-mcp: 13 tools, claude-context: 4 tools, Serena: 21 tools) mix search tools with management plumbing (init, refresh, configure watcher, temp directories). This forces agents to manage infrastructure before they can query.
 
-**Decision:** 7 tools, split into discovery (list projects), search (FTS, fuzzy, ranked), and lookup (exact, structural). Zero management tools — the index is pre-built, the server loads it automatically.
+**Decision:** 8 tools, split into discovery (list projects), search (unified FTS), lookup (exact, structural), and graph (callers/callees). Zero management tools — the index is pre-built, the server loads it automatically.
 
 ### Discovery tool
 
 | Tool | Input | Returns |
 |---|---|---|
-| `list_projects` | — | All indexed projects (absolute paths) |
+| `list_projects` | — | All indexed projects with metadata |
 
-### Search tools (FTS5, BM25-ranked)
+### Unified search tool (FTS5, BM25-ranked)
 
 | Tool | Input | Returns |
 |---|---|---|
-| `search_symbols` | `query`, optional `kind`/`file`/`project` filters | Matching symbols with file, line, kind, parent |
-| `search_files` | `query`, optional `lang`/`project` filters | Matching files with path, lang, lines |
-| `search_texts` | `query`, optional `kind`/`file`/`project` filters | Matching text entries (comments, docstrings, strings) with file, line, context |
+| `search` | `query`, optional `scope`/`kind`/`path`/`project` filters, pagination | Matching symbols, files, and/or texts with relevance ranking and code snippets |
+
+**Parameters:**
+- `query` (required): FTS5 search terms — supports `"foo bar"` (AND), `"foo OR bar"`, `"foo*"` (prefix), `"foo -bar"` (exclude)
+- `scope`: Filter by type — array of `"symbol"`, `"file"`, `"text"`. Default: all three
+- `kind`: Filter by kind (see table below)
+- `path`: Glob pattern for file paths — `"src/**/*.rs"`, `"**/test_*.py"`
+- `project`: Limit to a specific indexed project (relative path from workspace root)
+- `limit`/`offset`: Pagination (default limit: 10)
+- `snippet_lines`: Code context lines per result (default: 10, use 0 for none, -1 for full)
+
+**Symbol kinds by language:**
+
+| Kind | Languages | Notes |
+|------|-----------|-------|
+| `function` | All | Top-level functions |
+| `method` | All | Functions inside class/struct/impl |
+| `class` | Python, Ruby, JS/TS, Java, C#, C++ | Class declarations |
+| `struct` | C, C++, Go, Rust, C#, Java | **Go/Rust/C use `struct`, not `class`** |
+| `interface` | Go, Java, C#, TypeScript | **Rust uses `interface` for traits** |
+| `enum` | All | Enumeration types |
+| `constant` | All | Constants, static finals |
+| `variable` | All | Variables, let bindings |
+| `property` | All | Fields, attributes, members |
+| `module` | Go, Java, C++, Ruby, TS | Package (Go/Java), namespace (C++), module |
+| `import` | All | Import statements |
+| `impl` | Rust | Impl blocks |
+| `section` | Markdown | Headings |
+
+**Text kinds:**
+
+| Kind | Description |
+|------|-------------|
+| `docstring` | Documentation strings (Python, JS/TS JSDoc) |
+| `comment` | Code comments |
+| `string` | String literals |
+| `sample` | Markdown fenced code blocks |
 
 ### Lookup tools (exact, structural)
 
@@ -327,10 +361,25 @@ $ git commit -m "feat: ..."
 | `get_symbol_children` | `file`, `parent` name | Direct children of a symbol |
 | `get_imports` | `file` path | All imports for that file |
 
+### Graph tools (call relationships)
+
+| Tool | Input | Returns |
+|---|---|---|
+| `get_callers` | `name`, optional `kind`/`project` filters | All call sites and references to a symbol |
+| `get_callees` | `caller`, optional `kind`/`project` filters | All symbols that a function calls |
+
+### Index management
+
+| Tool | Input | Returns |
+|---|---|---|
+| `flush_index` | — | Persist pending index changes to `.codeindex/` on disk |
+
 **Design principles:**
+- **Unified search** — one tool (`search`) replaces the previous 3 separate search tools (`search_symbols`, `search_files`, `search_texts`). Agents use `scope` to filter by type instead of choosing the right tool.
 - Each tool maps to one query pattern on the SQLite FTS5 database
-- Search tools are fuzzy and ranked — for discovery ("find something related to auth")
+- Search is fuzzy and ranked — for discovery ("find something related to auth")
 - Lookup tools are exact and structural — for navigation ("what's in this file?")
+- Graph tools expose call relationships from reference indexing
 - All return JSON arrays, paginated if needed
 - All can scope to a specific mounted index (for monorepo/dependency queries)
 
@@ -342,8 +391,9 @@ $ git commit -m "feat: ..."
 
 **Consequences:**
 - Agents can query immediately — no setup calls needed
+- Single unified search reduces cognitive load — agents don't need to pick between 3 search tools
 - Tool descriptions are clear and non-overlapping — agents pick the right tool easily
-- Unique capabilities no competitor offers: `search_texts` (prose search), `get_imports` (dependency graph)
+- Unique capabilities: prose search via `scope: ["text"]`, call graph via `get_callers`/`get_callees`
 - Tight surface = easier to implement, test, and document
 
 ---
@@ -616,6 +666,6 @@ Auto-mount `.codeindex/` from resolved dependencies — declared in ADR-003 but 
 - [x] **Imports**: included in `symbols.jsonl` as `kind: "import"`. References (usage sites) excluded — unreliable without type resolution.
 - [x] **Search strategy**: all JSONL loaded into in-memory SQLite + FTS5 at serve time — one query engine for symbols, files, and text search. Raw code search left to the consumer (agent's own grep tools). Embedding `rg` as a library is a future option if needed.
 - [x] **File watching**: `serve --watch` keeps index in sync on disk — commit it with your code
-- [x] **MCP tools**: 7 tools — 1 discovery (list projects) + 3 search (symbols, files, texts) + 3 lookup (file symbols, children, imports). Zero management plumbing.
+- [x] **MCP tools**: 8 tools — 1 discovery (list projects) + 1 unified search + 3 lookup (file symbols, children, imports) + 2 graph (callers, callees) + 1 index management (flush). Zero management plumbing.
 - [x] **Remote indexes**: deferred. Start local only. Future option: git-based references (`git+https://...#ref:.codeindex/`) with local caching. No dedicated registry — piggyback on git.
 - [x] **File hashing**: BLAKE3 truncated to 64-bit, hex-encoded (16 chars). Change detection only — collision worst case is a missed re-index, self-heals on next edit. Birthday bound at ~4B files — safe for any project. Hex over base64 for readability/tooling (grep, jq).

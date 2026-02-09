@@ -987,7 +987,7 @@ footer {
       <div class="problem-after reveal reveal-delay-3">
         <div class="problem-label">With .codeindex</div>
         <div class="problem-content">
-          <div class="cmd">search_symbols("Config")</div>
+          <div class="cmd">search("Config", scope: ["symbol"])</div>
           <div class="result" style="margin-top: 0.5rem;">
             &rarr; Config &middot; class &middot; src/main.py:22-45<br>
             &rarr; Config.__init__ &middot; method &middot; :23-30<br>
@@ -1029,33 +1029,33 @@ footer {
     <div class="tool-grid">
       <div class="tool-card reveal reveal-delay-2">
         <div class="tool-card-kind">search</div>
-        <div class="tool-card-name">search_symbols</div>
-        <div class="tool-card-desc">Fuzzy search across all symbol definitions. FTS5, BM25-ranked.</div>
+        <div class="tool-card-name">search</div>
+        <div class="tool-card-desc">Unified full-text search across symbols, files, and texts. FTS5, BM25-ranked, with scope/kind/path filters.</div>
       </div>
       <div class="tool-card reveal reveal-delay-2">
-        <div class="tool-card-kind">search</div>
-        <div class="tool-card-name">search_files</div>
-        <div class="tool-card-desc">Find files by name, path pattern, or language filter.</div>
-      </div>
-      <div class="tool-card reveal reveal-delay-3">
-        <div class="tool-card-kind">search</div>
-        <div class="tool-card-name">search_texts</div>
-        <div class="tool-card-desc">Full-text search on comments, docstrings, and string literals.</div>
-      </div>
-      <div class="tool-card reveal reveal-delay-3">
         <div class="tool-card-kind">lookup</div>
         <div class="tool-card-name">get_file_symbols</div>
         <div class="tool-card-desc">List all symbols in a file, ordered by line number.</div>
       </div>
-      <div class="tool-card reveal reveal-delay-4">
+      <div class="tool-card reveal reveal-delay-3">
         <div class="tool-card-kind">lookup</div>
         <div class="tool-card-name">get_symbol_children</div>
         <div class="tool-card-desc">Get direct children of a class, struct, or module.</div>
       </div>
-      <div class="tool-card reveal reveal-delay-4">
+      <div class="tool-card reveal reveal-delay-3">
         <div class="tool-card-kind">lookup</div>
         <div class="tool-card-name">get_imports</div>
         <div class="tool-card-desc">List all import statements for a file.</div>
+      </div>
+      <div class="tool-card reveal reveal-delay-4">
+        <div class="tool-card-kind">graph</div>
+        <div class="tool-card-name">get_callers</div>
+        <div class="tool-card-desc">Find all call sites and references to a symbol.</div>
+      </div>
+      <div class="tool-card reveal reveal-delay-4">
+        <div class="tool-card-kind">graph</div>
+        <div class="tool-card-name">get_callees</div>
+        <div class="tool-card-desc">Find all symbols that a function calls or references.</div>
       </div>
     </div>
 
@@ -1113,7 +1113,7 @@ footer {
         <div class="eco-step-num">Consumer</div>
         <div class="eco-step-title">Query instantly</div>
         <div class="eco-step-desc">AI agents navigate your API without parsing a single file.</div>
-        <div class="eco-step-code">search_symbols()</div>
+        <div class="eco-step-code">search()</div>
       </div>
     </div>
 

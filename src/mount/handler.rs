@@ -895,9 +895,16 @@ mod tests {
         assert_eq!(projects[0], ""); // Root project has empty string
 
         // Search for the main function
-        let symbols = db_guard
-            .search_symbols(Some("main"), None, None, None, 100, 0)
+        let results = db_guard
+            .search("main", &["symbol".to_string()], None, None, None, 100, 0)
             .unwrap();
+        let symbols: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert!(
             symbols
                 .iter()
@@ -905,9 +912,16 @@ mod tests {
         );
 
         // Search for greet function
-        let symbols = db_guard
-            .search_symbols(Some("greet"), None, None, None, 100, 0)
+        let results = db_guard
+            .search("greet", &["symbol".to_string()], None, None, None, 100, 0)
             .unwrap();
+        let symbols: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert!(
             symbols
                 .iter()
@@ -944,16 +958,46 @@ mod tests {
         assert!(projects.contains(&"libs/utils".to_string())); // Subproject
 
         // Root project should have app_main (search without filter, check project field)
-        let symbols = db_guard
-            .search_symbols(Some("app_main"), None, None, None, 100, 0)
+        let results = db_guard
+            .search(
+                "app_main",
+                &["symbol".to_string()],
+                None,
+                None,
+                None,
+                100,
+                0,
+            )
             .unwrap();
+        let symbols: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].project, "");
 
         // Subproject should have utility
-        let symbols = db_guard
-            .search_symbols(Some("utility"), None, None, Some("libs/utils"), 100, 0)
+        let results = db_guard
+            .search(
+                "utility",
+                &["symbol".to_string()],
+                None,
+                None,
+                Some("libs/utils"),
+                100,
+                0,
+            )
             .unwrap();
+        let symbols: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].project, "libs/utils");
     }
@@ -989,20 +1033,43 @@ mod tests {
         assert_eq!(projects.len(), 3);
 
         // Each function should be in its respective project (search without filter, verify project)
-        let root_syms = db_guard
-            .search_symbols(Some("root_fn"), None, None, None, 100, 0)
+        let results = db_guard
+            .search("root_fn", &["symbol".to_string()], None, None, None, 100, 0)
             .unwrap();
+        let root_syms: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(root_syms.len(), 1);
         assert_eq!(root_syms[0].project, "");
 
-        let core_syms = db_guard
-            .search_symbols(Some("core_fn"), None, None, Some("libs/core"), 100, 0)
+        let results = db_guard
+            .search(
+                "core_fn",
+                &["symbol".to_string()],
+                None,
+                None,
+                Some("libs/core"),
+                100,
+                0,
+            )
             .unwrap();
+        let core_syms: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(core_syms.len(), 1);
 
-        let nested_syms = db_guard
-            .search_symbols(
-                Some("nested_fn"),
+        let results = db_guard
+            .search(
+                "nested_fn",
+                &["symbol".to_string()],
                 None,
                 None,
                 Some("libs/core/nested"),
@@ -1010,6 +1077,13 @@ mod tests {
                 0,
             )
             .unwrap();
+        let nested_syms: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(nested_syms.len(), 1);
     }
 
@@ -1037,9 +1111,16 @@ mod tests {
         let db_guard = db.lock().unwrap();
 
         // Search without project filter - should find both
-        let all_symbols = db_guard
-            .search_symbols(Some("fn"), None, None, None, 100, 0)
+        let results = db_guard
+            .search("fn", &["symbol".to_string()], None, None, None, 100, 0)
             .unwrap();
+        let all_symbols: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         let root_fn_count = all_symbols.iter().filter(|s| s.name == "root_fn").count();
         let sub_fn_count = all_symbols.iter().filter(|s| s.name == "sub_fn").count();
 
@@ -1112,9 +1193,16 @@ mod tests {
         let db_guard = db.lock().unwrap();
 
         // Without filter: should find 2 helpers
-        let all = db_guard
-            .search_symbols(Some("helper"), None, None, None, 100, 0)
+        let results = db_guard
+            .search("helper", &["symbol".to_string()], None, None, None, 100, 0)
             .unwrap();
+        let all: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(all.len(), 2);
 
         // One should be root (empty project), one should be sub
@@ -1124,9 +1212,24 @@ mod tests {
         assert_eq!(sub_helpers.len(), 1);
 
         // With sub filter: should find 1
-        let sub_only = db_guard
-            .search_symbols(Some("helper"), None, None, Some("sub"), 100, 0)
+        let results = db_guard
+            .search(
+                "helper",
+                &["symbol".to_string()],
+                None,
+                None,
+                Some("sub"),
+                100,
+                0,
+            )
             .unwrap();
+        let sub_only: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(sub_only.len(), 1);
         assert_eq!(sub_only[0].project, "sub");
     }
@@ -1156,9 +1259,16 @@ mod tests {
         assert!(projects.contains(&"path/to/deep/project".to_string()));
 
         // Symbol should have correct project
-        let symbols = db_guard
-            .search_symbols(Some("deep_fn"), None, None, None, 100, 0)
+        let results = db_guard
+            .search("deep_fn", &["symbol".to_string()], None, None, None, 100, 0)
             .unwrap();
+        let symbols: Vec<_> = results
+            .iter()
+            .filter_map(|r| match r {
+                crate::server::db::SearchResult::Symbol(s) => Some(s),
+                _ => None,
+            })
+            .collect();
         assert_eq!(symbols[0].project, "path/to/deep/project");
     }
 }
