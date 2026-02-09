@@ -43,6 +43,7 @@ impl SearchDb {
             CREATE TABLE files (
                 project     TEXT NOT NULL,
                 path        TEXT NOT NULL,
+                parent_path TEXT NOT NULL,
                 lang        TEXT,
                 hash        TEXT NOT NULL,
                 lines       INTEGER NOT NULL,
@@ -50,6 +51,7 @@ impl SearchDb {
                 description TEXT,
                 PRIMARY KEY (project, path)
             );
+            CREATE INDEX idx_files_parent ON files (project, parent_path);
 
             CREATE TABLE symbols (
                 project       TEXT NOT NULL,
@@ -137,12 +139,17 @@ impl SearchDb {
         // Insert files
         {
             let mut stmt = tx.prepare(
-                "INSERT INTO files (project, path, lang, hash, lines, title, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                "INSERT INTO files (project, path, parent_path, lang, hash, lines, title, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             )?;
             for f in files {
+                let parent_path = match f.path.rfind('/') {
+                    Some(pos) => &f.path[..pos],
+                    None => ".",
+                };
                 stmt.execute(rusqlite::params![
                     project,
                     f.path,
+                    parent_path,
                     f.lang,
                     f.hash,
                     f.lines,
@@ -680,9 +687,13 @@ impl SearchDb {
         )?;
 
         // Insert file
+        let parent_path = match file.path.rfind('/') {
+            Some(pos) => &file.path[..pos],
+            None => ".",
+        };
         tx.execute(
-            "INSERT INTO files (project, path, lang, hash, lines, title, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            rusqlite::params![project, file.path, file.lang, file.hash, file.lines, file.title, file.description],
+            "INSERT INTO files (project, path, parent_path, lang, hash, lines, title, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![project, file.path, parent_path, file.lang, file.hash, file.lines, file.title, file.description],
         )?;
 
         // Insert symbols
@@ -1016,6 +1027,147 @@ impl SearchDb {
             results.push(row?);
         }
         Ok(results)
+    }
+
+    /// Get directory overview: count of files per (parent_path, lang).
+    ///
+    /// Returns Vec of (parent_path, lang, count) tuples, sorted by parent_path.
+    /// Skips dotfiles (paths starting with '.' or containing '/.').
+    pub fn explore_dir_overview(
+        &self,
+        project: &str,
+        path_prefix: Option<&str>,
+    ) -> Result<Vec<(String, Option<String>, usize)>> {
+        let base = path_prefix
+            .map(|p| p.trim_end_matches('/'))
+            .filter(|p| !p.is_empty());
+
+        let rows: Vec<(String, Option<String>, usize)> = match base {
+            Some(prefix) => {
+                let glob = format!("{}/*", prefix);
+                let mut stmt = self.conn.prepare(
+                    "SELECT parent_path, lang, COUNT(*) as cnt FROM files
+                     WHERE project = ?1 AND path GLOB ?2
+                     AND path NOT GLOB '.*' AND path NOT GLOB '*/.*'
+                     GROUP BY parent_path, lang ORDER BY parent_path, lang",
+                )?;
+                stmt.query_map(rusqlite::params![project, glob], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, usize>(2)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            }
+            None => {
+                let mut stmt = self.conn.prepare(
+                    "SELECT parent_path, lang, COUNT(*) as cnt FROM files
+                     WHERE project = ?1
+                     AND path NOT GLOB '.*' AND path NOT GLOB '*/.*'
+                     GROUP BY parent_path, lang ORDER BY parent_path, lang",
+                )?;
+                stmt.query_map(rusqlite::params![project], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, usize>(2)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            }
+        };
+
+        Ok(rows)
+    }
+
+    /// Get files in a specific directory.
+    ///
+    /// Returns Vec of (filename, lang) tuples, sorted by filename.
+    pub fn explore_dir_files(
+        &self,
+        project: &str,
+        parent_path: &str,
+    ) -> Result<Vec<(String, Option<String>)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT path, lang FROM files
+             WHERE project = ?1 AND parent_path = ?2
+             AND path NOT GLOB '.*' AND path NOT GLOB '*/.*'
+             ORDER BY path",
+        )?;
+        let rows: Vec<(String, Option<String>)> = stmt
+            .query_map(rusqlite::params![project, parent_path], |row| {
+                let path: String = row.get(0)?;
+                let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
+                Ok((filename, row.get(1)?))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        Ok(rows)
+    }
+
+    /// Get files capped at N per (parent_path, lang), excluding markdown.
+    ///
+    /// Returns Vec of (parent_path, filename, lang) tuples.
+    /// Uses ROW_NUMBER() to limit files per directory+language group.
+    pub fn explore_files_capped(
+        &self,
+        project: &str,
+        path_prefix: Option<&str>,
+        cap: usize,
+    ) -> Result<Vec<(String, String, Option<String>)>> {
+        let base = path_prefix
+            .map(|p| p.trim_end_matches('/'))
+            .filter(|p| !p.is_empty());
+
+        // Cap to i64::MAX to avoid overflow when cap is usize::MAX
+        let cap_i64 = cap.min(i64::MAX as usize) as i64;
+
+        // Fetch files with known language (code + markdown)
+        // Files with lang=NULL are summarized as "+N other files" from overview
+        let rows: Vec<(String, String, Option<String>)> = match base {
+            Some(prefix) => {
+                let glob = format!("{}/*", prefix);
+                let mut stmt = self.conn.prepare(
+                    "WITH ranked AS (
+                        SELECT parent_path, path, lang,
+                               ROW_NUMBER() OVER (PARTITION BY parent_path, lang ORDER BY path) as rn
+                        FROM files
+                        WHERE project = ?1 AND path GLOB ?2
+                          AND lang IS NOT NULL
+                    )
+                    SELECT parent_path, path, lang FROM ranked WHERE rn <= ?3 ORDER BY parent_path, path",
+                )?;
+                stmt.query_map(rusqlite::params![project, glob, cap_i64], |row| {
+                    let parent: String = row.get(0)?;
+                    let path: String = row.get(1)?;
+                    let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
+                    Ok((parent, filename, row.get(2)?))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            }
+            None => {
+                let mut stmt = self.conn.prepare(
+                    "WITH ranked AS (
+                        SELECT parent_path, path, lang,
+                               ROW_NUMBER() OVER (PARTITION BY parent_path, lang ORDER BY path) as rn
+                        FROM files
+                        WHERE project = ?1
+                          AND lang IS NOT NULL
+                    )
+                    SELECT parent_path, path, lang FROM ranked WHERE rn <= ?2 ORDER BY parent_path, path",
+                )?;
+                stmt.query_map(rusqlite::params![project, cap_i64], |row| {
+                    let parent: String = row.get(0)?;
+                    let path: String = row.get(1)?;
+                    let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
+                    Ok((parent, filename, row.get(2)?))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            }
+        };
+
+        Ok(rows)
     }
 }
 

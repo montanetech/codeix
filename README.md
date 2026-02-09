@@ -67,7 +67,7 @@ Eight tools, zero setup. The agent queries immediately — no init, no config, n
 
 | Tool | What it does |
 |---|---|
-| `list_projects` | List all indexed projects |
+| `explore` | Explore project structure: metadata, subprojects, files grouped by directory |
 | `search` | Unified full-text search across symbols, files, and texts (FTS5, BM25-ranked) with scope/kind/path/project filters |
 | `get_file_symbols` | List all symbols in a file |
 | `get_symbol_children` | Get children of a class/module |

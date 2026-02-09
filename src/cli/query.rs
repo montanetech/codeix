@@ -14,8 +14,8 @@ use crate::cli::build::build_index_to_db;
 use crate::mount::MountedEvent;
 use crate::mount::handler::{flush_mount_to_disk, run_event_loop};
 use crate::server::mcp::{
-    CodeIndexServer, GetCalleesParams, GetCallersParams, GetFileSymbolsParams, GetImportsParams,
-    GetSymbolChildrenParams, SearchParams, extract_result_text,
+    CodeIndexServer, ExploreParams, GetCalleesParams, GetCallersParams, GetFileSymbolsParams,
+    GetImportsParams, GetSymbolChildrenParams, SearchParams, extract_result_text,
 };
 
 /// REPL commands matching the MCP tools.
@@ -31,8 +31,8 @@ pub enum QueryCommand {
     GetSymbolChildren(#[command(flatten)] GetSymbolChildrenParams),
     /// Get imports for a file
     GetImports(#[command(flatten)] GetImportsParams),
-    /// List all indexed projects
-    ListProjects,
+    /// Explore project structure (files grouped by directory)
+    Explore(#[command(flatten)] ExploreParams),
     /// Find callers of a symbol
     GetCallers(#[command(flatten)] GetCallersParams),
     /// Find what a symbol calls
@@ -108,7 +108,7 @@ pub fn run(root: &Path, watch: bool, command: Vec<String>) -> Result<()> {
                     server.get_symbol_children(Parameters(params)).await
                 }
                 QueryCommand::GetImports(params) => server.get_imports(Parameters(params)).await,
-                QueryCommand::ListProjects => server.list_projects().await,
+                QueryCommand::Explore(params) => server.explore(Parameters(params)).await,
                 QueryCommand::GetCallers(params) => server.get_callers(Parameters(params)).await,
                 QueryCommand::GetCallees(params) => server.get_callees(Parameters(params)).await,
                 QueryCommand::FlushIndex => server.flush_index().await,
@@ -178,9 +178,34 @@ mod tests {
 
     #[test]
     fn test_query_command_parse() {
-        // Test list-projects (no args)
-        let cmd = QueryCommand::try_parse_from(["", "list-projects"]).unwrap();
-        assert!(matches!(cmd, QueryCommand::ListProjects));
+        // Test explore (with default max_entries)
+        let cmd = QueryCommand::try_parse_from(["", "explore"]).unwrap();
+        if let QueryCommand::Explore(params) = cmd {
+            assert_eq!(params.max_entries, 200); // default
+            assert!(params.path.is_none());
+            assert!(params.project.is_none());
+        } else {
+            panic!("Expected Explore");
+        }
+
+        // Test explore with options
+        let cmd = QueryCommand::try_parse_from([
+            "",
+            "explore",
+            "src",
+            "--max-entries",
+            "50",
+            "-p",
+            "myproj",
+        ])
+        .unwrap();
+        if let QueryCommand::Explore(params) = cmd {
+            assert_eq!(params.path, Some("src".to_string()));
+            assert_eq!(params.max_entries, 50);
+            assert_eq!(params.project, Some("myproj".to_string()));
+        } else {
+            panic!("Expected Explore");
+        }
 
         // Test flush-index (no args)
         let cmd = QueryCommand::try_parse_from(["", "flush-index"]).unwrap();

@@ -14,8 +14,10 @@ pub struct ProjectMetadata {
     /// Human-readable project name (from first manifest found, or directory name)
     pub name: String,
     /// Project description (from first manifest with description)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// List of manifest files found (e.g., ["package.json", "Cargo.toml"])
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub manifest_files: Vec<String>,
 }
 
