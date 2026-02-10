@@ -1,6 +1,6 @@
 {
   "name": "codeix",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Portable, composable code index — build with tree-sitter, query via MCP",
   "license": "MIT OR Apache-2.0",
   "repository": {
