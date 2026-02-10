@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -12,11 +12,13 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -24,6 +26,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -35,27 +38,34 @@ fn walk_node(
 
     match kind {
         "function_declaration" => {
-            extract_function(node, source, file_path, symbols);
+            extract_function(node, source, file_path, symbols, texts, references, depth);
+            return; // handled recursively
         }
         "method_declaration" => {
-            extract_method(node, source, file_path, symbols);
+            extract_method(node, source, file_path, symbols, texts, references, depth);
+            return; // handled recursively
         }
         "type_declaration" => {
-            extract_type_decl(node, source, file_path, symbols, texts);
+            extract_type_decl(node, source, file_path, symbols, texts, references);
             return; // handled recursively
         }
         "type_spec" => {
-            extract_type_spec(node, source, file_path, parent_ctx, symbols, texts);
+            extract_type_spec(
+                node, source, file_path, parent_ctx, symbols, texts, references,
+            );
             return;
         }
         "var_declaration" | "const_declaration" => {
             extract_var_const(node, source, file_path, parent_ctx, symbols);
         }
         "import_declaration" => {
-            extract_imports(node, source, file_path, symbols);
+            extract_imports(node, source, file_path, symbols, references);
         }
         "package_clause" => {
             extract_package(node, source, file_path, symbols);
+        }
+        "call_expression" => {
+            extract_call(node, source, file_path, parent_ctx, references);
         }
         "comment" => {
             extract_go_comment(node, source, file_path, parent_ctx, texts);
@@ -78,12 +88,22 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
 }
 
-fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+#[allow(clippy::too_many_arguments)]
+fn extract_function(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
+    depth: usize,
+) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
         None => return,
@@ -100,7 +120,7 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
     push_symbol(
         symbols,
         file_path,
-        name,
+        name.clone(),
         "function",
         line,
         None,
@@ -108,9 +128,45 @@ fn extract_function(node: Node, source: &[u8], file_path: &str, symbols: &mut Ve
         None,
         Some(visibility),
     );
+
+    // Extract type references from parameters
+    if let Some(params) = find_child_by_field(node, "parameters") {
+        extract_type_refs_from_node(params, source, file_path, Some(&name), references);
+    }
+
+    // Extract type references from result
+    if let Some(result) = find_child_by_field(node, "result") {
+        extract_type_refs_from_node(result, source, file_path, Some(&name), references);
+    }
+
+    // Recurse into function body with function name as context
+    if let Some(body) = find_child_by_field(node, "body") {
+        let mut cursor = body.walk();
+        for child in body.children(&mut cursor) {
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&name),
+                symbols,
+                texts,
+                references,
+                depth + 1,
+            );
+        }
+    }
 }
 
-fn extract_method(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+#[allow(clippy::too_many_arguments)]
+fn extract_method(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
+    depth: usize,
+) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
         None => return,
@@ -155,7 +211,7 @@ fn extract_method(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
     push_symbol(
         symbols,
         file_path,
-        full_name,
+        full_name.clone(),
         "method",
         line,
         parent,
@@ -163,6 +219,33 @@ fn extract_method(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
         None,
         Some(visibility),
     );
+
+    // Extract type references from parameters
+    if let Some(params) = find_child_by_field(node, "parameters") {
+        extract_type_refs_from_node(params, source, file_path, Some(&full_name), references);
+    }
+
+    // Extract type references from result
+    if let Some(result) = find_child_by_field(node, "result") {
+        extract_type_refs_from_node(result, source, file_path, Some(&full_name), references);
+    }
+
+    // Recurse into method body with method name as context
+    if let Some(body) = find_child_by_field(node, "body") {
+        let mut cursor = body.walk();
+        for child in body.children(&mut cursor) {
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                references,
+                depth + 1,
+            );
+        }
+    }
 }
 
 fn extract_type_decl(
@@ -171,16 +254,18 @@ fn extract_type_decl(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     // `type (...)` block or `type Foo ...`
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "type_spec" {
-            extract_type_spec(child, source, file_path, None, symbols, texts);
+            extract_type_spec(child, source, file_path, None, symbols, texts, references);
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_type_spec(
     node: Node,
     source: &[u8],
@@ -188,6 +273,7 @@ fn extract_type_spec(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -219,7 +305,7 @@ fn extract_type_spec(
         Some(visibility),
     );
 
-    // For structs, extract fields
+    // For structs, extract fields and their type references
     if let Some(type_n) = type_node {
         if type_n.kind() == "struct_type"
             && let Some(field_list) = find_child_by_field(type_n, "fields").or_else(|| {
@@ -231,23 +317,33 @@ fn extract_type_spec(
         {
             let mut cursor = field_list.walk();
             for child in field_list.children(&mut cursor) {
-                if child.kind() == "field_declaration"
-                    && let Some(field_name_node) = find_child_by_field(child, "name")
-                {
-                    let field_name = node_text(field_name_node, source);
-                    let field_line = node_line_range(child);
-                    let field_vis = go_visibility(&field_name);
-                    push_symbol(
-                        symbols,
-                        file_path,
-                        format!("{name}.{field_name}"),
-                        "property",
-                        field_line,
-                        Some(&name),
-                        None,
-                        None,
-                        Some(field_vis),
-                    );
+                if child.kind() == "field_declaration" {
+                    if let Some(field_name_node) = find_child_by_field(child, "name") {
+                        let field_name = node_text(field_name_node, source);
+                        let field_line = node_line_range(child);
+                        let field_vis = go_visibility(&field_name);
+                        push_symbol(
+                            symbols,
+                            file_path,
+                            format!("{name}.{field_name}"),
+                            "property",
+                            field_line,
+                            Some(&name),
+                            None,
+                            None,
+                            Some(field_vis),
+                        );
+                    }
+                    // Extract type references from field type
+                    if let Some(field_type) = find_child_by_field(child, "type") {
+                        extract_type_refs_from_node(
+                            field_type,
+                            source,
+                            file_path,
+                            Some(&name),
+                            references,
+                        );
+                    }
                 }
                 // Extract comments inside struct
                 if child.kind() == "comment" {
@@ -344,7 +440,13 @@ fn extract_var_const(
     }
 }
 
-fn extract_imports(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_imports(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     let mut cursor = node.walk();
@@ -360,7 +462,7 @@ fn extract_imports(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
                 push_symbol(
                     symbols,
                     file_path,
-                    path,
+                    path.clone(),
                     "import",
                     line,
                     None,
@@ -368,6 +470,15 @@ fn extract_imports(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
                     alias,
                     Some("private".to_string()),
                 );
+                // Also record as import reference
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name: path,
+                    kind: "import".to_string(),
+                    line,
+                    caller: None,
+                    project: String::new(),
+                });
             }
         }
         // Also handle single import: `import "fmt"`
@@ -386,7 +497,7 @@ fn extract_imports(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
                         push_symbol(
                             symbols,
                             file_path,
-                            path,
+                            path.clone(),
                             "import",
                             spec_line,
                             None,
@@ -394,6 +505,15 @@ fn extract_imports(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
                             alias,
                             Some("private".to_string()),
                         );
+                        // Also record as import reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: path,
+                            kind: "import".to_string(),
+                            line: spec_line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                 }
             }
@@ -420,6 +540,141 @@ fn extract_package(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
             );
         }
     }
+}
+
+/// Extract a function call as a reference.
+fn extract_call(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let line = node_line_range(node);
+
+    // The "function" field contains the callable expression
+    let Some(func) = find_child_by_field(node, "function") else {
+        return;
+    };
+
+    // Extract the name of the called function
+    let name = match func.kind() {
+        "identifier" => node_text(func, source),
+        "selector_expression" => node_text(func, source),
+        _ => return,
+    };
+
+    // Skip builtins
+    if is_go_builtin_call(&name) {
+        return;
+    }
+
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Check if a call is to a Go builtin that we want to skip.
+fn is_go_builtin_call(name: &str) -> bool {
+    let base = name.split('.').next_back().unwrap_or(name);
+    matches!(
+        base,
+        "make"
+            | "len"
+            | "cap"
+            | "append"
+            | "copy"
+            | "delete"
+            | "close"
+            | "panic"
+            | "recover"
+            | "print"
+            | "println"
+            | "new"
+            | "complex"
+            | "real"
+            | "imag"
+    )
+}
+
+/// Extract type references from a node (parameters, return types, fields).
+fn extract_type_refs_from_node(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let mut stack = vec![node];
+
+    while let Some(n) = stack.pop() {
+        match n.kind() {
+            "type_identifier" => {
+                let name = node_text(n, source);
+                if !is_go_primitive_type(&name) {
+                    references.push(ReferenceEntry {
+                        file: file_path.to_string(),
+                        name,
+                        kind: "type_annotation".to_string(),
+                        line: node_line_range(n),
+                        caller: parent_ctx.map(String::from),
+                        project: String::new(),
+                    });
+                }
+            }
+            "qualified_type" => {
+                let name = node_text(n, source);
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name,
+                    kind: "type_annotation".to_string(),
+                    line: node_line_range(n),
+                    caller: parent_ctx.map(String::from),
+                    project: String::new(),
+                });
+                continue; // Don't recurse into children
+            }
+            _ => {}
+        }
+
+        // Recurse into children
+        let mut cursor = n.walk();
+        for child in n.children(&mut cursor) {
+            stack.push(child);
+        }
+    }
+}
+
+/// Check if a type is a Go primitive.
+fn is_go_primitive_type(name: &str) -> bool {
+    matches!(
+        name,
+        "int"
+            | "int8"
+            | "int16"
+            | "int32"
+            | "int64"
+            | "uint"
+            | "uint8"
+            | "uint16"
+            | "uint32"
+            | "uint64"
+            | "uintptr"
+            | "float32"
+            | "float64"
+            | "complex64"
+            | "complex128"
+            | "bool"
+            | "byte"
+            | "rune"
+            | "string"
+            | "error"
+    )
 }
 
 fn extract_go_comment(
@@ -674,5 +929,80 @@ func Helper() {}
 /* Block comment */";
         let (_symbols, texts, _refs) = parse_file(source, "go", "test.go").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_go_call_references() {
+        let source = b"package main
+
+func caller() {
+    someFunction()
+    pkg.NestedCall()
+}
+
+func someFunction() {}";
+        let (_symbols, _texts, refs) = parse_file(source, "go", "test.go").unwrap();
+
+        let call_refs: Vec<_> = refs.iter().filter(|r| r.kind == "call").collect();
+        assert!(
+            call_refs.iter().any(|r| r.name == "someFunction"),
+            "should find someFunction call"
+        );
+        assert!(
+            call_refs.iter().any(|r| r.name.contains("NestedCall")),
+            "should find nested call"
+        );
+    }
+
+    #[test]
+    fn test_go_import_references() {
+        let source = b"package main
+
+import \"fmt\"
+import (
+    \"os\"
+)";
+        let (_symbols, _texts, refs) = parse_file(source, "go", "test.go").unwrap();
+
+        let import_refs: Vec<_> = refs.iter().filter(|r| r.kind == "import").collect();
+        assert!(
+            import_refs.iter().any(|r| r.name == "fmt"),
+            "should find fmt import"
+        );
+        assert!(
+            import_refs.iter().any(|r| r.name == "os"),
+            "should find os import"
+        );
+    }
+
+    #[test]
+    fn test_go_type_references() {
+        let source = b"package main
+
+type MyStruct struct {
+    field OtherType
+}
+
+func process(input CustomType) ResultType {
+    return nil
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "go", "test.go").unwrap();
+
+        let type_refs: Vec<_> = refs
+            .iter()
+            .filter(|r| r.kind == "type_annotation")
+            .collect();
+        assert!(
+            type_refs.iter().any(|r| r.name == "OtherType"),
+            "should find OtherType reference"
+        );
+        assert!(
+            type_refs.iter().any(|r| r.name == "CustomType"),
+            "should find CustomType reference"
+        );
+        assert!(
+            type_refs.iter().any(|r| r.name == "ResultType"),
+            "should find ResultType reference"
+        );
     }
 }
