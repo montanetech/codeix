@@ -362,16 +362,26 @@ $ git commit -m "feat: ..."
 
 | Tool | Input | Returns |
 |---|---|---|
-| `get_file_symbols` | `file` path | All symbols in that file, ordered by line |
-| `get_children` | `file`, `parent` name | Direct children of a symbol |
-| `get_imports` | `file` path | All imports for that file |
+| `get_file_symbols` | `file` path, optional pagination | All symbols in that file, ordered by line |
+| `get_children` | `file`, `parent` name, optional pagination | Direct children of a symbol |
+| `get_imports` | `file` path, optional pagination | All imports for that file |
 
 ### Graph tools (call relationships)
 
 | Tool | Input | Returns |
 |---|---|---|
-| `get_callers` | `name`, optional `kind`/`project` filters | All call sites and references to a symbol |
-| `get_callees` | `caller`, optional `kind`/`project` filters | All symbols that a function calls |
+| `get_callers` | `name`, optional `kind`/`project`/pagination/snippets | All call sites and references to a symbol |
+| `get_callees` | `caller`, optional `kind`/`project`/pagination/snippets | All symbols that a function calls |
+
+### Common parameters
+
+All list/search tools support these optional parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `limit` | 100 | Maximum results to return |
+| `offset` | 0 | Skip N results for pagination |
+| `snippet_lines` | 10 | Code context lines (0=none, -1=all) |
 
 ### Index management
 

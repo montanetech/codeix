@@ -429,15 +429,21 @@ impl SearchDb {
     }
 
     /// Get all symbols in a file, ordered by start line.
-    pub fn get_file_symbols(&self, file: &str) -> Result<Vec<SymbolEntry>> {
+    pub fn get_file_symbols(
+        &self,
+        file: &str,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
             "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
              FROM symbols
              WHERE file = ?1
-             ORDER BY line_start",
+             ORDER BY line_start
+             LIMIT ?2 OFFSET ?3",
         )?;
 
-        let rows = stmt.query_map([file], |row| {
+        let rows = stmt.query_map(rusqlite::params![file, limit, offset], |row| {
             Ok(SymbolEntry {
                 project: row.get(0)?,
                 file: row.get(1)?,
@@ -459,15 +465,22 @@ impl SearchDb {
     }
 
     /// Get direct children of a symbol in a file.
-    pub fn get_children(&self, file: &str, parent: &str) -> Result<Vec<SymbolEntry>> {
+    pub fn get_children(
+        &self,
+        file: &str,
+        parent: &str,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
             "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
              FROM symbols
              WHERE file = ?1 AND parent = ?2
-             ORDER BY line_start",
+             ORDER BY line_start
+             LIMIT ?3 OFFSET ?4",
         )?;
 
-        let rows = stmt.query_map(rusqlite::params![file, parent], |row| {
+        let rows = stmt.query_map(rusqlite::params![file, parent, limit, offset], |row| {
             Ok(SymbolEntry {
                 project: row.get(0)?,
                 file: row.get(1)?,
@@ -489,15 +502,16 @@ impl SearchDb {
     }
 
     /// Get all imports for a file (symbols with kind "import").
-    pub fn get_imports(&self, file: &str) -> Result<Vec<SymbolEntry>> {
+    pub fn get_imports(&self, file: &str, limit: u32, offset: u32) -> Result<Vec<SymbolEntry>> {
         let mut stmt = self.conn.prepare(
             "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
              FROM symbols
              WHERE file = ?1 AND kind = 'import'
-             ORDER BY line_start",
+             ORDER BY line_start
+             LIMIT ?2 OFFSET ?3",
         )?;
 
-        let rows = stmt.query_map([file], |row| {
+        let rows = stmt.query_map(rusqlite::params![file, limit, offset], |row| {
             Ok(SymbolEntry {
                 project: row.get(0)?,
                 file: row.get(1)?,
@@ -525,6 +539,8 @@ impl SearchDb {
         name: &str,
         kind: Option<&str>,
         project: Option<&str>,
+        limit: u32,
+        offset: u32,
     ) -> Result<Vec<ReferenceEntry>> {
         let mut conditions = vec!["name = ?".to_string()];
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(name.to_string())];
@@ -538,11 +554,16 @@ impl SearchDb {
             params.push(Box::new(p.to_string()));
         }
 
+        // Add limit and offset
+        params.push(Box::new(limit));
+        params.push(Box::new(offset));
+
         let sql = format!(
             "SELECT project, file, name, kind, line_start, line_end, caller
              FROM refs
              WHERE {}
-             ORDER BY file, line_start",
+             ORDER BY file, line_start
+             LIMIT ? OFFSET ?",
             conditions.join(" AND ")
         );
 
@@ -574,6 +595,8 @@ impl SearchDb {
         caller: &str,
         kind: Option<&str>,
         project: Option<&str>,
+        limit: u32,
+        offset: u32,
     ) -> Result<Vec<ReferenceEntry>> {
         let mut conditions = vec!["caller = ?".to_string()];
         let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(caller.to_string())];
@@ -587,11 +610,16 @@ impl SearchDb {
             params.push(Box::new(p.to_string()));
         }
 
+        // Add limit and offset
+        params.push(Box::new(limit));
+        params.push(Box::new(offset));
+
         let sql = format!(
             "SELECT project, file, name, kind, line_start, line_end, caller
              FROM refs
              WHERE {}
-             ORDER BY file, line_start",
+             ORDER BY file, line_start
+             LIMIT ? OFFSET ?",
             conditions.join(" AND ")
         );
 
