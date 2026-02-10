@@ -364,7 +364,6 @@ $ git commit -m "feat: ..."
 |---|---|---|
 | `get_file_symbols` | `file` path, optional pagination | All symbols in that file, ordered by line |
 | `get_children` | `file`, `parent` name, optional pagination | Direct children of a symbol |
-| `get_imports` | `file` path, optional pagination | All imports for that file |
 
 ### Graph tools (call relationships)
 

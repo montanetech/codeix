@@ -21,7 +21,7 @@ use crate::mount::MountTable;
 use crate::mount::handler::flush_dirty_mounts;
 use crate::utils::format::{
     EnrichedSearchResult, ExploreResult, OutputFormat, ReferenceWithSnippet, SymbolWithSnippet,
-    format_explore, format_imports, format_references, format_search_results, format_symbols,
+    format_explore, format_references, format_search_results, format_symbols,
 };
 use crate::utils::manifest;
 
@@ -88,22 +88,6 @@ pub struct GetChildrenParams {
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
-    /// Maximum number of results to return (default: 100)
-    #[arg(short, long)]
-    pub limit: Option<u32>,
-    /// Number of results to skip for pagination (default: 0)
-    #[arg(short, long)]
-    pub offset: Option<u32>,
-    /// Output format: "json" (default for MCP) or "text" (default for CLI)
-    #[arg(long, default_value = "text")]
-    #[serde(default)]
-    pub format: OutputFormat,
-}
-
-#[derive(Debug, Deserialize, JsonSchema, Args)]
-pub struct GetImportsParams {
-    /// File path to get imports for
-    pub file: String,
     /// Maximum number of results to return (default: 100)
     #[arg(short, long)]
     pub limit: Option<u32>,
@@ -396,29 +380,6 @@ impl CodeIndexServer {
         let enriched = self.enrich_with_snippets(results, snippet_lines);
 
         let output = format_symbols(&enriched, params.format)
-            .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
-    }
-
-    /// Get all import statements for a file.
-    #[tool(description = "Get all import statements for a file")]
-    pub async fn get_imports(
-        &self,
-        Parameters(params): Parameters<GetImportsParams>,
-    ) -> Result<CallToolResult, McpError> {
-        let limit = params.limit.unwrap_or(100);
-        let offset = params.offset.unwrap_or(0);
-
-        let db = self
-            .db
-            .lock()
-            .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
-        let results = db
-            .get_imports(&params.file, limit, offset)
-            .map_err(|e| McpError::internal_error(format!("get_imports failed: {e}"), None))?;
-
-        let output = format_imports(&results, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(output)]))
@@ -723,7 +684,6 @@ impl ServerHandler for CodeIndexServer {
 - `search`: Unified FTS across symbols, files, and texts. BM25-ranked results.
 - `get_file_symbols`: All symbols in a file, ordered by line number.
 - `get_children`: Direct children of a symbol (e.g., methods of a class).
-- `get_imports`: Import statements in a file.
 - `get_callers`: Find all places that call/reference a symbol.
 - `get_callees`: Find all symbols that a function/method calls.
 - `flush_index`: Persist pending changes to .codeindex/ files.

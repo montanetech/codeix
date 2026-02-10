@@ -63,7 +63,7 @@ Works with Git repos, npm, PyPI, and crates.io.
 
 ## MCP tools
 
-Eight tools, zero setup. The agent queries immediately — no init, no config, no refresh.
+Seven tools, zero setup. The agent queries immediately — no init, no config, no refresh.
 
 | Tool | What it does |
 |---|---|
@@ -71,7 +71,6 @@ Eight tools, zero setup. The agent queries immediately — no init, no config, n
 | `search` | Unified full-text search across symbols, files, and texts (FTS5, BM25-ranked) with scope/kind/path/project filters |
 | `get_file_symbols` | List all symbols in a file |
 | `get_children` | Get children of a class/module |
-| `get_imports` | List imports for a file |
 | `get_callers` | Find all places that call or reference a symbol |
 | `get_callees` | Find all symbols that a function/method calls |
 | `flush_index` | Flush pending index changes to disk |

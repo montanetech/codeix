@@ -15,7 +15,7 @@ use crate::mount::MountedEvent;
 use crate::mount::handler::{flush_mount_to_disk, run_event_loop};
 use crate::server::mcp::{
     CodeIndexServer, ExploreParams, GetCalleesParams, GetCallersParams, GetChildrenParams,
-    GetFileSymbolsParams, GetImportsParams, SearchParams, extract_result_text,
+    GetFileSymbolsParams, SearchParams, extract_result_text,
 };
 
 /// REPL commands matching the MCP tools.
@@ -29,8 +29,6 @@ pub enum QueryCommand {
     GetFileSymbols(#[command(flatten)] GetFileSymbolsParams),
     /// Get children of a symbol
     GetChildren(#[command(flatten)] GetChildrenParams),
-    /// Get imports for a file
-    GetImports(#[command(flatten)] GetImportsParams),
     /// Explore project structure (files grouped by directory)
     Explore(#[command(flatten)] ExploreParams),
     /// Find callers of a symbol
@@ -105,7 +103,6 @@ pub fn run(root: &Path, watch: bool, command: Vec<String>) -> Result<()> {
                     server.get_file_symbols(Parameters(params)).await
                 }
                 QueryCommand::GetChildren(params) => server.get_children(Parameters(params)).await,
-                QueryCommand::GetImports(params) => server.get_imports(Parameters(params)).await,
                 QueryCommand::Explore(params) => server.explore(Parameters(params)).await,
                 QueryCommand::GetCallers(params) => server.get_callers(Parameters(params)).await,
                 QueryCommand::GetCallees(params) => server.get_callees(Parameters(params)).await,
