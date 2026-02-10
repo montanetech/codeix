@@ -57,8 +57,14 @@ pub struct GetFileSymbolsParams {
     /// File path to get symbols for
     pub file: String,
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
-    #[arg(short, long)]
+    #[arg(long)]
     pub snippet_lines: Option<i32>,
+    /// Maximum number of results to return (default: 100)
+    #[arg(short, long)]
+    pub limit: Option<u32>,
+    /// Number of results to skip for pagination (default: 0)
+    #[arg(short, long)]
+    pub offset: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -68,14 +74,26 @@ pub struct GetChildrenParams {
     /// Name of the parent symbol
     pub parent: String,
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
-    #[arg(short, long)]
+    #[arg(long)]
     pub snippet_lines: Option<i32>,
+    /// Maximum number of results to return (default: 100)
+    #[arg(short, long)]
+    pub limit: Option<u32>,
+    /// Number of results to skip for pagination (default: 0)
+    #[arg(short, long)]
+    pub offset: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
 pub struct GetImportsParams {
     /// File path to get imports for
     pub file: String,
+    /// Maximum number of results to return (default: 100)
+    #[arg(short, long)]
+    pub limit: Option<u32>,
+    /// Number of results to skip for pagination (default: 0)
+    #[arg(short, long)]
+    pub offset: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -88,6 +106,15 @@ pub struct GetCallersParams {
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
+    /// Maximum number of results to return (default: 100)
+    #[arg(short, long)]
+    pub limit: Option<u32>,
+    /// Number of results to skip for pagination (default: 0)
+    #[arg(short, long)]
+    pub offset: Option<u32>,
+    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    #[arg(long)]
+    pub snippet_lines: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -100,6 +127,15 @@ pub struct GetCalleesParams {
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
+    /// Maximum number of results to return (default: 100)
+    #[arg(short, long)]
+    pub limit: Option<u32>,
+    /// Number of results to skip for pagination (default: 0)
+    #[arg(short, long)]
+    pub offset: Option<u32>,
+    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    #[arg(long)]
+    pub snippet_lines: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -118,6 +154,15 @@ pub struct ExploreParams {
 struct SymbolWithSnippet {
     #[serde(flatten)]
     symbol: SymbolEntry,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    snippet: Option<String>,
+}
+
+/// Response wrapper for ReferenceEntry with optional snippet.
+#[derive(Debug, Serialize)]
+struct ReferenceWithSnippet {
+    #[serde(flatten)]
+    reference: crate::index::format::ReferenceEntry,
     #[serde(skip_serializing_if = "Option::is_none")]
     snippet: Option<String>,
 }
@@ -189,6 +234,35 @@ impl CodeIndexServer {
                     snippet_lines,
                 );
                 Some(SymbolWithSnippet { symbol, snippet })
+            })
+            .collect()
+    }
+
+    /// Enrich references with snippets, filtering out refs whose files are missing.
+    fn enrich_refs_with_snippets(
+        &self,
+        references: Vec<crate::index::format::ReferenceEntry>,
+        snippet_lines: i32,
+    ) -> Vec<ReferenceWithSnippet> {
+        references
+            .into_iter()
+            .filter_map(|reference| {
+                // Skip refs whose files are missing
+                if !self
+                    .snippet_extractor
+                    .file_exists(&reference.project, &reference.file)
+                {
+                    return None;
+                }
+
+                let snippet = self.snippet_extractor.extract_snippet(
+                    &reference.project,
+                    &reference.file,
+                    reference.line[0],
+                    reference.line[1],
+                    snippet_lines,
+                );
+                Some(ReferenceWithSnippet { reference, snippet })
             })
             .collect()
     }
@@ -274,12 +348,15 @@ impl CodeIndexServer {
         &self,
         Parameters(params): Parameters<GetFileSymbolsParams>,
     ) -> Result<CallToolResult, McpError> {
+        let limit = params.limit.unwrap_or(100);
+        let offset = params.offset.unwrap_or(0);
+
         let db = self
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .get_file_symbols(&params.file)
+            .get_file_symbols(&params.file, limit, offset)
             .map_err(|e| McpError::internal_error(format!("get_file_symbols failed: {e}"), None))?;
 
         drop(db); // Release lock before file I/O
@@ -301,12 +378,15 @@ impl CodeIndexServer {
         &self,
         Parameters(params): Parameters<GetChildrenParams>,
     ) -> Result<CallToolResult, McpError> {
+        let limit = params.limit.unwrap_or(100);
+        let offset = params.offset.unwrap_or(0);
+
         let db = self
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .get_children(&params.file, &params.parent)
+            .get_children(&params.file, &params.parent, limit, offset)
             .map_err(|e| McpError::internal_error(format!("get_children failed: {e}"), None))?;
 
         drop(db); // Release lock before file I/O
@@ -326,12 +406,15 @@ impl CodeIndexServer {
         &self,
         Parameters(params): Parameters<GetImportsParams>,
     ) -> Result<CallToolResult, McpError> {
+        let limit = params.limit.unwrap_or(100);
+        let offset = params.offset.unwrap_or(0);
+
         let db = self
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .get_imports(&params.file)
+            .get_imports(&params.file, limit, offset)
             .map_err(|e| McpError::internal_error(format!("get_imports failed: {e}"), None))?;
 
         let json = serde_json::to_string_pretty(&results)
@@ -541,6 +624,9 @@ impl CodeIndexServer {
         &self,
         Parameters(params): Parameters<GetCallersParams>,
     ) -> Result<CallToolResult, McpError> {
+        let limit = params.limit.unwrap_or(100);
+        let offset = params.offset.unwrap_or(0);
+
         let db = self
             .db
             .lock()
@@ -550,10 +636,17 @@ impl CodeIndexServer {
                 &params.name,
                 params.kind.as_deref(),
                 params.project.as_deref(),
+                limit,
+                offset,
             )
             .map_err(|e| McpError::internal_error(format!("get_callers failed: {e}"), None))?;
 
-        let json = serde_json::to_string_pretty(&results)
+        drop(db); // Release lock before file I/O
+
+        let snippet_lines = params.snippet_lines.unwrap_or(10);
+        let enriched = self.enrich_refs_with_snippets(results, snippet_lines);
+
+        let json = serde_json::to_string_pretty(&enriched)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
@@ -567,6 +660,9 @@ impl CodeIndexServer {
         &self,
         Parameters(params): Parameters<GetCalleesParams>,
     ) -> Result<CallToolResult, McpError> {
+        let limit = params.limit.unwrap_or(100);
+        let offset = params.offset.unwrap_or(0);
+
         let db = self
             .db
             .lock()
@@ -576,10 +672,17 @@ impl CodeIndexServer {
                 &params.caller,
                 params.kind.as_deref(),
                 params.project.as_deref(),
+                limit,
+                offset,
             )
             .map_err(|e| McpError::internal_error(format!("get_callees failed: {e}"), None))?;
 
-        let json = serde_json::to_string_pretty(&results)
+        drop(db); // Release lock before file I/O
+
+        let snippet_lines = params.snippet_lines.unwrap_or(10);
+        let enriched = self.enrich_refs_with_snippets(results, snippet_lines);
+
+        let json = serde_json::to_string_pretty(&enriched)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json)]))
@@ -624,22 +727,24 @@ impl ServerHandler for CodeIndexServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             instructions: Some(
-"Code index providing full-text search and structural navigation over indexed codebases.\n\n\
-                 **Discovery:**\n\
-                 - `explore`: Project structure — metadata, subprojects, files grouped by directory. \
-                 Use path to scope, depth to control traversal.\n\n\
-                 **Primary search tool:**\n\
-                 - `search`: Unified FTS across symbols (functions, classes, methods), files, and texts (docstrings, comments). \
-                 Filter by scope, kind, path (glob), project. Returns BM25-ranked results with code snippets.\n\n\
-                 **Structural navigation:**\n\
-                 - `get_file_symbols`: All symbols in a file, ordered by line number.\n\
-                 - `get_children`: Direct children of a symbol (e.g., methods of a class).\n\
-                 - `get_imports`: Import statements in a file.\n\n\
-                 **Reference tracking:**\n\
-                 - `get_callers`: Find all places that call/reference a symbol.\n\
-                 - `get_callees`: Find all symbols that a function/method calls.\n\n\
-                 **Utilities:**\n\
-                 - `flush_index`: Persist pending changes to .codeindex/ files."
+"Code index providing full-text search and structural navigation over indexed codebases.
+
+**Tools:**
+- `explore`: Project structure — metadata, subprojects, files grouped by directory.
+- `search`: Unified FTS across symbols, files, and texts. BM25-ranked results.
+- `get_file_symbols`: All symbols in a file, ordered by line number.
+- `get_children`: Direct children of a symbol (e.g., methods of a class).
+- `get_imports`: Import statements in a file.
+- `get_callers`: Find all places that call/reference a symbol.
+- `get_callees`: Find all symbols that a function/method calls.
+- `flush_index`: Persist pending changes to .codeindex/ files.
+
+**Common parameters:**
+- `limit` (default 100): Maximum results to return
+- `offset` (default 0): Skip N results for pagination
+- `snippet_lines` (default 10): Code context lines (0=none, -1=all, N=lines)
+- `kind`: Filter by symbol kind (function, method, class, struct, interface, enum, constant, variable, property, module, import, impl) or reference kind (call, import, type_annotation)
+- `project`: Filter by project path (relative from workspace root)"
                     .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
