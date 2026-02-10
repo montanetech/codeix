@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -61,11 +61,181 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+// ---------------------------------------------------------------------------
+// Builtin detection for filtering noisy references
+// ---------------------------------------------------------------------------
+
+/// Check if a function name is a JavaScript builtin.
+fn is_js_builtin_call(name: &str) -> bool {
+    matches!(
+        name,
+        // Console methods
+        "console"
+        | "log"
+        | "error"
+        | "warn"
+        | "info"
+        | "debug"
+        | "trace"
+        | "dir"
+        | "table"
+        | "time"
+        | "timeEnd"
+        | "clear"
+        | "count"
+        | "group"
+        | "groupEnd"
+        | "assert"
+        // Global functions
+        | "parseInt"
+        | "parseFloat"
+        | "isNaN"
+        | "isFinite"
+        | "encodeURI"
+        | "decodeURI"
+        | "encodeURIComponent"
+        | "decodeURIComponent"
+        | "eval"
+        | "setTimeout"
+        | "setInterval"
+        | "clearTimeout"
+        | "clearInterval"
+        | "fetch"
+        | "require"
+        | "alert"
+        | "confirm"
+        | "prompt"
+        // Object/Array constructors
+        | "Object"
+        | "Array"
+        | "String"
+        | "Number"
+        | "Boolean"
+        | "Symbol"
+        | "BigInt"
+        | "Date"
+        | "RegExp"
+        | "Error"
+        | "Map"
+        | "Set"
+        | "WeakMap"
+        | "WeakSet"
+        | "Promise"
+        | "Proxy"
+        | "Reflect"
+        | "JSON"
+        | "Math"
+        | "Function"
+        // Common array/object methods
+        | "push"
+        | "pop"
+        | "shift"
+        | "unshift"
+        | "slice"
+        | "splice"
+        | "concat"
+        | "join"
+        | "reverse"
+        | "sort"
+        | "filter"
+        | "map"
+        | "reduce"
+        | "reduceRight"
+        | "forEach"
+        | "find"
+        | "findIndex"
+        | "indexOf"
+        | "includes"
+        | "every"
+        | "some"
+        | "flat"
+        | "flatMap"
+        | "keys"
+        | "values"
+        | "entries"
+        | "from"
+        | "of"
+        | "isArray"
+        // String methods
+        | "charAt"
+        | "charCodeAt"
+        | "substring"
+        | "substr"
+        | "replace"
+        | "replaceAll"
+        | "split"
+        | "toLowerCase"
+        | "toUpperCase"
+        | "trim"
+        | "trimStart"
+        | "trimEnd"
+        | "padStart"
+        | "padEnd"
+        | "repeat"
+        | "startsWith"
+        | "endsWith"
+        | "match"
+        | "search"
+        // Object methods
+        | "hasOwnProperty"
+        | "toString"
+        | "valueOf"
+        | "assign"
+        | "create"
+        | "defineProperty"
+        | "freeze"
+        | "seal"
+        | "getPrototypeOf"
+        | "setPrototypeOf"
+        // Promise methods
+        | "then"
+        | "catch"
+        | "finally"
+        | "resolve"
+        | "reject"
+        | "all"
+        | "race"
+        | "allSettled"
+        | "any"
+        // Math methods
+        | "abs"
+        | "ceil"
+        | "floor"
+        | "round"
+        | "max"
+        | "min"
+        | "pow"
+        | "sqrt"
+        | "random"
+        | "sin"
+        | "cos"
+        // JSON methods
+        | "parse"
+        | "stringify"
+        // Test assertions
+        | "describe"
+        | "it"
+        | "test"
+        | "expect"
+        | "beforeEach"
+        | "afterEach"
+        | "beforeAll"
+        | "afterAll"
+        | "jest"
+        | "mock"
+        | "spyOn"
+        | "toBe"
+        | "toEqual"
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -73,6 +243,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -90,7 +261,9 @@ fn walk_node(
             extract_function_decl(node, source, file_path, parent_ctx, symbols);
         }
         "class_declaration" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_class(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return; // handled recursively
         }
         "method_definition" => {
@@ -110,14 +283,24 @@ fn walk_node(
                     parent_ctx,
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
             return;
         }
         "import_statement" => {
-            extract_import(node, source, file_path, symbols);
+            extract_import(node, source, file_path, symbols, references);
         }
+
+        // --- Reference extraction ---
+        "call_expression" => {
+            extract_call_ref(node, source, file_path, parent_ctx, references);
+        }
+        "new_expression" => {
+            extract_new_ref(node, source, file_path, parent_ctx, references);
+        }
+
         "comment" => {
             extract_js_comment(node, source, file_path, parent_ctx, texts);
             return;
@@ -139,8 +322,105 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Reference extraction
+// ---------------------------------------------------------------------------
+
+/// Extract a function call reference.
+fn extract_call_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let func = match find_child_by_field(node, "function") {
+        Some(f) => f,
+        None => return,
+    };
+
+    let name = get_call_name(func, source);
+    if name.is_empty() || is_js_builtin_call(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Extract a `new` expression reference (instantiation).
+fn extract_new_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let constructor = match find_child_by_field(node, "constructor") {
+        Some(c) => c,
+        None => return,
+    };
+
+    let name = get_call_name(constructor, source);
+    if name.is_empty() || is_js_builtin_call(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "instantiation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Get the name of a function/method call.
+fn get_call_name(node: Node, source: &[u8]) -> String {
+    match node.kind() {
+        "identifier" => node_text(node, source),
+        "member_expression" => {
+            // obj.method or obj.prop.method
+            if let Some(prop) = find_child_by_field(node, "property") {
+                if let Some(obj) = find_child_by_field(node, "object") {
+                    let obj_name = get_call_name(obj, source);
+                    let prop_name = node_text(prop, source);
+                    if obj_name.is_empty() {
+                        prop_name
+                    } else {
+                        format!("{}.{}", obj_name, prop_name)
+                    }
+                } else {
+                    node_text(prop, source)
+                }
+            } else {
+                String::new()
+            }
+        }
+        "call_expression" => {
+            // Chained calls: foo().bar()
+            if let Some(func) = find_child_by_field(node, "function") {
+                get_call_name(func, source)
+            } else {
+                String::new()
+            }
+        }
+        _ => String::new(),
     }
 }
 
@@ -198,6 +478,7 @@ fn extract_function_decl(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_class(
     node: Node,
     source: &[u8],
@@ -205,6 +486,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -233,6 +515,74 @@ fn extract_class(
         name.clone()
     };
 
+    // Extract class heritage references (extends)
+    // Try different tree-sitter node structures for extends clause
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        match child.kind() {
+            "class_heritage" => {
+                // Extract the superclass name from heritage node
+                let mut heritage_cursor = child.walk();
+                for heritage_child in child.children(&mut heritage_cursor) {
+                    if heritage_child.kind() == "extends_clause" {
+                        // Try to get the superclass identifier
+                        if let Some(superclass) = heritage_child.child(1).or_else(|| {
+                            let mut c = heritage_child.walk();
+                            heritage_child
+                                .children(&mut c)
+                                .find(|n| n.kind() == "identifier")
+                        }) {
+                            let super_name = node_text(superclass, source);
+                            if !super_name.is_empty() && !is_js_builtin_call(&super_name) {
+                                references.push(ReferenceEntry {
+                                    file: file_path.to_string(),
+                                    name: super_name,
+                                    kind: "type_annotation".to_string(),
+                                    line: node_line_range(heritage_child),
+                                    caller: Some(full_name.clone()),
+                                    project: String::new(),
+                                });
+                            }
+                        }
+                    } else if matches!(heritage_child.kind(), "identifier" | "member_expression") {
+                        // Direct identifier in heritage
+                        let super_name = node_text(heritage_child, source);
+                        if !super_name.is_empty() && !is_js_builtin_call(&super_name) {
+                            references.push(ReferenceEntry {
+                                file: file_path.to_string(),
+                                name: super_name,
+                                kind: "type_annotation".to_string(),
+                                line: node_line_range(heritage_child),
+                                caller: Some(full_name.clone()),
+                                project: String::new(),
+                            });
+                        }
+                    }
+                }
+            }
+            "extends_clause" => {
+                // Direct extends clause as child of class
+                if let Some(superclass) = child.child(1).or_else(|| {
+                    let mut c = child.walk();
+                    child.children(&mut c).find(|n| n.kind() == "identifier")
+                }) {
+                    let super_name = node_text(superclass, source);
+                    if !super_name.is_empty() && !is_js_builtin_call(&super_name) {
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: super_name,
+                            kind: "type_annotation".to_string(),
+                            line: node_line_range(child),
+                            caller: Some(full_name.clone()),
+                            project: String::new(),
+                        });
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     // Extract tokens from class body (for class-level properties/static blocks)
     let tokens = find_child_by_field(node, "body")
         .and_then(|body| filter_js_tokens(extract_tokens(body, source)));
@@ -260,6 +610,7 @@ fn extract_class(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -447,7 +798,13 @@ fn extract_variable_decl(
     }
 }
 
-fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_import(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // Get the source module
@@ -471,7 +828,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                         push_symbol(
                             symbols,
                             file_path,
-                            full_name,
+                            full_name.clone(),
                             "import",
                             line,
                             None,
@@ -479,6 +836,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                             Some(name),
                             Some("private".to_string()),
                         );
+                        // Also add import reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: full_name,
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                     "named_imports" => {
                         // `import { foo, bar as baz } from "..."`
@@ -495,7 +861,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                                     push_symbol(
                                         symbols,
                                         file_path,
-                                        full_name,
+                                        full_name.clone(),
                                         "import",
                                         line,
                                         None,
@@ -503,6 +869,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                                         alias,
                                         Some("private".to_string()),
                                     );
+                                    // Also add import reference
+                                    references.push(ReferenceEntry {
+                                        file: file_path.to_string(),
+                                        name: full_name,
+                                        kind: "import".to_string(),
+                                        line,
+                                        caller: None,
+                                        project: String::new(),
+                                    });
                                 }
                             }
                         }
@@ -522,7 +897,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                         push_symbol(
                             symbols,
                             file_path,
-                            full_name,
+                            full_name.clone(),
                             "import",
                             line,
                             None,
@@ -530,6 +905,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                             alias,
                             Some("private".to_string()),
                         );
+                        // Also add import reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: full_name,
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                     _ => {}
                 }
@@ -785,5 +1169,58 @@ function helper() {}
         let (_symbols, texts, _refs) = parse_file(source, "javascript", "test.js").unwrap();
         assert!(texts.iter().any(|t| t.kind == "docstring"));
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_js_call_references() {
+        let source = b"function foo() {}
+function bar() {
+    foo();
+    myService.doSomething();
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "javascript", "test.js").unwrap();
+
+        let calls: Vec<_> = refs.iter().filter(|r| r.kind == "call").collect();
+        assert!(calls.iter().any(|r| r.name == "foo"));
+        assert!(calls.iter().any(|r| r.name == "myService.doSomething"));
+    }
+
+    #[test]
+    fn test_js_import_references() {
+        let source = b"import React from 'react';
+import { useState, useEffect } from 'react';
+import * as Utils from './utils';";
+        let (_symbols, _texts, refs) = parse_file(source, "javascript", "test.js").unwrap();
+
+        let imports: Vec<_> = refs.iter().filter(|r| r.kind == "import").collect();
+        assert!(!imports.is_empty());
+        assert!(imports.iter().any(|r| r.name == "react"));
+    }
+
+    #[test]
+    fn test_js_instantiation_references() {
+        let source = b"class MyClass {}
+const obj = new MyClass();
+const service = new MyService();";
+        let (_symbols, _texts, refs) = parse_file(source, "javascript", "test.js").unwrap();
+
+        let instantiations: Vec<_> = refs.iter().filter(|r| r.kind == "instantiation").collect();
+        assert!(instantiations.iter().any(|r| r.name == "MyClass"));
+        assert!(instantiations.iter().any(|r| r.name == "MyService"));
+    }
+
+    #[test]
+    fn test_js_class_heritage_references() {
+        let source = b"class Animal {}
+class Dog extends Animal {
+    bark() {}
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "javascript", "test.js").unwrap();
+
+        let type_refs: Vec<_> = refs
+            .iter()
+            .filter(|r| r.kind == "type_annotation")
+            .collect();
+        assert!(type_refs.iter().any(|r| r.name == "Animal"));
     }
 }
