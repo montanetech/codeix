@@ -4,7 +4,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -98,9 +98,175 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, "public", symbols, texts, 0);
+    walk_node(
+        root, source, file_path, None, "public", symbols, texts, references, 0,
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Builtin detection for filtering noisy references
+// ---------------------------------------------------------------------------
+
+/// Check if a name is a C++ builtin or STL function.
+fn is_cpp_builtin_call(name: &str) -> bool {
+    matches!(
+        name,
+        // C standard library (inherited)
+        "printf"
+        | "fprintf"
+        | "sprintf"
+        | "snprintf"
+        | "scanf"
+        | "malloc"
+        | "calloc"
+        | "realloc"
+        | "free"
+        | "strlen"
+        | "strcpy"
+        | "strcmp"
+        | "memcpy"
+        | "memset"
+        | "sizeof"
+        // STL containers methods
+        | "push_back"
+        | "pop_back"
+        | "push_front"
+        | "pop_front"
+        | "insert"
+        | "erase"
+        | "clear"
+        | "empty"
+        | "size"
+        | "capacity"
+        | "reserve"
+        | "resize"
+        | "begin"
+        | "end"
+        | "rbegin"
+        | "rend"
+        | "cbegin"
+        | "cend"
+        | "front"
+        | "back"
+        | "at"
+        | "find"
+        | "count"
+        | "lower_bound"
+        | "upper_bound"
+        | "emplace"
+        | "emplace_back"
+        // Smart pointers
+        | "make_unique"
+        | "make_shared"
+        | "make_pair"
+        | "make_tuple"
+        | "get"
+        | "reset"
+        | "release"
+        | "swap"
+        // Algorithms
+        | "sort"
+        | "find_if"
+        | "copy"
+        | "move"
+        | "transform"
+        | "for_each"
+        | "accumulate"
+        | "count_if"
+        | "remove"
+        | "remove_if"
+        | "reverse"
+        | "unique"
+        | "binary_search"
+        | "min"
+        | "max"
+        | "min_element"
+        | "max_element"
+        // Stream operations
+        | "cout"
+        | "cin"
+        | "cerr"
+        | "clog"
+        | "endl"
+        | "flush"
+        | "getline"
+        // String operations
+        | "to_string"
+        | "stoi"
+        | "stol"
+        | "stod"
+        | "substr"
+        | "length"
+        | "c_str"
+        | "data"
+        | "append"
+        | "compare"
+        // Memory
+        | "new"
+        | "delete"
+        // Cast operators
+        | "static_cast"
+        | "dynamic_cast"
+        | "const_cast"
+        | "reinterpret_cast"
+        // Test framework
+        | "EXPECT_EQ"
+        | "EXPECT_TRUE"
+        | "EXPECT_FALSE"
+        | "ASSERT_EQ"
+        | "ASSERT_TRUE"
+        | "ASSERT_FALSE"
+        | "TEST"
+        | "TEST_F"
+    )
+}
+
+/// Check if a type name is a C++ primitive or STL type.
+fn is_cpp_primitive_type(name: &str) -> bool {
+    matches!(
+        name,
+        "int"
+            | "long"
+            | "short"
+            | "char"
+            | "float"
+            | "double"
+            | "bool"
+            | "void"
+            | "signed"
+            | "unsigned"
+            | "size_t"
+            | "ssize_t"
+            | "ptrdiff_t"
+            | "auto"
+            | "decltype"
+            // STL types (too common)
+            | "string"
+            | "vector"
+            | "map"
+            | "set"
+            | "unordered_map"
+            | "unordered_set"
+            | "list"
+            | "deque"
+            | "queue"
+            | "stack"
+            | "pair"
+            | "tuple"
+            | "array"
+            | "unique_ptr"
+            | "shared_ptr"
+            | "weak_ptr"
+            | "optional"
+            | "variant"
+            | "any"
+            | "function"
+            | "iterator"
+            | "const_iterator"
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -112,6 +278,7 @@ fn walk_node(
     access: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -123,14 +290,16 @@ fn walk_node(
 
     match kind {
         "function_definition" => {
-            extract_function(node, source, file_path, parent_ctx, access, symbols);
+            extract_function(
+                node, source, file_path, parent_ctx, access, symbols, references,
+            );
         }
         "declaration" => {
             extract_declaration(node, source, file_path, parent_ctx, access, symbols);
         }
         "class_specifier" | "struct_specifier" => {
             extract_class(
-                node, source, file_path, kind, parent_ctx, symbols, texts, depth,
+                node, source, file_path, kind, parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
@@ -143,6 +312,7 @@ fn walk_node(
                 parent_ctx,
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
@@ -151,7 +321,9 @@ fn walk_node(
             extract_enum(node, source, file_path, parent_ctx, symbols);
         }
         "namespace_definition" => {
-            extract_namespace(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_namespace(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "template_declaration" => {
@@ -166,6 +338,7 @@ fn walk_node(
                     access,
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
@@ -179,7 +352,7 @@ fn walk_node(
             extract_using_alias(node, source, file_path, parent_ctx, symbols);
         }
         "preproc_include" => {
-            extract_include(node, source, file_path, symbols);
+            extract_include(node, source, file_path, symbols, references);
         }
         "preproc_def" | "preproc_function_def" => {
             extract_macro(node, source, file_path, symbols);
@@ -195,6 +368,15 @@ fn walk_node(
             extract_string(node, source, file_path, parent_ctx, texts);
             return;
         }
+
+        // --- Reference extraction ---
+        "call_expression" => {
+            extract_call_ref(node, source, file_path, parent_ctx, references);
+        }
+        "new_expression" => {
+            extract_new_ref(node, source, file_path, parent_ctx, references);
+        }
+
         _ => {}
     }
 
@@ -209,11 +391,146 @@ fn walk_node(
             access,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
 }
 
+// ---------------------------------------------------------------------------
+// Reference extraction
+// ---------------------------------------------------------------------------
+
+/// Extract a function call reference.
+fn extract_call_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let func = match find_child_by_field(node, "function") {
+        Some(f) => f,
+        None => return,
+    };
+
+    let name = get_call_name(func, source);
+    if name.is_empty() || is_cpp_builtin_call(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Extract a `new` expression reference (instantiation).
+fn extract_new_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let type_node = match find_child_by_field(node, "type") {
+        Some(t) => t,
+        None => return,
+    };
+
+    let name = get_type_name(type_node, source);
+    if name.is_empty() || is_cpp_builtin_call(&name) || is_cpp_primitive_type(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "instantiation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Get the name of a function call.
+fn get_call_name(node: Node, source: &[u8]) -> String {
+    match node.kind() {
+        "identifier" => node_text(node, source),
+        "qualified_identifier" | "template_function" => node_text(node, source),
+        "field_expression" => {
+            // obj.method or obj->method
+            if let Some(field) = find_child_by_field(node, "field") {
+                if let Some(arg) = find_child_by_field(node, "argument") {
+                    let arg_name = get_call_name(arg, source);
+                    let field_name = node_text(field, source);
+                    if arg_name.is_empty() {
+                        field_name
+                    } else {
+                        format!("{}.{}", arg_name, field_name)
+                    }
+                } else {
+                    node_text(field, source)
+                }
+            } else {
+                String::new()
+            }
+        }
+        "scoped_identifier" => node_text(node, source),
+        _ => String::new(),
+    }
+}
+
+/// Get the name of a type node.
+fn get_type_name(node: Node, source: &[u8]) -> String {
+    match node.kind() {
+        "type_identifier" | "identifier" => node_text(node, source),
+        "template_type" => {
+            // Template<T> - get base type
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "type_identifier" {
+                    return node_text(child, source);
+                }
+            }
+            String::new()
+        }
+        "qualified_identifier" | "scoped_type_identifier" => node_text(node, source),
+        _ => String::new(),
+    }
+}
+
+/// Extract a type reference if it's a user-defined type.
+fn extract_type_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let name = get_type_name(node, source);
+    if name.is_empty() || is_cpp_primitive_type(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "type_annotation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+#[allow(clippy::too_many_arguments)]
 fn extract_function(
     node: Node,
     source: &[u8],
@@ -221,6 +538,7 @@ fn extract_function(
     parent_ctx: Option<&str>,
     access: &str,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let declarator = match find_child_by_field(node, "declarator") {
         Some(d) => d,
@@ -244,7 +562,7 @@ fn extract_function(
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
-        name
+        name.clone()
     };
 
     let visibility = if parent_ctx.is_some() {
@@ -257,6 +575,11 @@ fn extract_function(
             "public".to_string()
         }
     };
+
+    // Extract return type reference
+    if let Some(type_node) = find_child_by_field(node, "type") {
+        extract_type_ref(type_node, source, file_path, Some(&full_name), references);
+    }
 
     // Extract tokens from function body
     let tokens = find_child_by_field(node, "body")
@@ -402,6 +725,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = find_child_by_field(node, "name")
@@ -424,6 +748,45 @@ fn extract_class(
     } else {
         name.clone()
     };
+
+    // Extract base class references
+    // Try multiple field names for base classes
+    let bases = find_child_by_field(node, "base_class_clause").or_else(|| {
+        // Walk children to find base_class_clause node
+        let mut cursor = node.walk();
+        node.children(&mut cursor)
+            .find(|c| c.kind() == "base_class_clause")
+    });
+    if let Some(bases) = bases {
+        let mut cursor = bases.walk();
+        for child in bases.children(&mut cursor) {
+            match child.kind() {
+                "base_class_specifier" => {
+                    // Find the type within base_class_specifier
+                    let mut base_cursor = child.walk();
+                    for base_child in child.children(&mut base_cursor) {
+                        if matches!(
+                            base_child.kind(),
+                            "type_identifier" | "qualified_identifier" | "template_type"
+                        ) {
+                            extract_type_ref(
+                                base_child,
+                                source,
+                                file_path,
+                                Some(&full_name),
+                                references,
+                            );
+                        }
+                    }
+                }
+                // Direct type identifier (without access specifier)
+                "type_identifier" | "qualified_identifier" | "template_type" => {
+                    extract_type_ref(child, source, file_path, Some(&full_name), references);
+                }
+                _ => {}
+            }
+        }
+    }
 
     push_symbol(
         symbols,
@@ -470,6 +833,7 @@ fn extract_class(
                 &current_access,
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -536,6 +900,7 @@ fn extract_enum(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_namespace(
     node: Node,
     source: &[u8],
@@ -543,6 +908,7 @@ fn extract_namespace(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = find_child_by_field(node, "name")
@@ -562,6 +928,7 @@ fn extract_namespace(
                     "private",
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
@@ -599,6 +966,7 @@ fn extract_namespace(
                 "public",
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -697,7 +1065,13 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
     }
 }
 
-fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_include(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
     if let Some(path_node) = find_child_by_field(node, "path") {
         let path = node_text(path_node, source);
@@ -708,7 +1082,7 @@ fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
         push_symbol(
             symbols,
             file_path,
-            path,
+            path.clone(),
             "import",
             line,
             None,
@@ -716,6 +1090,15 @@ fn extract_include(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec
             None,
             Some("private".to_string()),
         );
+        // Also add import reference
+        references.push(ReferenceEntry {
+            file: file_path.to_string(),
+            name: path,
+            kind: "import".to_string(),
+            line,
+            caller: None,
+            project: String::new(),
+        });
     }
 }
 
@@ -1006,5 +1389,63 @@ using MyInt = int;";
 class Foo {};";
         let (_symbols, texts, _refs) = parse_file(source, "cpp", "test.cpp").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_cpp_call_references() {
+        let source = b"void foo() {}
+void bar() {
+    foo();
+    myService.doSomething();
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "cpp", "test.cpp").unwrap();
+
+        let calls: Vec<_> = refs.iter().filter(|r| r.kind == "call").collect();
+        assert!(calls.iter().any(|r| r.name == "foo"));
+        assert!(calls.iter().any(|r| r.name.contains("doSomething")));
+    }
+
+    #[test]
+    fn test_cpp_include_references() {
+        let source = b"#include <iostream>
+#include \"myheader.h\"";
+        let (_symbols, _texts, refs) = parse_file(source, "cpp", "test.cpp").unwrap();
+
+        let imports: Vec<_> = refs.iter().filter(|r| r.kind == "import").collect();
+        assert!(imports.iter().any(|r| r.name == "iostream"));
+        assert!(imports.iter().any(|r| r.name == "myheader.h"));
+    }
+
+    #[test]
+    fn test_cpp_instantiation_references() {
+        let source = b"class MyClass {};
+void foo() {
+    MyClass* obj = new MyClass();
+    CustomService* svc = new CustomService();
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "cpp", "test.cpp").unwrap();
+
+        let instantiations: Vec<_> = refs.iter().filter(|r| r.kind == "instantiation").collect();
+        assert!(instantiations.iter().any(|r| r.name == "MyClass"));
+        assert!(instantiations.iter().any(|r| r.name == "CustomService"));
+    }
+
+    #[test]
+    fn test_cpp_type_references() {
+        let source = b"class Base {};
+class Derived : public Base {
+public:
+    CustomType process() {
+        return CustomType();
+    }
+};";
+        let (_symbols, _texts, refs) = parse_file(source, "cpp", "test.cpp").unwrap();
+
+        let type_refs: Vec<_> = refs
+            .iter()
+            .filter(|r| r.kind == "type_annotation")
+            .collect();
+        assert!(type_refs.iter().any(|r| r.name == "Base"));
+        assert!(type_refs.iter().any(|r| r.name == "CustomType"));
     }
 }
