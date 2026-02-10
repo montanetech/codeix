@@ -8,8 +8,8 @@
   {
     "id": "class-children",
     "category": "symbol",
-    "question": "In FizzBuzzEnterpriseEdition, find the FizzBuzzEnterpriseEdition class and list all its methods.",
-    "project": "FizzBuzzEnterpriseEdition"
+    "question": "In junit5, find the TestEngine interface and list all its methods.",
+    "project": "junit5"
   },
   {
     "id": "imports-trace",
@@ -44,8 +44,8 @@
   {
     "id": "class-hierarchy",
     "category": "symbol",
-    "question": "I need to add a new divisibility check in FizzBuzzEnterpriseEdition. How does IsEvenlyDivisibleStrategy work and what factory creates it?",
-    "project": "FizzBuzzEnterpriseEdition"
+    "question": "I need to add a new test extension in junit5. How does Extension interface work and what registry manages extensions?",
+    "project": "junit5"
   },
   {
     "id": "entry-point",
@@ -96,16 +96,16 @@
     "project": "leveldb"
   },
   {
-    "id": "zls-diagnostics",
+    "id": "koa-middleware",
     "category": "modification",
-    "question": "I want to add a new diagnostic warning to zls. How does the diagnostics system work and what files handle diagnostic generation?",
-    "project": "zls"
+    "question": "I want to add error handling middleware to koa. How does the middleware compose function work and where should I add error handling?",
+    "project": "koa"
   },
   {
-    "id": "zls-completion",
+    "id": "koa-context",
     "category": "discovery",
-    "question": "How does zls implement code completion? Trace the flow from LSP request to completion results.",
-    "project": "zls"
+    "question": "How does koa create and manage the request context? Trace the flow from incoming request to ctx object.",
+    "project": "koa"
   },
   {
     "id": "newtonsoft-custom-converter",
