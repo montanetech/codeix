@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -81,11 +81,157 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+// ---------------------------------------------------------------------------
+// Builtin detection for filtering noisy references
+// ---------------------------------------------------------------------------
+
+/// Check if a name is a Java builtin or common library class/method.
+fn is_java_builtin(name: &str) -> bool {
+    matches!(
+        name,
+        // System methods
+        "System"
+        | "out"
+        | "err"
+        | "in"
+        | "println"
+        | "print"
+        | "printf"
+        | "exit"
+        | "currentTimeMillis"
+        | "nanoTime"
+        | "gc"
+        | "getenv"
+        | "getProperty"
+        // Object methods
+        | "toString"
+        | "equals"
+        | "hashCode"
+        | "getClass"
+        | "clone"
+        | "wait"
+        | "notify"
+        | "notifyAll"
+        // String methods
+        | "length"
+        | "charAt"
+        | "substring"
+        | "indexOf"
+        | "lastIndexOf"
+        | "contains"
+        | "startsWith"
+        | "endsWith"
+        | "replace"
+        | "replaceAll"
+        | "split"
+        | "trim"
+        | "toLowerCase"
+        | "toUpperCase"
+        | "format"
+        | "valueOf"
+        | "isEmpty"
+        // Collection methods
+        | "add"
+        | "remove"
+        | "get"
+        | "set"
+        | "size"
+        | "clear"
+        | "iterator"
+        | "toArray"
+        | "stream"
+        | "forEach"
+        | "put"
+        | "containsKey"
+        | "containsValue"
+        | "keySet"
+        | "values"
+        | "entrySet"
+        // Common types
+        | "Object"
+        | "String"
+        | "Integer"
+        | "Long"
+        | "Double"
+        | "Float"
+        | "Boolean"
+        | "Byte"
+        | "Short"
+        | "Character"
+        | "Number"
+        | "Math"
+        | "Arrays"
+        | "Collections"
+        | "List"
+        | "ArrayList"
+        | "LinkedList"
+        | "Map"
+        | "HashMap"
+        | "TreeMap"
+        | "Set"
+        | "HashSet"
+        | "TreeSet"
+        | "Queue"
+        | "Deque"
+        | "Stack"
+        | "Optional"
+        | "Stream"
+        | "Collectors"
+        | "Class"
+        | "Enum"
+        | "Exception"
+        | "RuntimeException"
+        | "Error"
+        | "Throwable"
+        | "Thread"
+        | "Runnable"
+        // Test framework
+        | "assertEquals"
+        | "assertTrue"
+        | "assertFalse"
+        | "assertNull"
+        | "assertNotNull"
+        | "assertThrows"
+        | "fail"
+    )
+}
+
+/// Check if a type name is a Java primitive or common type.
+fn is_java_primitive_type(name: &str) -> bool {
+    matches!(
+        name,
+        "int"
+            | "long"
+            | "short"
+            | "byte"
+            | "float"
+            | "double"
+            | "boolean"
+            | "char"
+            | "void"
+            | "String"
+            | "Integer"
+            | "Long"
+            | "Short"
+            | "Byte"
+            | "Float"
+            | "Double"
+            | "Boolean"
+            | "Character"
+            | "Void"
+            | "Object"
+            | "Number"
+            | "Class"
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -93,6 +239,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -105,7 +252,7 @@ fn walk_node(
     match kind {
         "class_declaration" => {
             extract_class(
-                node, source, file_path, parent_ctx, "class", symbols, texts, depth,
+                node, source, file_path, parent_ctx, "class", symbols, texts, references, depth,
             );
             return;
         }
@@ -118,13 +265,14 @@ fn walk_node(
                 "interface",
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
         }
         "enum_declaration" => {
             extract_class(
-                node, source, file_path, parent_ctx, "enum", symbols, texts, depth,
+                node, source, file_path, parent_ctx, "enum", symbols, texts, references, depth,
             );
             return;
         }
@@ -137,27 +285,28 @@ fn walk_node(
                 "annotation",
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
         }
         "record_declaration" => {
             extract_class(
-                node, source, file_path, parent_ctx, "struct", symbols, texts, depth,
+                node, source, file_path, parent_ctx, "struct", symbols, texts, references, depth,
             );
             return;
         }
         "method_declaration" => {
-            extract_method(node, source, file_path, parent_ctx, symbols);
+            extract_method(node, source, file_path, parent_ctx, symbols, references);
         }
         "constructor_declaration" => {
-            extract_constructor(node, source, file_path, parent_ctx, symbols);
+            extract_constructor(node, source, file_path, parent_ctx, symbols, references);
         }
         "field_declaration" => {
-            extract_field(node, source, file_path, parent_ctx, symbols);
+            extract_field(node, source, file_path, parent_ctx, symbols, references);
         }
         "import_declaration" => {
-            extract_import(node, source, file_path, symbols);
+            extract_import(node, source, file_path, symbols, references);
         }
         "package_declaration" => {
             extract_package(node, source, file_path, symbols);
@@ -170,6 +319,15 @@ fn walk_node(
             extract_string(node, source, file_path, parent_ctx, texts);
             return;
         }
+
+        // --- Reference extraction ---
+        "method_invocation" => {
+            extract_call_ref(node, source, file_path, parent_ctx, references);
+        }
+        "object_creation_expression" => {
+            extract_new_ref(node, source, file_path, parent_ctx, references);
+        }
+
         _ => {}
     }
 
@@ -183,9 +341,145 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// Reference extraction
+// ---------------------------------------------------------------------------
+
+/// Extract a method invocation reference.
+fn extract_call_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let name = get_call_name(node, source);
+    if name.is_empty() || is_java_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Extract a `new` expression reference (instantiation).
+fn extract_new_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    // The type is the first child of object_creation_expression
+    let type_node = match find_child_by_field(node, "type") {
+        Some(t) => t,
+        None => return,
+    };
+
+    let name = get_type_name(type_node, source);
+    if name.is_empty() || is_java_builtin(&name) || is_java_primitive_type(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "instantiation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Get the name of a method invocation.
+fn get_call_name(node: Node, source: &[u8]) -> String {
+    // method_invocation has "name" and optionally "object" fields
+    let method_name = find_child_by_field(node, "name")
+        .map(|n| node_text(n, source))
+        .unwrap_or_default();
+
+    if let Some(obj) = find_child_by_field(node, "object") {
+        let obj_name = node_text(obj, source);
+        if !obj_name.is_empty() {
+            return format!("{}.{}", obj_name, method_name);
+        }
+    }
+
+    method_name
+}
+
+/// Get the name of a type node.
+fn get_type_name(node: Node, source: &[u8]) -> String {
+    match node.kind() {
+        "type_identifier" | "identifier" => node_text(node, source),
+        "generic_type" => {
+            // Generic<T> - extract the base type
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "type_identifier" {
+                    return node_text(child, source);
+                }
+            }
+            String::new()
+        }
+        "scoped_type_identifier" => {
+            // com.example.MyClass
+            node_text(node, source)
+        }
+        "superclass" | "super_interfaces" | "extends_interfaces" => {
+            // Wrapper nodes - find the actual type child
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                let child_kind = child.kind();
+                if matches!(
+                    child_kind,
+                    "type_identifier" | "generic_type" | "scoped_type_identifier"
+                ) {
+                    return get_type_name(child, source);
+                }
+            }
+            String::new()
+        }
+        _ => String::new(),
+    }
+}
+
+/// Extract type references from a type node.
+fn extract_type_refs(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let name = get_type_name(node, source);
+    if name.is_empty() || is_java_primitive_type(&name) || is_java_builtin(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "type_annotation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -197,6 +491,7 @@ fn extract_class(
     kind: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -215,6 +510,26 @@ fn extract_class(
     } else {
         name.clone()
     };
+
+    // Extract superclass reference
+    if let Some(superclass) = find_child_by_field(node, "superclass") {
+        extract_type_refs(superclass, source, file_path, Some(&full_name), references);
+    }
+
+    // Extract interfaces references
+    if let Some(interfaces) = find_child_by_field(node, "interfaces") {
+        let mut cursor = interfaces.walk();
+        for child in interfaces.children(&mut cursor) {
+            if child.kind() == "type_list" {
+                let mut type_cursor = child.walk();
+                for type_child in child.children(&mut type_cursor) {
+                    extract_type_refs(type_child, source, file_path, Some(&full_name), references);
+                }
+            } else {
+                extract_type_refs(child, source, file_path, Some(&full_name), references);
+            }
+        }
+    }
 
     // Extract tokens from class body
     let tokens = find_child_by_field(node, "body")
@@ -243,6 +558,7 @@ fn extract_class(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -255,6 +571,7 @@ fn extract_method(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -270,6 +587,23 @@ fn extract_method(
     } else {
         name
     };
+
+    // Extract return type reference
+    if let Some(return_type) = find_child_by_field(node, "type") {
+        extract_type_refs(return_type, source, file_path, Some(&full_name), references);
+    }
+
+    // Extract parameter type references
+    if let Some(params) = find_child_by_field(node, "parameters") {
+        let mut cursor = params.walk();
+        for child in params.children(&mut cursor) {
+            if (child.kind() == "formal_parameter" || child.kind() == "spread_parameter")
+                && let Some(type_node) = find_child_by_field(child, "type")
+            {
+                extract_type_refs(type_node, source, file_path, Some(&full_name), references);
+            }
+        }
+    }
 
     // Extract tokens from method body
     let tokens = find_child_by_field(node, "body")
@@ -294,6 +628,7 @@ fn extract_constructor(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -309,6 +644,18 @@ fn extract_constructor(
     } else {
         name
     };
+
+    // Extract parameter type references
+    if let Some(params) = find_child_by_field(node, "parameters") {
+        let mut cursor = params.walk();
+        for child in params.children(&mut cursor) {
+            if (child.kind() == "formal_parameter" || child.kind() == "spread_parameter")
+                && let Some(type_node) = find_child_by_field(child, "type")
+            {
+                extract_type_refs(type_node, source, file_path, Some(&full_name), references);
+            }
+        }
+    }
 
     // Extract tokens from constructor body
     let tokens = find_child_by_field(node, "body")
@@ -333,6 +680,7 @@ fn extract_field(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let line = node_line_range(node);
     let visibility = extract_java_visibility(node, source);
@@ -346,6 +694,11 @@ fn extract_field(
     } else {
         "property"
     };
+
+    // Extract field type reference
+    if let Some(type_node) = find_child_by_field(node, "type") {
+        extract_type_refs(type_node, source, file_path, parent_ctx, references);
+    }
 
     // Find declarators
     let mut cursor = node.walk();
@@ -376,7 +729,13 @@ fn extract_field(
     }
 }
 
-fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_import(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // Get the import path
@@ -387,7 +746,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
             push_symbol(
                 symbols,
                 file_path,
-                name,
+                name.clone(),
                 "import",
                 line,
                 None,
@@ -395,6 +754,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                 None,
                 Some("private".to_string()),
             );
+            // Also add import reference
+            references.push(ReferenceEntry {
+                file: file_path.to_string(),
+                name,
+                kind: "import".to_string(),
+                line,
+                caller: None,
+                project: String::new(),
+            });
         }
     }
 }
@@ -654,5 +1022,66 @@ class Documented {}
 /* Block comment */";
         let (_symbols, texts, _refs) = parse_file(source, "java", "test.java").unwrap();
         assert!(texts.iter().any(|t| t.kind == "comment"));
+    }
+
+    #[test]
+    fn test_java_call_references() {
+        let source = b"class Foo {
+    void bar() {
+        myService.doSomething();
+        helper();
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "java", "test.java").unwrap();
+
+        let calls: Vec<_> = refs.iter().filter(|r| r.kind == "call").collect();
+        assert!(calls.iter().any(|r| r.name.contains("doSomething")));
+    }
+
+    #[test]
+    fn test_java_import_references() {
+        let source = b"import java.util.List;
+import java.io.File;";
+        let (_symbols, _texts, refs) = parse_file(source, "java", "test.java").unwrap();
+
+        let imports: Vec<_> = refs.iter().filter(|r| r.kind == "import").collect();
+        assert!(!imports.is_empty());
+        assert!(imports.iter().any(|r| r.name.contains("util")));
+    }
+
+    #[test]
+    fn test_java_instantiation_references() {
+        let source = b"class Foo {
+    void bar() {
+        MyService svc = new MyService();
+        CustomClass obj = new CustomClass();
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "java", "test.java").unwrap();
+
+        let instantiations: Vec<_> = refs.iter().filter(|r| r.kind == "instantiation").collect();
+        assert!(instantiations.iter().any(|r| r.name == "MyService"));
+        assert!(instantiations.iter().any(|r| r.name == "CustomClass"));
+    }
+
+    #[test]
+    fn test_java_type_references() {
+        let source = b"class Dog extends Animal implements Runnable {
+    private MyService service;
+
+    public CustomResult process(InputData data) {
+        return null;
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "java", "test.java").unwrap();
+
+        let type_refs: Vec<_> = refs
+            .iter()
+            .filter(|r| r.kind == "type_annotation")
+            .collect();
+        assert!(type_refs.iter().any(|r| r.name == "Animal"));
+        assert!(type_refs.iter().any(|r| r.name == "MyService"));
+        assert!(type_refs.iter().any(|r| r.name == "CustomResult"));
+        assert!(type_refs.iter().any(|r| r.name == "InputData"));
     }
 }

@@ -6,7 +6,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -90,11 +90,260 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+// ---------------------------------------------------------------------------
+// Builtin detection for filtering noisy references
+// ---------------------------------------------------------------------------
+
+/// Check if a function name is a TypeScript/JavaScript builtin.
+fn is_ts_builtin_call(name: &str) -> bool {
+    // Check for builtin object method calls (e.g., console.log, Math.floor)
+    if let Some(obj) = name.split('.').next()
+        && matches!(
+            obj,
+            "console"
+                | "Math"
+                | "JSON"
+                | "Object"
+                | "Array"
+                | "String"
+                | "Number"
+                | "Date"
+                | "RegExp"
+                | "Promise"
+                | "Reflect"
+                | "Proxy"
+        )
+    {
+        return true;
+    }
+
+    matches!(
+        name,
+        // Console methods (note: "log" also used by Math.log so listed once under Math)
+        "console"
+        | "error"
+        | "warn"
+        | "info"
+        | "debug"
+        | "trace"
+        | "dir"
+        | "table"
+        | "time"
+        | "timeEnd"
+        | "clear"
+        | "count"
+        | "countReset"
+        | "group"
+        | "groupEnd"
+        | "assert"
+        // Global functions
+        | "parseInt"
+        | "parseFloat"
+        | "isNaN"
+        | "isFinite"
+        | "encodeURI"
+        | "decodeURI"
+        | "encodeURIComponent"
+        | "decodeURIComponent"
+        | "eval"
+        | "setTimeout"
+        | "setInterval"
+        | "clearTimeout"
+        | "clearInterval"
+        | "fetch"
+        | "require"
+        // Object/Array methods
+        | "Object"
+        | "Array"
+        | "String"
+        | "Number"
+        | "Boolean"
+        | "Symbol"
+        | "BigInt"
+        | "Date"
+        | "RegExp"
+        | "Error"
+        | "Map"
+        | "Set"
+        | "WeakMap"
+        | "WeakSet"
+        | "Promise"
+        | "Proxy"
+        | "Reflect"
+        | "JSON"
+        | "Math"
+        // Common array/object methods
+        | "push"
+        | "pop"
+        | "shift"
+        | "unshift"
+        | "slice"
+        | "splice"
+        | "concat"
+        | "join"
+        | "reverse"
+        | "sort"
+        | "filter"
+        | "map"
+        | "reduce"
+        | "reduceRight"
+        | "forEach"
+        | "find"
+        | "findIndex"
+        | "indexOf"
+        | "includes"
+        | "every"
+        | "some"
+        | "flat"
+        | "flatMap"
+        | "keys"
+        | "values"
+        | "entries"
+        | "from"
+        | "of"
+        | "isArray"
+        // String methods
+        | "charAt"
+        | "charCodeAt"
+        | "substring"
+        | "substr"
+        | "replace"
+        | "replaceAll"
+        | "split"
+        | "toLowerCase"
+        | "toUpperCase"
+        | "trim"
+        | "trimStart"
+        | "trimEnd"
+        | "padStart"
+        | "padEnd"
+        | "repeat"
+        | "startsWith"
+        | "endsWith"
+        | "match"
+        | "matchAll"
+        | "search"
+        | "localeCompare"
+        // Object methods
+        | "hasOwnProperty"
+        | "toString"
+        | "valueOf"
+        | "toLocaleString"
+        | "assign"
+        | "create"
+        | "defineProperty"
+        | "defineProperties"
+        | "freeze"
+        | "seal"
+        | "getPrototypeOf"
+        | "setPrototypeOf"
+        | "getOwnPropertyNames"
+        | "getOwnPropertySymbols"
+        | "getOwnPropertyDescriptor"
+        // Promise methods
+        | "then"
+        | "catch"
+        | "finally"
+        | "resolve"
+        | "reject"
+        | "all"
+        | "race"
+        | "allSettled"
+        | "any"
+        // Math methods
+        | "abs"
+        | "ceil"
+        | "floor"
+        | "round"
+        | "max"
+        | "min"
+        | "pow"
+        | "sqrt"
+        | "random"
+        | "sin"
+        | "cos"
+        | "tan"
+        | "log"
+        | "exp"
+        // JSON methods
+        | "parse"
+        | "stringify"
+        // Test assertions (common test frameworks)
+        | "describe"
+        | "it"
+        | "test"
+        | "expect"
+        | "beforeEach"
+        | "afterEach"
+        | "beforeAll"
+        | "afterAll"
+        | "jest"
+        | "mock"
+        | "spyOn"
+        | "toBe"
+        | "toEqual"
+        | "toContain"
+        | "toThrow"
+        | "toHaveBeenCalled"
+        | "toHaveBeenCalledWith"
+    )
+}
+
+/// Check if a type name is a TypeScript primitive type.
+fn is_ts_primitive_type(name: &str) -> bool {
+    matches!(
+        name,
+        "any"
+            | "unknown"
+            | "never"
+            | "void"
+            | "undefined"
+            | "null"
+            | "string"
+            | "number"
+            | "boolean"
+            | "bigint"
+            | "symbol"
+            | "object"
+            | "Function"
+            | "Object"
+            | "Array"
+            | "String"
+            | "Number"
+            | "Boolean"
+            | "Symbol"
+            | "Date"
+            | "RegExp"
+            | "Error"
+            | "Map"
+            | "Set"
+            | "WeakMap"
+            | "WeakSet"
+            | "Promise"
+            | "Readonly"
+            | "Partial"
+            | "Required"
+            | "Pick"
+            | "Omit"
+            | "Record"
+            | "Exclude"
+            | "Extract"
+            | "NonNullable"
+            | "Parameters"
+            | "ReturnType"
+            | "InstanceType"
+            | "ThisType"
+            | "Awaited"
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -102,6 +351,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -114,14 +364,22 @@ fn walk_node(
     match kind {
         // --- JS constructs ---
         "function_declaration" | "generator_function_declaration" => {
-            extract_function_decl(node, source, file_path, parent_ctx, symbols);
+            extract_function_decl(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
+            return; // handled recursively
         }
         "class_declaration" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_class(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "method_definition" => {
-            extract_method(node, source, file_path, parent_ctx, symbols);
+            extract_method(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
+            return; // handled recursively
         }
         "lexical_declaration" | "variable_declaration" => {
             extract_variable_decl(node, source, file_path, parent_ctx, symbols);
@@ -136,34 +394,49 @@ fn walk_node(
                     parent_ctx,
                     symbols,
                     texts,
+                    references,
                     depth + 1,
                 );
             }
             return;
         }
         "import_statement" => {
-            extract_import(node, source, file_path, symbols);
+            extract_import(node, source, file_path, symbols, references);
         }
 
         // --- TS-specific constructs ---
         "interface_declaration" => {
-            extract_interface(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_interface(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "type_alias_declaration" => {
-            extract_type_alias(node, source, file_path, parent_ctx, symbols);
+            extract_type_alias(node, source, file_path, parent_ctx, symbols, references);
         }
         "enum_declaration" => {
             extract_enum(node, source, file_path, parent_ctx, symbols);
         }
         "module" | "internal_module" => {
             // `namespace Foo { ... }` or `module Foo { ... }`
-            extract_namespace(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_namespace(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "abstract_class_declaration" => {
-            extract_class(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_class(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
+        }
+
+        // --- Reference extraction ---
+        "call_expression" => {
+            extract_call_ref(node, source, file_path, parent_ctx, references);
+        }
+        "new_expression" => {
+            extract_new_ref(node, source, file_path, parent_ctx, references);
         }
 
         "comment" => {
@@ -187,19 +460,206 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
 }
 
+// ---------------------------------------------------------------------------
+// Reference extraction
+// ---------------------------------------------------------------------------
+
+/// Extract a function call reference.
+fn extract_call_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let func = match find_child_by_field(node, "function") {
+        Some(f) => f,
+        None => return,
+    };
+
+    let name = get_call_name(func, source);
+    if name.is_empty() || is_ts_builtin_call(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Extract a `new` expression reference (instantiation).
+fn extract_new_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let constructor = match find_child_by_field(node, "constructor") {
+        Some(c) => c,
+        None => return,
+    };
+
+    let name = get_call_name(constructor, source);
+    if name.is_empty() || is_ts_builtin_call(&name) || is_ts_primitive_type(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "instantiation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Get the name of a function/method call.
+fn get_call_name(node: Node, source: &[u8]) -> String {
+    match node.kind() {
+        "identifier" => node_text(node, source),
+        "member_expression" => {
+            // obj.method or obj.prop.method
+            if let Some(prop) = find_child_by_field(node, "property") {
+                if let Some(obj) = find_child_by_field(node, "object") {
+                    let obj_name = get_call_name(obj, source);
+                    let prop_name = node_text(prop, source);
+                    if obj_name.is_empty() {
+                        prop_name
+                    } else {
+                        format!("{}.{}", obj_name, prop_name)
+                    }
+                } else {
+                    node_text(prop, source)
+                }
+            } else {
+                String::new()
+            }
+        }
+        "call_expression" => {
+            // Chained calls: foo().bar()
+            if let Some(func) = find_child_by_field(node, "function") {
+                get_call_name(func, source)
+            } else {
+                String::new()
+            }
+        }
+        _ => String::new(),
+    }
+}
+
+/// Extract type references from a type annotation node.
+fn extract_type_refs(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    extract_type_refs_recursive(node, source, file_path, parent_ctx, references, 0);
+}
+
+fn extract_type_refs_recursive(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+    depth: usize,
+) {
+    if depth > 50 {
+        return;
+    }
+
+    match node.kind() {
+        "type_identifier" | "identifier" => {
+            let name = node_text(node, source);
+            if !is_ts_primitive_type(&name) && !name.is_empty() {
+                let line = node_line_range(node);
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name,
+                    kind: "type_annotation".to_string(),
+                    line,
+                    caller: parent_ctx.map(String::from),
+                    project: String::new(),
+                });
+            }
+        }
+        "generic_type" | "nested_type_identifier" => {
+            // Extract the base type name
+            if let Some(name_node) = find_child_by_field(node, "name") {
+                let name = node_text(name_node, source);
+                if !is_ts_primitive_type(&name) && !name.is_empty() {
+                    let line = node_line_range(node);
+                    references.push(ReferenceEntry {
+                        file: file_path.to_string(),
+                        name,
+                        kind: "type_annotation".to_string(),
+                        line,
+                        caller: parent_ctx.map(String::from),
+                        project: String::new(),
+                    });
+                }
+            }
+            // Recurse into type arguments
+            if let Some(args) = find_child_by_field(node, "type_arguments") {
+                let mut cursor = args.walk();
+                for child in args.children(&mut cursor) {
+                    extract_type_refs_recursive(
+                        child,
+                        source,
+                        file_path,
+                        parent_ctx,
+                        references,
+                        depth + 1,
+                    );
+                }
+            }
+        }
+        _ => {
+            // Recurse into children
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                extract_type_refs_recursive(
+                    child,
+                    source,
+                    file_path,
+                    parent_ctx,
+                    references,
+                    depth + 1,
+                );
+            }
+        }
+    }
+}
+
 // --- Shared JS-like extraction (adapted for TS node names) ---
 
+#[allow(clippy::too_many_arguments)]
 fn extract_function_decl(
     node: Node,
     source: &[u8],
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -234,7 +694,7 @@ fn extract_function_decl(
     push_symbol(
         symbols,
         file_path,
-        full_name,
+        full_name.clone(),
         kind,
         line,
         parent_ctx,
@@ -242,8 +702,26 @@ fn extract_function_decl(
         None,
         Some(visibility.to_string()),
     );
+
+    // Recurse into function body with function name as context
+    if let Some(body) = find_child_by_field(node, "body") {
+        let mut cursor = body.walk();
+        for child in body.children(&mut cursor) {
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                references,
+                depth + 1,
+            );
+        }
+    }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_class(
     node: Node,
     source: &[u8],
@@ -251,6 +729,7 @@ fn extract_class(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -273,6 +752,14 @@ fn extract_class(
     } else {
         name.clone()
     };
+
+    // Extract type references from class heritage (extends/implements)
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "class_heritage" {
+            extract_type_refs(child, source, file_path, Some(&full_name), references);
+        }
+    }
 
     // Extract tokens from class body
     let tokens = find_child_by_field(node, "body")
@@ -300,18 +787,23 @@ fn extract_class(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_method(
     node: Node,
     source: &[u8],
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
+    depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -394,7 +886,7 @@ fn extract_method(
     push_symbol(
         symbols,
         file_path,
-        full_name,
+        full_name.clone(),
         kind,
         line,
         parent_ctx,
@@ -402,6 +894,23 @@ fn extract_method(
         None,
         Some(visibility.to_string()),
     );
+
+    // Recurse into method body with method name as context
+    if let Some(body) = find_child_by_field(node, "body") {
+        let mut cursor = body.walk();
+        for child in body.children(&mut cursor) {
+            walk_node(
+                child,
+                source,
+                file_path,
+                Some(&full_name),
+                symbols,
+                texts,
+                references,
+                depth + 1,
+            );
+        }
+    }
 }
 
 fn extract_variable_decl(
@@ -485,7 +994,13 @@ fn extract_variable_decl(
     }
 }
 
-fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_import(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     let source_module = find_child_by_field(node, "source")
@@ -511,9 +1026,18 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                             line,
                             None,
                             None,
-                            Some(name),
+                            Some(name.clone()),
                             Some("private".to_string()),
                         );
+                        // Also add import reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: source_module.clone(),
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                     "named_imports" => {
                         let mut named_cursor = clause_child.walk();
@@ -528,7 +1052,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                                     push_symbol(
                                         symbols,
                                         file_path,
-                                        full,
+                                        full.clone(),
                                         "import",
                                         line,
                                         None,
@@ -536,6 +1060,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                                         alias,
                                         Some("private".to_string()),
                                     );
+                                    // Also add import reference
+                                    references.push(ReferenceEntry {
+                                        file: file_path.to_string(),
+                                        name: full,
+                                        kind: "import".to_string(),
+                                        line,
+                                        caller: None,
+                                        project: String::new(),
+                                    });
                                 }
                             }
                         }
@@ -553,7 +1086,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                         push_symbol(
                             symbols,
                             file_path,
-                            full,
+                            full.clone(),
                             "import",
                             line,
                             None,
@@ -561,6 +1094,15 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
                             alias,
                             Some("private".to_string()),
                         );
+                        // Also add import reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: full,
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
                     }
                     _ => {}
                 }
@@ -571,6 +1113,7 @@ fn extract_import(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<
 
 // --- TS-specific constructs ---
 
+#[allow(clippy::too_many_arguments)]
 fn extract_interface(
     node: Node,
     source: &[u8],
@@ -578,6 +1121,7 @@ fn extract_interface(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     _depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -597,12 +1141,13 @@ fn extract_interface(
         .map(|n| node_text(n, source))
         .unwrap_or_default();
 
-    let extends = find_child_by_field(node, "extends_type")
-        .or_else(|| {
-            let mut cursor = node.walk();
-            node.children(&mut cursor)
-                .find(|c| c.kind() == "extends_type_clause")
-        })
+    let extends_node = find_child_by_field(node, "extends_type").or_else(|| {
+        let mut cursor = node.walk();
+        node.children(&mut cursor)
+            .find(|c| c.kind() == "extends_type_clause")
+    });
+
+    let extends = extends_node
         .map(|n| format!(" extends {}", node_text(n, source)))
         .unwrap_or_default();
 
@@ -613,6 +1158,11 @@ fn extract_interface(
     } else {
         name.clone()
     };
+
+    // Extract type references from extends clause
+    if let Some(ext) = extends_node {
+        extract_type_refs(ext, source, file_path, Some(&full_name), references);
+    }
 
     // Extract tokens from interface body (type references)
     let tokens = find_child_by_field(node, "body")
@@ -630,7 +1180,7 @@ fn extract_interface(
         Some(visibility.to_string()),
     );
 
-    // Walk interface body for method signatures
+    // Walk interface body for method signatures and extract type refs
     if let Some(body) = find_child_by_field(node, "body") {
         let mut cursor = body.walk();
         for child in body.children(&mut cursor) {
@@ -657,6 +1207,16 @@ fn extract_interface(
                             Some("public".to_string()),
                         );
                     }
+                    // Extract type refs from member type annotations
+                    if let Some(type_ann) = find_child_by_field(child, "type") {
+                        extract_type_refs(
+                            type_ann,
+                            source,
+                            file_path,
+                            Some(&full_name),
+                            references,
+                        );
+                    }
                 }
                 "comment" => {
                     extract_ts_comment(child, source, file_path, Some(&full_name), texts);
@@ -673,6 +1233,7 @@ fn extract_type_alias(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -697,6 +1258,11 @@ fn extract_type_alias(
     } else {
         name
     };
+
+    // Extract type references from type definition
+    if let Some(value) = find_child_by_field(node, "value") {
+        extract_type_refs(value, source, file_path, Some(&full_name), references);
+    }
 
     // Extract tokens from type definition
     let tokens = find_child_by_field(node, "value")
@@ -753,6 +1319,7 @@ fn extract_enum(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_namespace(
     node: Node,
     source: &[u8],
@@ -760,6 +1327,7 @@ fn extract_namespace(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -803,6 +1371,7 @@ fn extract_namespace(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -1080,5 +1649,115 @@ import type { User } from './types';";
             .find(|s| s.name == "Foo.protectedMethod")
             .unwrap();
         assert_eq!(protected.visibility.as_deref(), Some("internal"));
+    }
+
+    #[test]
+    fn test_ts_call_references() {
+        let source = b"function main() {
+    const result = helper();
+    const data = api.fetchData();
+    console.log(result);
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "typescript", "test.ts").unwrap();
+
+        // Should find helper() call
+        let helper_ref = refs.iter().find(|r| r.name == "helper");
+        assert!(helper_ref.is_some());
+        assert_eq!(helper_ref.unwrap().kind, "call");
+
+        // Should find api.fetchData() call
+        let api_ref = refs.iter().find(|r| r.name == "api.fetchData");
+        assert!(api_ref.is_some());
+        assert_eq!(api_ref.unwrap().kind, "call");
+
+        // Should NOT find console.log (builtin)
+        let console_ref = refs.iter().find(|r| r.name == "console.log");
+        assert!(console_ref.is_none());
+    }
+
+    #[test]
+    fn test_ts_import_references() {
+        let source = b"import React from 'react';
+import { Component, useState } from 'react';
+import * as Utils from './utils';";
+        let (_symbols, _texts, refs) = parse_file(source, "typescript", "test.ts").unwrap();
+
+        // Should find import references
+        let react_ref = refs
+            .iter()
+            .find(|r| r.name == "react" && r.kind == "import");
+        assert!(react_ref.is_some());
+
+        let component_ref = refs
+            .iter()
+            .find(|r| r.name == "react.Component" && r.kind == "import");
+        assert!(component_ref.is_some());
+
+        let utils_ref = refs
+            .iter()
+            .find(|r| r.name == "./utils.*" && r.kind == "import");
+        assert!(utils_ref.is_some());
+    }
+
+    #[test]
+    fn test_ts_type_references() {
+        let source = b"interface User extends BaseUser {
+    name: string;
+    data: CustomType;
+}
+
+type Result<T> = Success<T> | Error;
+
+class MyService implements Service {
+    getData(): Promise<User[]> {
+        return fetch('/api');
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "typescript", "test.ts").unwrap();
+
+        // Should find type annotation references
+        let base_user_ref = refs
+            .iter()
+            .find(|r| r.name == "BaseUser" && r.kind == "type_annotation");
+        assert!(base_user_ref.is_some());
+
+        let custom_type_ref = refs
+            .iter()
+            .find(|r| r.name == "CustomType" && r.kind == "type_annotation");
+        assert!(custom_type_ref.is_some());
+
+        // Should find Success from type alias
+        let success_ref = refs
+            .iter()
+            .find(|r| r.name == "Success" && r.kind == "type_annotation");
+        assert!(success_ref.is_some());
+
+        // Service from class implements
+        let service_ref = refs
+            .iter()
+            .find(|r| r.name == "Service" && r.kind == "type_annotation");
+        assert!(service_ref.is_some());
+    }
+
+    #[test]
+    fn test_ts_instantiation_references() {
+        let source = b"function createUser() {
+    const user = new UserModel('test');
+    const date = new Date();
+    return user;
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "typescript", "test.ts").unwrap();
+
+        // Should find UserModel instantiation
+        let user_ref = refs
+            .iter()
+            .find(|r| r.name == "UserModel" && r.kind == "instantiation");
+        assert!(user_ref.is_some());
+
+        // Should NOT find Date instantiation (builtin)
+        let date_ref = refs
+            .iter()
+            .find(|r| r.name == "Date" && r.kind == "instantiation");
+        assert!(date_ref.is_none());
     }
 }

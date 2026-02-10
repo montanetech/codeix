@@ -49,9 +49,14 @@ pub fn parse_file(
 
     match language {
         #[cfg(feature = "lang-rust")]
-        "rust" => {
-            crate::parser::rust_lang::extract(&tree, source, file_path, &mut symbols, &mut texts)
-        }
+        "rust" => crate::parser::rust_lang::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-python")]
         "python" => crate::parser::python::extract(
@@ -64,34 +69,84 @@ pub fn parse_file(
         ),
 
         #[cfg(feature = "lang-javascript")]
-        "javascript" => {
-            crate::parser::javascript::extract(&tree, source, file_path, &mut symbols, &mut texts)
-        }
+        "javascript" => crate::parser::javascript::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-typescript")]
-        "typescript" | "tsx" => {
-            crate::parser::typescript::extract(&tree, source, file_path, &mut symbols, &mut texts)
-        }
+        "typescript" | "tsx" => crate::parser::typescript::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-go")]
-        "go" => crate::parser::go::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "go" => crate::parser::go::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-java")]
-        "java" => crate::parser::java::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "java" => crate::parser::java::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-c")]
-        "c" => crate::parser::c_lang::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "c" => crate::parser::c_lang::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-cpp")]
-        "cpp" => crate::parser::cpp::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "cpp" => crate::parser::cpp::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-ruby")]
-        "ruby" => crate::parser::ruby::extract(&tree, source, file_path, &mut symbols, &mut texts),
+        "ruby" => crate::parser::ruby::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         #[cfg(feature = "lang-csharp")]
-        "csharp" => {
-            crate::parser::csharp::extract(&tree, source, file_path, &mut symbols, &mut texts)
-        }
+        "csharp" => crate::parser::csharp::extract(
+            &tree,
+            source,
+            file_path,
+            &mut symbols,
+            &mut texts,
+            &mut references,
+        ),
 
         _ => {
             // For unsupported languages, just extract comments and strings

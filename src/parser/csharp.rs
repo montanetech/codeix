@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, Tree};
 
-use crate::index::format::{SymbolEntry, TextEntry};
+use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
 use crate::parser::helpers::*;
 use crate::parser::treesitter::MAX_DEPTH;
 
@@ -120,11 +120,204 @@ pub fn extract(
     file_path: &str,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, 0);
+    walk_node(root, source, file_path, None, symbols, texts, references, 0);
 }
 
+// ---------------------------------------------------------------------------
+// Builtin detection for filtering noisy references
+// ---------------------------------------------------------------------------
+
+/// Check if a name is a C# builtin or .NET framework type/method.
+fn is_csharp_builtin_call(name: &str) -> bool {
+    matches!(
+        name,
+        // Console methods
+        "Console"
+        | "WriteLine"
+        | "ReadLine"
+        | "Write"
+        | "Read"
+        | "Clear"
+        | "Beep"
+        // Object methods
+        | "ToString"
+        | "GetType"
+        | "Equals"
+        | "GetHashCode"
+        | "ReferenceEquals"
+        | "MemberwiseClone"
+        // String methods
+        | "Format"
+        | "Join"
+        | "Split"
+        | "Substring"
+        | "Trim"
+        | "TrimStart"
+        | "TrimEnd"
+        | "ToUpper"
+        | "ToLower"
+        | "Replace"
+        | "Contains"
+        | "StartsWith"
+        | "EndsWith"
+        | "IndexOf"
+        | "LastIndexOf"
+        | "Length"
+        | "IsNullOrEmpty"
+        | "IsNullOrWhiteSpace"
+        | "Concat"
+        | "Compare"
+        // Collection methods
+        | "Add"
+        | "Remove"
+        | "RemoveAt"
+        | "Insert"
+        | "Find"
+        | "FindAll"
+        | "FindIndex"
+        | "Sort"
+        | "Reverse"
+        | "ToArray"
+        | "ToList"
+        | "ToDictionary"
+        | "First"
+        | "FirstOrDefault"
+        | "Last"
+        | "LastOrDefault"
+        | "Single"
+        | "SingleOrDefault"
+        | "Where"
+        | "Select"
+        | "SelectMany"
+        | "OrderBy"
+        | "OrderByDescending"
+        | "GroupBy"
+        | "Any"
+        | "All"
+        | "Count"
+        | "Sum"
+        | "Average"
+        | "Min"
+        | "Max"
+        | "Aggregate"
+        | "Distinct"
+        | "Skip"
+        | "Take"
+        | "SkipWhile"
+        | "TakeWhile"
+        // Async/Task methods
+        | "Wait"
+        | "WaitAll"
+        | "WaitAny"
+        | "Run"
+        | "FromResult"
+        | "Delay"
+        | "WhenAll"
+        | "WhenAny"
+        | "ContinueWith"
+        | "ConfigureAwait"
+        // Math methods
+        | "Abs"
+        | "Ceiling"
+        | "Floor"
+        | "Round"
+        | "Pow"
+        | "Sqrt"
+        | "Sin"
+        | "Cos"
+        | "Tan"
+        // Common framework methods
+        | "Parse"
+        | "TryParse"
+        | "Convert"
+        | "GetBytes"
+        | "GetString"
+        | "Dispose"
+        | "Close"
+        | "Invoke"
+        | "BeginInvoke"
+        | "EndInvoke"
+        // Test framework
+        | "Assert"
+        | "AreEqual"
+        | "AreNotEqual"
+        | "IsTrue"
+        | "IsFalse"
+        | "IsNull"
+        | "IsNotNull"
+        | "Throws"
+        | "ThrowsAsync"
+        | "Fact"
+        | "Theory"
+        | "Test"
+        | "TestCase"
+        | "Setup"
+        | "TearDown"
+    )
+}
+
+/// Check if a type name is a C# primitive or common .NET type.
+fn is_csharp_primitive_type(name: &str) -> bool {
+    matches!(
+        name,
+        "int"
+            | "long"
+            | "short"
+            | "byte"
+            | "sbyte"
+            | "float"
+            | "double"
+            | "decimal"
+            | "bool"
+            | "char"
+            | "string"
+            | "object"
+            | "void"
+            | "dynamic"
+            | "var"
+            | "Int32"
+            | "Int64"
+            | "Int16"
+            | "Byte"
+            | "SByte"
+            | "Single"
+            | "Double"
+            | "Decimal"
+            | "Boolean"
+            | "Char"
+            | "String"
+            | "Object"
+            | "Void"
+            // Common .NET types
+            | "DateTime"
+            | "TimeSpan"
+            | "Guid"
+            | "Type"
+            | "Array"
+            | "List"
+            | "Dictionary"
+            | "HashSet"
+            | "Queue"
+            | "Stack"
+            | "IEnumerable"
+            | "IList"
+            | "ICollection"
+            | "IDictionary"
+            | "IQueryable"
+            | "Task"
+            | "Action"
+            | "Func"
+            | "Predicate"
+            | "EventHandler"
+            | "Exception"
+            | "EventArgs"
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn walk_node(
     node: Node,
     source: &[u8],
@@ -132,6 +325,7 @@ fn walk_node(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     // Prevent stack overflow on deeply nested code
@@ -144,13 +338,13 @@ fn walk_node(
     match kind {
         "class_declaration" => {
             extract_type_decl(
-                node, source, file_path, "class", parent_ctx, symbols, texts, depth,
+                node, source, file_path, "class", parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
         "struct_declaration" => {
             extract_type_decl(
-                node, source, file_path, "struct", parent_ctx, symbols, texts, depth,
+                node, source, file_path, "struct", parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
@@ -163,6 +357,7 @@ fn walk_node(
                 parent_ctx,
                 symbols,
                 texts,
+                references,
                 depth,
             );
             return;
@@ -172,31 +367,33 @@ fn walk_node(
         }
         "record_declaration" => {
             extract_type_decl(
-                node, source, file_path, "struct", parent_ctx, symbols, texts, depth,
+                node, source, file_path, "struct", parent_ctx, symbols, texts, references, depth,
             );
             return;
         }
         "namespace_declaration" | "file_scoped_namespace_declaration" => {
-            extract_namespace(node, source, file_path, parent_ctx, symbols, texts, depth);
+            extract_namespace(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
             return;
         }
         "method_declaration" => {
-            extract_method(node, source, file_path, parent_ctx, symbols);
+            extract_method(node, source, file_path, parent_ctx, symbols, references);
         }
         "constructor_declaration" => {
-            extract_constructor(node, source, file_path, parent_ctx, symbols);
+            extract_constructor(node, source, file_path, parent_ctx, symbols, references);
         }
         "property_declaration" => {
-            extract_property(node, source, file_path, parent_ctx, symbols);
+            extract_property(node, source, file_path, parent_ctx, symbols, references);
         }
         "field_declaration" => {
-            extract_field(node, source, file_path, parent_ctx, symbols);
+            extract_field(node, source, file_path, parent_ctx, symbols, references);
         }
         "delegate_declaration" => {
             extract_delegate(node, source, file_path, parent_ctx, symbols);
         }
         "using_directive" => {
-            extract_using(node, source, file_path, symbols);
+            extract_using(node, source, file_path, symbols, references);
         }
         "comment" => {
             extract_csharp_comment(node, source, file_path, parent_ctx, texts);
@@ -209,6 +406,15 @@ fn walk_node(
             extract_string(node, source, file_path, parent_ctx, texts);
             return;
         }
+
+        // --- Reference extraction ---
+        "invocation_expression" => {
+            extract_call_ref(node, source, file_path, parent_ctx, references);
+        }
+        "object_creation_expression" => {
+            extract_new_ref(node, source, file_path, parent_ctx, references);
+        }
+
         _ => {}
     }
 
@@ -222,9 +428,159 @@ fn walk_node(
             parent_ctx,
             symbols,
             texts,
+            references,
             depth + 1,
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// Reference extraction
+// ---------------------------------------------------------------------------
+
+/// Extract a method invocation reference.
+fn extract_call_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let func = match find_child_by_field(node, "function") {
+        Some(f) => f,
+        None => {
+            // Try first child as function name
+            if let Some(first) = node.child(0) {
+                first
+            } else {
+                return;
+            }
+        }
+    };
+
+    let name = get_call_name(func, source);
+    if name.is_empty() || is_csharp_builtin_call(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "call".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Extract a `new` expression reference (instantiation).
+fn extract_new_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let type_node = match find_child_by_field(node, "type") {
+        Some(t) => t,
+        None => return,
+    };
+
+    let name = get_type_name(type_node, source);
+    if name.is_empty() || is_csharp_builtin_call(&name) || is_csharp_primitive_type(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "instantiation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
+}
+
+/// Get the name of a method call.
+fn get_call_name(node: Node, source: &[u8]) -> String {
+    match node.kind() {
+        "identifier" | "identifier_name" => node_text(node, source),
+        "member_access_expression" => {
+            // obj.Method
+            if let Some(name) = find_child_by_field(node, "name") {
+                if let Some(expr) = find_child_by_field(node, "expression") {
+                    let expr_name = get_call_name(expr, source);
+                    let method_name = node_text(name, source);
+                    if expr_name.is_empty() {
+                        method_name
+                    } else {
+                        format!("{}.{}", expr_name, method_name)
+                    }
+                } else {
+                    node_text(name, source)
+                }
+            } else {
+                String::new()
+            }
+        }
+        "generic_name" => {
+            // Method<T>
+            if let Some(id) = find_child_by_field(node, "identifier") {
+                node_text(id, source)
+            } else {
+                // fallback to first child
+                node.child(0)
+                    .map(|c| node_text(c, source))
+                    .unwrap_or_default()
+            }
+        }
+        _ => String::new(),
+    }
+}
+
+/// Get the name of a type node.
+fn get_type_name(node: Node, source: &[u8]) -> String {
+    match node.kind() {
+        "identifier" | "identifier_name" | "predefined_type" => node_text(node, source),
+        "generic_name" => {
+            // List<T> - get base name
+            if let Some(id) = find_child_by_field(node, "identifier") {
+                node_text(id, source)
+            } else {
+                node.child(0)
+                    .map(|c| node_text(c, source))
+                    .unwrap_or_default()
+            }
+        }
+        "qualified_name" => node_text(node, source),
+        _ => String::new(),
+    }
+}
+
+/// Extract a type reference if it's a user-defined type.
+fn extract_type_ref(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    references: &mut Vec<ReferenceEntry>,
+) {
+    let name = get_type_name(node, source);
+    if name.is_empty() || is_csharp_primitive_type(&name) {
+        return;
+    }
+
+    let line = node_line_range(node);
+    references.push(ReferenceEntry {
+        file: file_path.to_string(),
+        name,
+        kind: "type_annotation".to_string(),
+        line,
+        caller: parent_ctx.map(String::from),
+        project: String::new(),
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -236,6 +592,7 @@ fn extract_type_decl(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -250,21 +607,36 @@ fn extract_type_decl(
         .map(|n| node_text(n, source))
         .unwrap_or_default();
 
-    let bases = find_child_by_field(node, "bases")
-        .or_else(|| {
-            let mut cursor = node.walk();
-            node.children(&mut cursor).find(|c| c.kind() == "base_list")
-        })
+    let bases = find_child_by_field(node, "bases").or_else(|| {
+        let mut cursor = node.walk();
+        node.children(&mut cursor).find(|c| c.kind() == "base_list")
+    });
+
+    let bases_str = bases
         .map(|n| format!(" : {}", node_text(n, source)))
         .unwrap_or_default();
 
-    let _sig = format!("{kind} {name}{type_params}{bases}");
+    let _sig = format!("{kind} {name}{type_params}{bases_str}");
 
     let full_name = if let Some(parent) = parent_ctx {
         format!("{parent}.{name}")
     } else {
         name.clone()
     };
+
+    // Extract base type references
+    if let Some(base_list) = bases {
+        let mut cursor = base_list.walk();
+        for child in base_list.children(&mut cursor) {
+            // Look for base types in base_list
+            if matches!(
+                child.kind(),
+                "identifier" | "identifier_name" | "generic_name" | "qualified_name"
+            ) {
+                extract_type_ref(child, source, file_path, Some(&full_name), references);
+            }
+        }
+    }
 
     // Extract tokens from type body
     let tokens = find_child_by_field(node, "body")
@@ -293,6 +665,7 @@ fn extract_type_decl(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -357,6 +730,7 @@ fn extract_enum(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn extract_namespace(
     node: Node,
     source: &[u8],
@@ -364,6 +738,7 @@ fn extract_namespace(
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
     depth: usize,
 ) {
     let name = match find_child_by_field(node, "name") {
@@ -402,6 +777,7 @@ fn extract_namespace(
                 Some(&full_name),
                 symbols,
                 texts,
+                references,
                 depth + 1,
             );
         }
@@ -426,6 +802,7 @@ fn extract_namespace(
                         Some(&full_name),
                         symbols,
                         texts,
+                        references,
                         depth + 1,
                     );
                 }
@@ -440,6 +817,7 @@ fn extract_method(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -455,6 +833,25 @@ fn extract_method(
     } else {
         name
     };
+
+    // Extract return type reference
+    if let Some(ret_type) =
+        find_child_by_field(node, "type").or_else(|| find_child_by_field(node, "returns"))
+    {
+        extract_type_ref(ret_type, source, file_path, Some(&full_name), references);
+    }
+
+    // Extract parameter type references
+    if let Some(params) = find_child_by_field(node, "parameters") {
+        let mut cursor = params.walk();
+        for child in params.children(&mut cursor) {
+            if child.kind() == "parameter"
+                && let Some(param_type) = find_child_by_field(child, "type")
+            {
+                extract_type_ref(param_type, source, file_path, Some(&full_name), references);
+            }
+        }
+    }
 
     // Extract tokens from method body
     let tokens = find_child_by_field(node, "body")
@@ -479,6 +876,7 @@ fn extract_constructor(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -494,6 +892,18 @@ fn extract_constructor(
     } else {
         name
     };
+
+    // Extract parameter type references
+    if let Some(params) = find_child_by_field(node, "parameters") {
+        let mut cursor = params.walk();
+        for child in params.children(&mut cursor) {
+            if child.kind() == "parameter"
+                && let Some(param_type) = find_child_by_field(child, "type")
+            {
+                extract_type_ref(param_type, source, file_path, Some(&full_name), references);
+            }
+        }
+    }
 
     // Extract tokens from constructor body
     let tokens = find_child_by_field(node, "body")
@@ -518,6 +928,7 @@ fn extract_property(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let name = match find_child_by_field(node, "name") {
         Some(n) => node_text(n, source),
@@ -532,6 +943,11 @@ fn extract_property(
     } else {
         name
     };
+
+    // Extract property type reference
+    if let Some(prop_type) = find_child_by_field(node, "type") {
+        extract_type_ref(prop_type, source, file_path, Some(&full_name), references);
+    }
 
     push_symbol(
         symbols,
@@ -552,6 +968,7 @@ fn extract_field(
     file_path: &str,
     parent_ctx: Option<&str>,
     symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
 ) {
     let line = node_line_range(node);
     let visibility = extract_csharp_visibility(node, source);
@@ -570,6 +987,11 @@ fn extract_field(
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "variable_declaration" {
+            // Extract field type reference
+            if let Some(field_type) = find_child_by_field(child, "type") {
+                extract_type_ref(field_type, source, file_path, parent_ctx, references);
+            }
+
             let mut decl_cursor = child.walk();
             for decl_child in child.children(&mut decl_cursor) {
                 if decl_child.kind() == "variable_declarator"
@@ -638,7 +1060,13 @@ fn extract_delegate(
     );
 }
 
-fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<SymbolEntry>) {
+fn extract_using(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    symbols: &mut Vec<SymbolEntry>,
+    references: &mut Vec<ReferenceEntry>,
+) {
     let line = node_line_range(node);
 
     // `using System.Linq;` or `using Foo = System.Bar;`
@@ -647,6 +1075,17 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
         match child.kind() {
             "qualified_name" | "identifier" | "identifier_name" => {
                 let name = node_text(child, source);
+
+                // Add import reference
+                references.push(ReferenceEntry {
+                    file: file_path.to_string(),
+                    name: name.clone(),
+                    kind: "import".to_string(),
+                    line,
+                    caller: None,
+                    project: String::new(),
+                });
+
                 push_symbol(
                     symbols,
                     file_path,
@@ -669,6 +1108,16 @@ fn extract_using(node: Node, source: &[u8], file_path: &str, symbols: &mut Vec<S
                         .map(|n| node_text(n, source))
                         .unwrap_or_default();
                     if !type_name.is_empty() {
+                        // Add import reference
+                        references.push(ReferenceEntry {
+                            file: file_path.to_string(),
+                            name: type_name.clone(),
+                            kind: "import".to_string(),
+                            line,
+                            caller: None,
+                            project: String::new(),
+                        });
+
                         push_symbol(
                             symbols,
                             file_path,
@@ -1006,5 +1455,91 @@ public class Documented {}
                 .iter()
                 .any(|t| t.kind == "docstring" || t.kind == "comment")
         );
+    }
+
+    // --- Reference extraction tests ---
+
+    #[test]
+    fn test_csharp_call_references() {
+        let source = b"public class Caller
+{
+    public void DoWork()
+    {
+        Helper();
+        myService.Process();
+    }
+    private void Helper() {}
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "csharp", "test.cs").unwrap();
+        let calls: Vec<_> = refs.iter().filter(|r| r.kind == "call").collect();
+        assert!(calls.iter().any(|r| r.name == "Helper"));
+        assert!(calls.iter().any(|r| r.name == "myService.Process"));
+    }
+
+    #[test]
+    fn test_csharp_using_references() {
+        let source = b"using System;
+using System.Collections.Generic;
+using MyApp.Services;";
+        let (_symbols, _texts, refs) = parse_file(source, "csharp", "test.cs").unwrap();
+        let imports: Vec<_> = refs.iter().filter(|r| r.kind == "import").collect();
+        assert!(imports.iter().any(|r| r.name == "System"));
+        assert!(
+            imports
+                .iter()
+                .any(|r| r.name == "System.Collections.Generic")
+        );
+        assert!(imports.iter().any(|r| r.name == "MyApp.Services"));
+    }
+
+    #[test]
+    fn test_csharp_instantiation_references() {
+        let source = b"public class Factory
+{
+    public void Create()
+    {
+        var user = new User();
+        var config = new AppConfig();
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "csharp", "test.cs").unwrap();
+        let instantiations: Vec<_> = refs.iter().filter(|r| r.kind == "instantiation").collect();
+        assert!(instantiations.iter().any(|r| r.name == "User"));
+        assert!(instantiations.iter().any(|r| r.name == "AppConfig"));
+    }
+
+    #[test]
+    fn test_csharp_type_references() {
+        let source = b"public class UserService
+{
+    private UserRepository repo;
+
+    public User GetUser(UserId id)
+    {
+        return repo.Find(id);
+    }
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "csharp", "test.cs").unwrap();
+        let types: Vec<_> = refs
+            .iter()
+            .filter(|r| r.kind == "type_annotation")
+            .collect();
+        assert!(types.iter().any(|r| r.name == "UserRepository"));
+        assert!(types.iter().any(|r| r.name == "User"));
+        assert!(types.iter().any(|r| r.name == "UserId"));
+    }
+
+    #[test]
+    fn test_csharp_base_type_references() {
+        let source = b"public class Dog : Animal, IWalkable
+{
+}";
+        let (_symbols, _texts, refs) = parse_file(source, "csharp", "test.cs").unwrap();
+        let types: Vec<_> = refs
+            .iter()
+            .filter(|r| r.kind == "type_annotation")
+            .collect();
+        assert!(types.iter().any(|r| r.name == "Animal"));
+        assert!(types.iter().any(|r| r.name == "IWalkable"));
     }
 }
