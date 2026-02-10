@@ -56,29 +56,30 @@ fn extract_astro_scripts(source: &[u8]) -> Vec<ScriptBlock> {
     // Extract frontmatter: content between first `---` and second `---`
     if let Some(first) = text.find("---") {
         let after_first = first + 3;
-        if let Some(second) = text[after_first..].find("---") {
+        if let Some(rest) = text.get(after_first..)
+            && let Some(second) = rest.find("---")
+        {
             // Skip leading newline after opening ---
             let mut fm_start = after_first;
-            if fm_start < text.len() && text.as_bytes()[fm_start] == b'\n' {
+            if text.as_bytes().get(fm_start) == Some(&b'\n') {
                 fm_start += 1;
-            } else if fm_start + 1 < text.len()
-                && text.as_bytes()[fm_start] == b'\r'
-                && text.as_bytes()[fm_start + 1] == b'\n'
+            } else if text.as_bytes().get(fm_start) == Some(&b'\r')
+                && text.as_bytes().get(fm_start + 1) == Some(&b'\n')
             {
                 fm_start += 2;
             }
             let fm_end = after_first + second;
-            let frontmatter = &text[fm_start..fm_end];
+            if let Some(frontmatter) = text.get(fm_start..fm_end) {
+                // Count lines before the frontmatter content starts
+                let start_line = text.get(..fm_start).map(count_newlines_in).unwrap_or(0) + 1;
 
-            // Count lines before the frontmatter content starts
-            let start_line = count_newlines_in(&text[..fm_start]) + 1;
-
-            if !frontmatter.trim().is_empty() {
-                blocks.push(ScriptBlock {
-                    content: frontmatter.as_bytes().to_vec(),
-                    lang: "typescript",
-                    start_line: start_line as u32,
-                });
+                if !frontmatter.trim().is_empty() {
+                    blocks.push(ScriptBlock {
+                        content: frontmatter.as_bytes().to_vec(),
+                        lang: "typescript",
+                        start_line: start_line as u32,
+                    });
+                }
             }
         }
     }
@@ -103,15 +104,17 @@ fn extract_html_script_tags(source: &[u8], default_lang: &str) -> Vec<ScriptBloc
 
     let mut search_from = 0;
 
-    while let Some(pos) = text_lower[search_from..].find("<script") {
+    while let Some(rest) = text_lower.get(search_from..) {
+        let Some(pos) = rest.find("<script") else {
+            break;
+        };
         let tag_start = search_from + pos;
 
         // Make sure it's actually a tag (next char after "script" should be whitespace or >)
         let after_script = tag_start + 7; // len("<script")
-        if after_script >= text.len() {
+        let Some(&next_char) = text.as_bytes().get(after_script) else {
             break;
-        }
-        let next_char = text.as_bytes()[after_script];
+        };
         if next_char != b' '
             && next_char != b'\t'
             && next_char != b'\n'
@@ -123,38 +126,51 @@ fn extract_html_script_tags(source: &[u8], default_lang: &str) -> Vec<ScriptBloc
         }
 
         // Find the closing > of the opening tag
-        let tag_close = match text[after_script..].find('>') {
+        let Some(rest_after_script) = text.get(after_script..) else {
+            break;
+        };
+        let tag_close = match rest_after_script.find('>') {
             Some(pos) => after_script + pos,
             None => break,
         };
 
         // Extract the opening tag attributes
-        let open_tag = &text[tag_start..=tag_close];
+        let Some(open_tag) = text.get(tag_start..=tag_close) else {
+            break;
+        };
 
         // Detect language from lang="..." attribute
         let lang = detect_script_lang(open_tag, default_lang);
 
         // Content starts after the > (skip leading newline if present)
         let mut content_start = tag_close + 1;
-        if content_start < text.len() && text.as_bytes()[content_start] == b'\n' {
+        if text.as_bytes().get(content_start) == Some(&b'\n') {
             content_start += 1;
-        } else if content_start + 1 < text.len()
-            && text.as_bytes()[content_start] == b'\r'
-            && text.as_bytes()[content_start + 1] == b'\n'
+        } else if text.as_bytes().get(content_start) == Some(&b'\r')
+            && text.as_bytes().get(content_start + 1) == Some(&b'\n')
         {
             content_start += 2;
         }
 
         // Find the matching </script> — content ends where the close tag begins
-        let content_end = match text_lower[content_start..].find("</script") {
+        let Some(rest_content) = text_lower.get(content_start..) else {
+            break;
+        };
+        let content_end = match rest_content.find("</script") {
             Some(pos) => content_start + pos,
             None => break,
         };
 
-        let content = &text[content_start..content_end];
+        let Some(content) = text.get(content_start..content_end) else {
+            break;
+        };
 
         // Calculate the 1-based start line of the content
-        let start_line = count_newlines_in(&text[..content_start]) + 1;
+        let start_line = text
+            .get(..content_start)
+            .map(count_newlines_in)
+            .unwrap_or(0)
+            + 1;
 
         if !content.trim().is_empty() {
             blocks.push(ScriptBlock {
@@ -167,7 +183,10 @@ fn extract_html_script_tags(source: &[u8], default_lang: &str) -> Vec<ScriptBloc
         // Move past the closing tag
         search_from = content_end;
         // Skip past </script>
-        if let Some(pos) = text_lower[search_from..].find('>') {
+        let Some(rest_close) = text_lower.get(search_from..) else {
+            break;
+        };
+        if let Some(pos) = rest_close.find('>') {
             search_from += pos + 1;
         } else {
             break;
@@ -187,7 +206,7 @@ fn detect_script_lang(open_tag: &str, default_lang: &str) -> &'static str {
     // Match lang="ts" or lang="typescript" (with either quote style)
     if let Some(pos) = lower.find("lang=") {
         let after_eq = pos + 5;
-        let rest = &lower[after_eq..];
+        let rest = lower.get(after_eq..).unwrap_or("");
         let rest = rest.trim_start_matches(['"', '\'']);
 
         if rest.starts_with("ts") || rest.starts_with("typescript") {

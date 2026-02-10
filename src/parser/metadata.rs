@@ -108,7 +108,7 @@ where
 fn truncate_to_line(text: &str) -> String {
     let trimmed = text.trim();
     match trimmed.find('\n') {
-        Some(idx) => trimmed[..idx].trim().to_string(),
+        Some(idx) => trimmed.get(..idx).unwrap_or(trimmed).trim().to_string(),
         None => trimmed.to_string(),
     }
 }
@@ -125,10 +125,10 @@ fn truncate_to_sentence(text: &str) -> String {
                 // Period at end
                 return trimmed.to_string();
             }
-            let next_char = trimmed[next_idx..].chars().next();
+            let next_char = trimmed.get(next_idx..).and_then(|s| s.chars().next());
             if next_char.is_none_or(|c| c.is_whitespace()) {
                 // Sentence boundary found
-                return trimmed[..=i].trim().to_string();
+                return trimmed.get(..=i).unwrap_or(trimmed).trim().to_string();
             }
         }
     }
@@ -206,9 +206,9 @@ fn extract_yaml_frontmatter(text: &str) -> Option<FileMetadata> {
     }
 
     // Find closing ---
-    let content = &text[3..];
+    let content = text.get(3..)?;
     let end_idx = content.find("\n---")?;
-    let yaml_content = &content[..end_idx];
+    let yaml_content = content.get(..end_idx)?;
 
     let mut title = None;
     let mut description = None;
@@ -551,7 +551,7 @@ fn extract_xml_summary(text: &str) -> Option<String> {
     if start >= end {
         return None;
     }
-    let content = &text[start + 9..end];
+    let content = text.get(start + 9..end)?;
     let cleaned = content
         .lines()
         .map(|l| l.trim())

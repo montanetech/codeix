@@ -63,7 +63,10 @@ const STOPWORDS: &[&str] = &[
 pub fn node_text(node: Node, source: &[u8]) -> String {
     let start = node.start_byte();
     let end = node.end_byte();
-    String::from_utf8_lossy(&source[start..end]).to_string()
+    source
+        .get(start..end)
+        .map(|bytes| String::from_utf8_lossy(bytes).into_owned())
+        .unwrap_or_default()
 }
 
 /// Get the 1-based [start, end] line range for a node.
@@ -167,14 +170,14 @@ pub fn strip_block_comment(raw: &str) -> String {
 pub fn strip_string_quotes(raw: &str) -> String {
     // Triple-quoted strings (Python, etc.)
     if raw.starts_with("\"\"\"") && raw.ends_with("\"\"\"") && raw.len() >= 6 {
-        return raw[3..raw.len() - 3].to_string();
+        return raw.get(3..raw.len() - 3).unwrap_or(raw).to_string();
     }
     if raw.starts_with("'''") && raw.ends_with("'''") && raw.len() >= 6 {
-        return raw[3..raw.len() - 3].to_string();
+        return raw.get(3..raw.len() - 3).unwrap_or(raw).to_string();
     }
     // Template literals (JS/TS)
     if raw.starts_with('`') && raw.ends_with('`') && raw.len() >= 2 {
-        return raw[1..raw.len() - 1].to_string();
+        return raw.get(1..raw.len() - 1).unwrap_or(raw).to_string();
     }
     // Raw strings: r"..." or r#"..."#
     if raw.starts_with("r#") || raw.starts_with("r\"") {
@@ -200,10 +203,10 @@ pub fn strip_string_quotes(raw: &str) -> String {
 
 fn strip_simple_quotes(s: &str) -> String {
     if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
-        return s[1..s.len() - 1].to_string();
+        return s.get(1..s.len() - 1).unwrap_or(s).to_string();
     }
     if s.starts_with('\'') && s.ends_with('\'') && s.len() >= 2 {
-        return s[1..s.len() - 1].to_string();
+        return s.get(1..s.len() - 1).unwrap_or(s).to_string();
     }
     s.to_string()
 }
@@ -312,14 +315,16 @@ pub fn push_symbol(
 pub fn extract_signature_to_brace(node: Node, source: &[u8]) -> String {
     let start = node.start_byte();
     let end = node.end_byte();
-    let text = &source[start..end];
-    let text = String::from_utf8_lossy(text);
+    let Some(bytes) = source.get(start..end) else {
+        return String::new();
+    };
+    let text = String::from_utf8_lossy(bytes);
 
     if let Some(brace_pos) = text.find('{') {
-        let sig = text[..brace_pos].trim();
+        let sig = text.get(..brace_pos).unwrap_or(&text).trim();
         collapse_whitespace(sig)
     } else if let Some(semi_pos) = text.find(';') {
-        let sig = text[..semi_pos].trim();
+        let sig = text.get(..semi_pos).unwrap_or(&text).trim();
         collapse_whitespace(sig)
     } else {
         collapse_whitespace(text.trim())

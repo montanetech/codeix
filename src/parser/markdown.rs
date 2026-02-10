@@ -215,7 +215,7 @@ fn extract_code_content(raw: &str) -> Option<String> {
         }
     }
 
-    let content = lines[1..end_idx].join("\n");
+    let content = lines.get(1..end_idx).map(|slice| slice.join("\n"))?;
     Some(content)
 }
 
@@ -261,11 +261,15 @@ fn strip_optional_closing_hashes(text: &str) -> String {
     {
         // Calculate the byte offset after the whitespace character
         let after_space_start = last_space_idx + last_space_char.len_utf8();
-        let after_space = &trimmed[after_space_start..];
+        let after_space = trimmed.get(after_space_start..).unwrap_or("");
         // Check if everything after the last space is just #
         if !after_space.is_empty() && after_space.chars().all(|c| c == '#') {
             // This is an optional closing sequence - strip it
-            return trimmed[..last_space_idx].trim().to_string();
+            return trimmed
+                .get(..last_space_idx)
+                .unwrap_or(trimmed)
+                .trim()
+                .to_string();
         }
     }
 
