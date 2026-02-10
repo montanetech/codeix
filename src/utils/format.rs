@@ -190,27 +190,6 @@ fn format_symbols_text(symbols: &[SymbolWithSnippet]) -> String {
     out
 }
 
-/// Format imports (simplified symbols).
-pub fn format_imports(
-    imports: &[SymbolEntry],
-    format: OutputFormat,
-) -> Result<String, serde_json::Error> {
-    match format {
-        OutputFormat::Json => serde_json::to_string_pretty(imports),
-        OutputFormat::Text => Ok(format_imports_text(imports)),
-    }
-}
-
-fn format_imports_text(imports: &[SymbolEntry]) -> String {
-    let mut out = String::new();
-    for imp in imports {
-        // file[line] import name
-        let location = format_location(&imp.file, imp.line);
-        let _ = writeln!(out, "{} import {}", location, imp.name);
-    }
-    out
-}
-
 /// Response wrapper for ReferenceEntry with optional snippet.
 #[derive(Debug, Serialize)]
 pub struct ReferenceWithSnippet {

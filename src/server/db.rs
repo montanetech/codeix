@@ -501,37 +501,6 @@ impl SearchDb {
         Ok(results)
     }
 
-    /// Get all imports for a file (symbols with kind "import").
-    pub fn get_imports(&self, file: &str, limit: u32, offset: u32) -> Result<Vec<SymbolEntry>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
-             FROM symbols
-             WHERE file = ?1 AND kind = 'import'
-             ORDER BY line_start
-             LIMIT ?2 OFFSET ?3",
-        )?;
-
-        let rows = stmt.query_map(rusqlite::params![file, limit, offset], |row| {
-            Ok(SymbolEntry {
-                project: row.get(0)?,
-                file: row.get(1)?,
-                name: row.get(2)?,
-                kind: row.get(3)?,
-                line: [row.get(4)?, row.get(5)?],
-                parent: row.get(6)?,
-                tokens: row.get(7)?,
-                alias: row.get(8)?,
-                visibility: row.get(9)?,
-            })
-        })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-        Ok(results)
-    }
-
     /// Get all references TO a symbol (who calls/uses this symbol).
     /// Returns references sorted by file, then line.
     pub fn get_callers(
