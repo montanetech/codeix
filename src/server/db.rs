@@ -671,6 +671,32 @@ impl SearchDb {
         Ok(())
     }
 
+    /// Remove all data for a project (files, symbols, texts, refs).
+    /// Does not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.
+    pub fn remove_project(&self, project: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+
+        tx.execute(
+            "DELETE FROM files WHERE project = ?1",
+            rusqlite::params![project],
+        )?;
+        tx.execute(
+            "DELETE FROM symbols WHERE project = ?1",
+            rusqlite::params![project],
+        )?;
+        tx.execute(
+            "DELETE FROM texts WHERE project = ?1",
+            rusqlite::params![project],
+        )?;
+        tx.execute(
+            "DELETE FROM refs WHERE project = ?1",
+            rusqlite::params![project],
+        )?;
+
+        tx.commit()?;
+        Ok(())
+    }
+
     /// Upsert a single file and its symbols/texts/references.
     /// Removes old data for this path first, then inserts new data.
     /// Does not rebuild FTS indexes - caller should call rebuild_fts() after batch operations.

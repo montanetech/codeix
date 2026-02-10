@@ -333,7 +333,9 @@ fn walk_project(
                 FsEvent::ProjectAdded { root } => {
                     subprojects.push(root);
                 }
-                FsEvent::FileRemoved { .. } | FsEvent::DirIgnored => {} // Not emitted during walk
+                FsEvent::FileRemoved { .. }
+                | FsEvent::ProjectRemoved { .. }
+                | FsEvent::DirIgnored => {} // Not emitted during walk
             }
             Ok(())
         })?;
@@ -437,6 +439,14 @@ fn handle_events(
             .lock()
             .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
 
+        // Check if a removed directory is a mounted project (subproject deletion)
+        if is_removal_event(kind) && mt.is_mounted(&canonical) {
+            mount_events.push(FsEvent::ProjectRemoved {
+                root: canonical.clone(),
+            });
+            continue;
+        }
+
         // Pass EventKind directly to on_fs_event (same type as walker uses)
         if let Some(mount) = mt
             .iter_mut()
@@ -503,6 +513,34 @@ fn handle_events(
                     .lock()
                     .ok()
                     .map(|mut mt| mt.mark_dirty_canonical(&abs_path));
+            }
+            FsEvent::ProjectRemoved { root } => {
+                // Compute relative project path from workspace root
+                let project_str = {
+                    let mt = mount_table
+                        .lock()
+                        .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
+                    mt.relative_project(&root)
+                };
+
+                tracing::info!("project removed: {} ({})", project_str, root.display());
+
+                // Remove project data from DB
+                let db_guard = db
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+                if let Err(e) = db_guard.remove_project(&project_str) {
+                    tracing::warn!("failed to remove project {}: {}", project_str, e);
+                }
+                drop(db_guard);
+
+                // Unmount the project (use unmount_path since directory may be deleted)
+                let mut mt = mount_table
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("mount table lock poisoned: {e}"))?;
+                if !mt.unmount_path(&root) {
+                    tracing::debug!("project was not mounted: {}", root.display());
+                }
             }
             FsEvent::DirIgnored => {} // Not emitted from notify events
         }
@@ -1270,5 +1308,97 @@ mod tests {
             })
             .collect();
         assert_eq!(symbols[0].project, "path/to/deep/project");
+    }
+
+    #[test]
+    fn test_project_removal_cleans_up_db() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().canonicalize().unwrap();
+
+        // Create root project
+        create_git_marker(&root);
+        create_source_file(&root.join("main.rs"), "fn root_fn() {}\n");
+
+        // Create subproject
+        let sub = root.join("sub");
+        create_git_marker(&sub);
+        create_source_file(&sub.join("lib.rs"), "fn sub_fn() {}\n");
+
+        // Index
+        let mount_table = Arc::new(Mutex::new(MountTable::new(root.clone())));
+        let db = Arc::new(Mutex::new(SearchDb::new().unwrap()));
+        on_project_discovery(&root, &mount_table, &db, false, None).unwrap();
+
+        // Verify initial state: 2 projects
+        {
+            let db_guard = db.lock().unwrap();
+            let projects = db_guard.list_projects().unwrap();
+            assert_eq!(projects.len(), 2);
+            assert!(projects.contains(&"".to_string())); // Root
+            assert!(projects.contains(&"sub".to_string())); // Subproject
+
+            // Both functions should exist
+            let results = db_guard
+                .search("fn", &["symbol".to_string()], None, None, None, 100, 0)
+                .unwrap();
+            let symbols: Vec<_> = results
+                .iter()
+                .filter_map(|r| match r {
+                    crate::server::db::SearchResult::Symbol(s) => Some(s),
+                    _ => None,
+                })
+                .collect();
+            assert!(symbols.iter().any(|s| s.name == "root_fn"));
+            assert!(symbols.iter().any(|s| s.name == "sub_fn"));
+        }
+
+        // Simulate ProjectRemoved event for the subproject
+        {
+            let db_guard = db.lock().unwrap();
+            db_guard.remove_project("sub").unwrap();
+        }
+
+        // Unmount the subproject
+        {
+            let mut mt = mount_table.lock().unwrap();
+            assert!(mt.unmount_path(&sub));
+        }
+
+        // Rebuild FTS
+        {
+            let db_guard = db.lock().unwrap();
+            db_guard.rebuild_fts().unwrap();
+        }
+
+        // Verify: only root project remains
+        {
+            let db_guard = db.lock().unwrap();
+            let projects = db_guard.list_projects().unwrap();
+            assert_eq!(projects.len(), 1);
+            assert!(projects.contains(&"".to_string())); // Root
+
+            // Only root_fn should exist, sub_fn should be gone
+            let results = db_guard
+                .search("fn", &["symbol".to_string()], None, None, None, 100, 0)
+                .unwrap();
+            let symbols: Vec<_> = results
+                .iter()
+                .filter_map(|r| match r {
+                    crate::server::db::SearchResult::Symbol(s) => Some(s),
+                    _ => None,
+                })
+                .collect();
+            assert!(symbols.iter().any(|s| s.name == "root_fn"));
+            assert!(!symbols.iter().any(|s| s.name == "sub_fn"));
+        }
+
+        // Verify mount table: only root mount remains
+        {
+            let mt = mount_table.lock().unwrap();
+            let mounts: Vec<_> = mt.iter().collect();
+            assert_eq!(mounts.len(), 1);
+            assert!(mt.is_mounted(&root));
+            assert!(!mt.is_mounted(&sub));
+        }
     }
 }
