@@ -255,8 +255,13 @@ fn strip_optional_closing_hashes(text: &str) -> String {
 
     // Check if it ends with space followed by #
     // The closing sequence is: optional whitespace, one or more #, optional whitespace
-    if let Some(last_space_idx) = trimmed.rfind(|c: char| c.is_whitespace()) {
-        let after_space = &trimmed[last_space_idx + 1..];
+    // Use char_indices to safely handle multi-byte UTF-8 characters (e.g., non-breaking space)
+    if let Some((last_space_idx, last_space_char)) =
+        trimmed.char_indices().rfind(|(_, c)| c.is_whitespace())
+    {
+        // Calculate the byte offset after the whitespace character
+        let after_space_start = last_space_idx + last_space_char.len_utf8();
+        let after_space = &trimmed[after_space_start..];
         // Check if everything after the last space is just #
         if !after_space.is_empty() && after_space.chars().all(|c| c == '#') {
             // This is an optional closing sequence - strip it
@@ -487,6 +492,29 @@ mod tests {
 
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].name, "Simple heading");
+    }
+
+    #[test]
+    fn test_heading_with_non_breaking_space() {
+        // Non-breaking space (\u{a0}) is a 2-byte UTF-8 character (0xC2 0xA0)
+        // This tests that we handle multi-byte whitespace characters correctly
+        // when stripping optional closing hashes
+        let source = "# Prototype in\u{a0}a nutshell\n".as_bytes();
+        let (symbols, _) = parse_and_extract(source, "test.md").unwrap();
+
+        assert_eq!(symbols.len(), 1);
+        assert_eq!(symbols[0].name, "Prototype in\u{a0}a nutshell");
+    }
+
+    #[test]
+    fn test_heading_with_non_breaking_space_and_closing_hashes() {
+        // Non-breaking space followed by closing hashes - should strip the hashes
+        let source = "# Title with\u{a0}nbsp ##\n".as_bytes();
+        let (symbols, _) = parse_and_extract(source, "test.md").unwrap();
+
+        assert_eq!(symbols.len(), 1);
+        // The trailing " ##" should be stripped, but the nbsp is kept
+        assert_eq!(symbols[0].name, "Title with\u{a0}nbsp");
     }
 
     #[test]
