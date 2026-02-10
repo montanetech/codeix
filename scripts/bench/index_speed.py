@@ -41,7 +41,7 @@ def benchmark_repo(repo, ctx: RunContext, codeix_bin: str, verbose: bool = False
     # Benchmark
     start = time.perf_counter()
     result = subprocess.run(
-        [codeix_bin, "build", str(path)],
+        [codeix_bin, "build", "-r", str(path)],
         capture_output=not verbose,
     )
     duration = time.perf_counter() - start

@@ -138,9 +138,9 @@ def build_index(codeix_bin: str, repo_path: Path) -> bool:
 
     # Build command: either direct binary or npx
     if codeix_bin == "npx":
-        cmd = ["npx", "codeix", "build", str(repo_path)]
+        cmd = ["npx", "codeix", "build", "-r", str(repo_path)]
     else:
-        cmd = [codeix_bin, "build", str(repo_path)]
+        cmd = [codeix_bin, "build", "-r", str(repo_path)]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
