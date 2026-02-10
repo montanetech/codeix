@@ -5,7 +5,7 @@
 ```
 codeix                 # start MCP server, watch for changes
 codeix build           # parse source files, write .codeindex
-codeix serve --no-watch  # serve without file watching
+codeix -r ~/project build  # build from a specific directory
 ```
 
 ## Why
@@ -149,7 +149,7 @@ All channels install the same single binary. No runtime dependencies.
 codeix build
 
 # Build from a specific directory (discovers all git repos below)
-codeix build ~/projects
+codeix -r ~/projects build
 
 # Start MCP server (default command, watches for changes)
 codeix
@@ -157,6 +157,9 @@ codeix
 # Or explicitly
 codeix serve
 codeix serve --no-watch
+
+# Serve from a specific directory
+codeix -r ~/projects serve
 ```
 
 ### MCP client configuration
