@@ -363,7 +363,7 @@ $ git commit -m "feat: ..."
 | Tool | Input | Returns |
 |---|---|---|
 | `get_file_symbols` | `file` path | All symbols in that file, ordered by line |
-| `get_symbol_children` | `file`, `parent` name | Direct children of a symbol |
+| `get_children` | `file`, `parent` name | Direct children of a symbol |
 | `get_imports` | `file` path | All imports for that file |
 
 ### Graph tools (call relationships)

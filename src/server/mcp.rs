@@ -62,7 +62,7 @@ pub struct GetFileSymbolsParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
-pub struct GetSymbolChildrenParams {
+pub struct GetChildrenParams {
     /// File path containing the parent symbol
     pub file: String,
     /// Name of the parent symbol
@@ -297,19 +297,17 @@ impl CodeIndexServer {
     #[tool(
         description = "Get direct children of a symbol (e.g. methods of a class). Returns code snippets by default."
     )]
-    pub async fn get_symbol_children(
+    pub async fn get_children(
         &self,
-        Parameters(params): Parameters<GetSymbolChildrenParams>,
+        Parameters(params): Parameters<GetChildrenParams>,
     ) -> Result<CallToolResult, McpError> {
         let db = self
             .db
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .get_symbol_children(&params.file, &params.parent)
-            .map_err(|e| {
-                McpError::internal_error(format!("get_symbol_children failed: {e}"), None)
-            })?;
+            .get_children(&params.file, &params.parent)
+            .map_err(|e| McpError::internal_error(format!("get_children failed: {e}"), None))?;
 
         drop(db); // Release lock before file I/O
 
@@ -635,7 +633,7 @@ impl ServerHandler for CodeIndexServer {
                  Filter by scope, kind, path (glob), project. Returns BM25-ranked results with code snippets.\n\n\
                  **Structural navigation:**\n\
                  - `get_file_symbols`: All symbols in a file, ordered by line number.\n\
-                 - `get_symbol_children`: Direct children of a symbol (e.g., methods of a class).\n\
+                 - `get_children`: Direct children of a symbol (e.g., methods of a class).\n\
                  - `get_imports`: Import statements in a file.\n\n\
                  **Reference tracking:**\n\
                  - `get_callers`: Find all places that call/reference a symbol.\n\

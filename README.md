@@ -70,7 +70,7 @@ Eight tools, zero setup. The agent queries immediately — no init, no config, n
 | `explore` | Explore project structure: metadata, subprojects, files grouped by directory |
 | `search` | Unified full-text search across symbols, files, and texts (FTS5, BM25-ranked) with scope/kind/path/project filters |
 | `get_file_symbols` | List all symbols in a file |
-| `get_symbol_children` | Get children of a class/module |
+| `get_children` | Get children of a class/module |
 | `get_imports` | List imports for a file |
 | `get_callers` | Find all places that call or reference a symbol |
 | `get_callees` | Find all symbols that a function/method calls |
