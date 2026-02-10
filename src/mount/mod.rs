@@ -1022,13 +1022,15 @@ mod tests {
         use notify::event::{EventKind, RemoveKind};
 
         let tmp = TempDir::new().unwrap();
+        // Canonicalize to handle macOS /var -> /private/var symlink
+        let tmp_path = tmp.path().canonicalize().unwrap();
         // Create a .git directory to simulate a subproject
-        let git_dir = tmp.path().join("subproject/.git");
+        let git_dir = tmp_path.join("subproject/.git");
         fs::create_dir_all(&git_dir).unwrap();
 
-        let mut table = MountTable::new(tmp.path().to_path_buf());
-        table.mount_ro(tmp.path()).unwrap();
-        let mount = table.find_mount_mut(tmp.path()).unwrap();
+        let mut table = MountTable::new(tmp_path.clone());
+        table.mount_ro(&tmp_path).unwrap();
+        let mount = table.find_mount_mut(&tmp_path).unwrap();
 
         // Simulate .git directory removal event
         let event = mount.on_fs_event(&git_dir, &EventKind::Remove(RemoveKind::Folder));
@@ -1036,7 +1038,7 @@ mod tests {
         // Should emit ProjectRemoved for the subproject root
         match event {
             Some(FsEvent::ProjectRemoved { root }) => {
-                assert_eq!(root, tmp.path().join("subproject"));
+                assert_eq!(root, tmp_path.join("subproject"));
             }
             other => panic!("expected ProjectRemoved, got {:?}", other),
         }
@@ -1047,12 +1049,14 @@ mod tests {
         use notify::event::{EventKind, RemoveKind};
 
         let tmp = TempDir::new().unwrap();
-        let regular_dir = tmp.path().join("some_dir");
+        // Canonicalize to handle macOS /var -> /private/var symlink
+        let tmp_path = tmp.path().canonicalize().unwrap();
+        let regular_dir = tmp_path.join("some_dir");
         fs::create_dir_all(&regular_dir).unwrap();
 
-        let mut table = MountTable::new(tmp.path().to_path_buf());
-        table.mount_ro(tmp.path()).unwrap();
-        let mount = table.find_mount_mut(tmp.path()).unwrap();
+        let mut table = MountTable::new(tmp_path.clone());
+        table.mount_ro(&tmp_path).unwrap();
+        let mount = table.find_mount_mut(&tmp_path).unwrap();
 
         // Simulate regular directory removal event
         let event = mount.on_fs_event(&regular_dir, &EventKind::Remove(RemoveKind::Folder));
