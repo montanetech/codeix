@@ -15,14 +15,14 @@ use rmcp::{
 use serde::Deserialize;
 
 use super::db::{SearchDb, SearchResult};
-use super::format::{
-    EnrichedSearchResult, ExploreResult, OutputFormat, ReferenceWithSnippet, SymbolWithSnippet,
-    format_explore, format_imports, format_references, format_search_results, format_symbols,
-};
 use super::snippet::SnippetExtractor;
 use crate::index::format::SymbolEntry;
 use crate::mount::MountTable;
 use crate::mount::handler::flush_dirty_mounts;
+use crate::utils::format::{
+    EnrichedSearchResult, ExploreResult, OutputFormat, ReferenceWithSnippet, SymbolWithSnippet,
+    format_explore, format_imports, format_references, format_search_results, format_symbols,
+};
 use crate::utils::manifest;
 
 // Parameter structs for each tool - shared between MCP and REPL
@@ -54,8 +54,8 @@ pub struct SearchParams {
     /// Number of code snippet lines for symbols: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
-    /// Output format: "json" (default) or "text" for human-readable output
-    #[arg(long, default_value = "json")]
+    /// Output format: "json" (default for MCP) or "text" (default for CLI)
+    #[arg(long, default_value = "text")]
     #[serde(default)]
     pub format: OutputFormat,
 }
@@ -73,8 +73,8 @@ pub struct GetFileSymbolsParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
-    /// Output format: "json" (default) or "text" for human-readable output
-    #[arg(long, default_value = "json")]
+    /// Output format: "json" (default for MCP) or "text" (default for CLI)
+    #[arg(long, default_value = "text")]
     #[serde(default)]
     pub format: OutputFormat,
 }
@@ -94,8 +94,8 @@ pub struct GetChildrenParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
-    /// Output format: "json" (default) or "text" for human-readable output
-    #[arg(long, default_value = "json")]
+    /// Output format: "json" (default for MCP) or "text" (default for CLI)
+    #[arg(long, default_value = "text")]
     #[serde(default)]
     pub format: OutputFormat,
 }
@@ -110,8 +110,8 @@ pub struct GetImportsParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
-    /// Output format: "json" (default) or "text" for human-readable output
-    #[arg(long, default_value = "json")]
+    /// Output format: "json" (default for MCP) or "text" (default for CLI)
+    #[arg(long, default_value = "text")]
     #[serde(default)]
     pub format: OutputFormat,
 }
@@ -135,8 +135,8 @@ pub struct GetCallersParams {
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
-    /// Output format: "json" (default) or "text" for human-readable output
-    #[arg(long, default_value = "json")]
+    /// Output format: "json" (default for MCP) or "text" (default for CLI)
+    #[arg(long, default_value = "text")]
     #[serde(default)]
     pub format: OutputFormat,
 }
@@ -160,8 +160,8 @@ pub struct GetCalleesParams {
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
-    /// Output format: "json" (default) or "text" for human-readable output
-    #[arg(long, default_value = "json")]
+    /// Output format: "json" (default for MCP) or "text" (default for CLI)
+    #[arg(long, default_value = "text")]
     #[serde(default)]
     pub format: OutputFormat,
 }
@@ -176,8 +176,8 @@ pub struct ExploreParams {
     /// Max files to display (default: 200). If exceeded, files are capped per directory with "+N files" indicators.
     #[arg(short, long, default_value = "200")]
     pub max_entries: u32,
-    /// Output format: "json" (default) or "text" for human-readable output
-    #[arg(long, default_value = "json")]
+    /// Output format: "json" (default for MCP) or "text" (default for CLI)
+    #[arg(long, default_value = "text")]
     #[serde(default)]
     pub format: OutputFormat,
 }
@@ -489,39 +489,44 @@ impl CodeIndexServer {
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
 
-        // Find subprojects when exploring without path filter
-        let subprojects: Vec<String> = if path_filter.is_none() {
-            db.list_projects()
-                .map_err(|e| McpError::internal_error(format!("list_projects failed: {e}"), None))?
-                .into_iter()
-                .filter(|p| {
-                    if project_path.is_empty() {
-                        // Root project: include all non-empty projects (subprojects at any depth)
-                        !p.is_empty()
-                    } else {
-                        // Subproject: include projects that start with this path + '/'
-                        p.starts_with(&format!("{}/", project_path))
-                    }
-                })
-                .collect()
+        // Always find subprojects (regardless of path filter)
+        let subprojects: Vec<String> = db
+            .list_projects()
+            .map_err(|e| McpError::internal_error(format!("list_projects failed: {e}"), None))?
+            .into_iter()
+            .filter(|p| {
+                if project_path.is_empty() {
+                    // Root project: include all non-empty projects (subprojects at any depth)
+                    !p.is_empty()
+                } else {
+                    // Subproject: include projects that start with this path + '/'
+                    p.starts_with(&format!("{}/", project_path))
+                }
+            })
+            .collect();
+
+        // Get full overview first (no path filter) to show complete tree structure
+        let full_overview = db.explore_dir_overview(&project_path, None).map_err(|e| {
+            McpError::internal_error(format!("explore_dir_overview failed: {e}"), None)
+        })?;
+
+        // Get filtered overview for file counts (only within path filter)
+        let filtered_overview = if path_filter.is_some() {
+            db.explore_dir_overview(&project_path, path_filter.as_deref())
+                .map_err(|e| {
+                    McpError::internal_error(format!("explore_dir_overview failed: {e}"), None)
+                })?
         } else {
-            Vec::new()
+            full_overview.clone()
         };
 
-        // Get overview: count per (parent_path, lang)
+        // Count files with known language in filtered area (code + markdown), excluding lang=NULL
         let max_entries = params.max_entries as usize;
-        let overview = db
-            .explore_dir_overview(&project_path, path_filter.as_deref())
-            .map_err(|e| {
-                McpError::internal_error(format!("explore_dir_overview failed: {e}"), None)
-            })?;
-
-        // Count files with known language (code + markdown), excluding lang=NULL
         let mut total_known_files = 0usize;
         let mut num_known_groups = 0usize;
-        // Store overview by (dir, lang) -> count
+        // Store filtered overview by (dir, lang) -> count for remainder calculation
         let mut overview_map: BTreeMap<(String, Option<String>), usize> = BTreeMap::new();
-        for (dir, lang, count) in &overview {
+        for (dir, lang, count) in &filtered_overview {
             overview_map.insert((dir.clone(), lang.clone()), *count);
             // Count files with known language (lang is set)
             if lang.is_some() {
@@ -538,7 +543,7 @@ impl CodeIndexServer {
             (max_entries / num_known_groups.max(1)).max(1)
         };
 
-        // Fetch files with known language, capped at cap per (dir, lang)
+        // Fetch files with known language, capped at cap per (dir, lang) - only from filtered path
         let files = db
             .explore_files_capped(&project_path, path_filter.as_deref(), cap)
             .map_err(|e| {
@@ -559,16 +564,16 @@ impl CodeIndexServer {
         // Build result with "+N lang files" indicators for truncated groups
         let mut result_dirs: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
-        // First, collect all directories from overview (including those with only markdown)
+        // Collect all directories from FULL overview (to show complete tree structure)
         let mut all_dirs: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-        for (dir, _lang, _count) in &overview {
+        for (dir, _lang, _count) in &full_overview {
             all_dirs.insert(dir.clone());
         }
 
         for dir in all_dirs {
             let mut entries = files_by_dir.remove(&dir).unwrap_or_default();
 
-            // Check each (dir, lang) group for remainder
+            // Check each (dir, lang) group for remainder (only for filtered dirs)
             let mut remainders: BTreeMap<String, usize> = BTreeMap::new(); // lang -> remaining count
             for ((d, lang), total) in &overview_map {
                 if d != &dir {
@@ -590,9 +595,8 @@ impl CodeIndexServer {
                 entries.push(format!("+{} {} files", count, lang));
             }
 
-            if !entries.is_empty() {
-                result_dirs.insert(dir, entries);
-            }
+            // Include dir in result: either it has entries (files/remainders) or it's just a directory node
+            result_dirs.insert(dir, entries);
         }
 
         // Build response
