@@ -12,14 +12,18 @@ use rmcp::{
     tool, tool_handler, tool_router,
     transport::stdio,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::db::{SearchDb, SearchResult};
+use super::format::{
+    EnrichedSearchResult, ExploreResult, OutputFormat, ReferenceWithSnippet, SymbolWithSnippet,
+    format_explore, format_imports, format_references, format_search_results, format_symbols,
+};
 use super::snippet::SnippetExtractor;
 use crate::index::format::SymbolEntry;
 use crate::mount::MountTable;
 use crate::mount::handler::flush_dirty_mounts;
-use crate::utils::manifest::{self, ProjectMetadata};
+use crate::utils::manifest;
 
 // Parameter structs for each tool - shared between MCP and REPL
 // NOTE: When adding/removing/renaming tools, also update src/cli/query.rs (QueryCommand enum)
@@ -50,6 +54,10 @@ pub struct SearchParams {
     /// Number of code snippet lines for symbols: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
+    /// Output format: "json" (default) or "text" for human-readable output
+    #[arg(long, default_value = "json")]
+    #[serde(default)]
+    pub format: OutputFormat,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -65,6 +73,10 @@ pub struct GetFileSymbolsParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
+    /// Output format: "json" (default) or "text" for human-readable output
+    #[arg(long, default_value = "json")]
+    #[serde(default)]
+    pub format: OutputFormat,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -82,6 +94,10 @@ pub struct GetChildrenParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
+    /// Output format: "json" (default) or "text" for human-readable output
+    #[arg(long, default_value = "json")]
+    #[serde(default)]
+    pub format: OutputFormat,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -94,6 +110,10 @@ pub struct GetImportsParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
+    /// Output format: "json" (default) or "text" for human-readable output
+    #[arg(long, default_value = "json")]
+    #[serde(default)]
+    pub format: OutputFormat,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -115,6 +135,10 @@ pub struct GetCallersParams {
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
+    /// Output format: "json" (default) or "text" for human-readable output
+    #[arg(long, default_value = "json")]
+    #[serde(default)]
+    pub format: OutputFormat,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -136,6 +160,10 @@ pub struct GetCalleesParams {
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
+    /// Output format: "json" (default) or "text" for human-readable output
+    #[arg(long, default_value = "json")]
+    #[serde(default)]
+    pub format: OutputFormat,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Args)]
@@ -148,37 +176,10 @@ pub struct ExploreParams {
     /// Max files to display (default: 200). If exceeded, files are capped per directory with "+N files" indicators.
     #[arg(short, long, default_value = "200")]
     pub max_entries: u32,
-}
-/// Response wrapper for SymbolEntry with optional snippet.
-#[derive(Debug, Serialize)]
-struct SymbolWithSnippet {
-    #[serde(flatten)]
-    symbol: SymbolEntry,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    snippet: Option<String>,
-}
-
-/// Response wrapper for ReferenceEntry with optional snippet.
-#[derive(Debug, Serialize)]
-struct ReferenceWithSnippet {
-    #[serde(flatten)]
-    reference: crate::index::format::ReferenceEntry,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    snippet: Option<String>,
-}
-
-/// Enriched search result with type discriminator and optional snippet for symbols.
-#[derive(Debug, Serialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-enum EnrichedSearchResult {
-    Symbol {
-        #[serde(flatten)]
-        symbol: SymbolEntry,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        snippet: Option<String>,
-    },
-    File(crate::index::format::FileEntry),
-    Text(crate::index::format::TextEntry),
+    /// Output format: "json" (default) or "text" for human-readable output
+    #[arg(long, default_value = "json")]
+    #[serde(default)]
+    pub format: OutputFormat,
 }
 
 /// MCP server exposing code-index query tools.
@@ -334,10 +335,10 @@ impl CodeIndexServer {
             })
             .collect();
 
-        let json = serde_json::to_string_pretty(&enriched)
+        let output = format_search_results(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
     /// Get all symbols in a file, ordered by line number.
@@ -364,10 +365,10 @@ impl CodeIndexServer {
         let snippet_lines = params.snippet_lines.unwrap_or(10);
         let enriched = self.enrich_with_snippets(results, snippet_lines);
 
-        let json = serde_json::to_string_pretty(&enriched)
+        let output = format_symbols(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
     /// Get direct children of a symbol (e.g. methods of a class).
@@ -394,10 +395,10 @@ impl CodeIndexServer {
         let snippet_lines = params.snippet_lines.unwrap_or(10);
         let enriched = self.enrich_with_snippets(results, snippet_lines);
 
-        let json = serde_json::to_string_pretty(&enriched)
+        let output = format_symbols(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
     /// Get all import statements for a file.
@@ -417,10 +418,10 @@ impl CodeIndexServer {
             .get_imports(&params.file, limit, offset)
             .map_err(|e| McpError::internal_error(format!("get_imports failed: {e}"), None))?;
 
-        let json = serde_json::to_string_pretty(&results)
+        let output = format_imports(&results, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
     /// Explore project structure: files grouped by directory with metadata.
@@ -610,10 +611,10 @@ impl CodeIndexServer {
             directories: result_dirs,
         };
 
-        let json = serde_json::to_string_pretty(&result)
+        let output = format_explore(&result, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
     /// Get all references TO a symbol (who calls/uses this symbol).
@@ -646,10 +647,10 @@ impl CodeIndexServer {
         let snippet_lines = params.snippet_lines.unwrap_or(10);
         let enriched = self.enrich_refs_with_snippets(results, snippet_lines);
 
-        let json = serde_json::to_string_pretty(&enriched)
+        let output = format_references(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
     /// Get all references FROM a symbol (what does this symbol call/use).
@@ -682,10 +683,10 @@ impl CodeIndexServer {
         let snippet_lines = params.snippet_lines.unwrap_or(10);
         let enriched = self.enrich_refs_with_snippets(results, snippet_lines);
 
-        let json = serde_json::to_string_pretty(&enriched)
+        let output = format_references(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
 
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
     /// Flush pending index changes to disk.
@@ -704,22 +705,6 @@ impl CodeIndexServer {
 
         Ok(CallToolResult::success(vec![Content::text(message)]))
     }
-}
-
-/// Result of explore tool: project metadata + files grouped by directory.
-#[derive(Debug, Serialize)]
-struct ExploreResult {
-    /// Relative path from workspace root (omitted for root project)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    project: Option<String>,
-    /// Metadata extracted from package manifests
-    #[serde(flatten)]
-    metadata: ProjectMetadata,
-    /// Subprojects (direct children only, omitted if none)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    subprojects: Option<Vec<String>>,
-    /// Files grouped by directory path ("." for root, "src/server" for nested)
-    directories: BTreeMap<String, Vec<String>>,
 }
 
 #[tool_handler]
