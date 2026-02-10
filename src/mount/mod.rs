@@ -70,6 +70,11 @@ pub enum FsEvent {
         /// Absolute path to the subproject root (parent of .git/).
         root: PathBuf,
     },
+    /// A subproject was removed (its .git/ directory was deleted).
+    ProjectRemoved {
+        /// Absolute path to the subproject root (parent of .git/).
+        root: PathBuf,
+    },
     /// Directory should be skipped (gitignore match).
     /// Walker should call skip_current_dir() to avoid descending.
     DirIgnored,
@@ -274,6 +279,15 @@ impl Mount {
 
     fn on_dir_removed(&mut self, abs_path: &Path) -> Option<FsEvent> {
         self.remove_watch(abs_path);
+
+        // Check if this is a .git directory -> project removal
+        let name = abs_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if name == ".git" {
+            return abs_path.parent().map(|root| FsEvent::ProjectRemoved {
+                root: root.to_path_buf(),
+            });
+        }
+
         None // DirRemoved is internal only
     }
 
@@ -672,6 +686,12 @@ impl MountTable {
         Ok(())
     }
 
+    /// Unmount a directory by its exact path (no canonicalization).
+    /// Use this when the directory may have been deleted.
+    pub fn unmount_path(&mut self, root: &Path) -> bool {
+        self.mounts.remove(root).is_some()
+    }
+
     /// Iterate over all mounts.
     pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, &Mount)> {
         self.mounts.iter()
@@ -913,7 +933,9 @@ mod tests {
                 match event {
                     FsEvent::FileAdded { .. } => file_count += 1,
                     FsEvent::ProjectAdded { .. } => {}
-                    FsEvent::FileRemoved { .. } | FsEvent::DirIgnored => {}
+                    FsEvent::FileRemoved { .. }
+                    | FsEvent::ProjectRemoved { .. }
+                    | FsEvent::DirIgnored => {}
                 }
                 Ok(())
             })
@@ -993,5 +1015,49 @@ mod tests {
 
         // Should NOT include local_ignore/ (from nested .gitignore)
         assert!(!files.iter().any(|f| f.contains("local_ignore")));
+    }
+
+    #[test]
+    fn test_on_dir_removed_emits_project_removed() {
+        use notify::event::{EventKind, RemoveKind};
+
+        let tmp = TempDir::new().unwrap();
+        // Create a .git directory to simulate a subproject
+        let git_dir = tmp.path().join("subproject/.git");
+        fs::create_dir_all(&git_dir).unwrap();
+
+        let mut table = MountTable::new(tmp.path().to_path_buf());
+        table.mount_ro(tmp.path()).unwrap();
+        let mount = table.find_mount_mut(tmp.path()).unwrap();
+
+        // Simulate .git directory removal event
+        let event = mount.on_fs_event(&git_dir, &EventKind::Remove(RemoveKind::Folder));
+
+        // Should emit ProjectRemoved for the subproject root
+        match event {
+            Some(FsEvent::ProjectRemoved { root }) => {
+                assert_eq!(root, tmp.path().join("subproject"));
+            }
+            other => panic!("expected ProjectRemoved, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_on_dir_removed_regular_dir_no_event() {
+        use notify::event::{EventKind, RemoveKind};
+
+        let tmp = TempDir::new().unwrap();
+        let regular_dir = tmp.path().join("some_dir");
+        fs::create_dir_all(&regular_dir).unwrap();
+
+        let mut table = MountTable::new(tmp.path().to_path_buf());
+        table.mount_ro(tmp.path()).unwrap();
+        let mount = table.find_mount_mut(tmp.path()).unwrap();
+
+        // Simulate regular directory removal event
+        let event = mount.on_fs_event(&regular_dir, &EventKind::Remove(RemoveKind::Folder));
+
+        // Should not emit any event for regular directories
+        assert!(event.is_none());
     }
 }
