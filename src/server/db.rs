@@ -503,6 +503,13 @@ impl SearchDb {
 
     /// Get all references TO a symbol (who calls/uses this symbol).
     /// Returns references sorted by file, then line.
+    ///
+    /// Supports flexible name matching:
+    /// - Exact match: "self.handle_exception" matches "self.handle_exception"
+    /// - Base name match: "handle_exception" matches "self.handle_exception"
+    ///
+    /// This handles OOP patterns where references are stored with receiver prefixes
+    /// (self., this., etc.) but users query with base method names.
     pub fn get_callers(
         &self,
         name: &str,
@@ -511,8 +518,11 @@ impl SearchDb {
         limit: u32,
         offset: u32,
     ) -> Result<Vec<ReferenceEntry>> {
-        let mut conditions = vec!["name = ?".to_string()];
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(name.to_string())];
+        // Match exact name OR names ending with .{name} (e.g., "self.foo" matches query "foo")
+        let mut conditions = vec!["(name = ? OR name LIKE ?)".to_string()];
+        let like_pattern = format!("%.{}", name);
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> =
+            vec![Box::new(name.to_string()), Box::new(like_pattern)];
 
         if let Some(k) = kind {
             conditions.push("kind = ?".to_string());
@@ -559,6 +569,12 @@ impl SearchDb {
 
     /// Get all references FROM a symbol (what does this symbol call/use).
     /// Returns references sorted by file, then line.
+    ///
+    /// Supports flexible caller name matching:
+    /// - Exact match: "MyClass.method" matches "MyClass.method"
+    /// - Base name match: "method" matches "MyClass.method"
+    ///
+    /// This handles qualified names where the caller context includes class prefixes.
     pub fn get_callees(
         &self,
         caller: &str,
@@ -567,8 +583,11 @@ impl SearchDb {
         limit: u32,
         offset: u32,
     ) -> Result<Vec<ReferenceEntry>> {
-        let mut conditions = vec!["caller = ?".to_string()];
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(caller.to_string())];
+        // Match exact caller OR callers ending with .{caller} (e.g., "Class.method" matches query "method")
+        let mut conditions = vec!["(caller = ? OR caller LIKE ?)".to_string()];
+        let like_pattern = format!("%.{}", caller);
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> =
+            vec![Box::new(caller.to_string()), Box::new(like_pattern)];
 
         if let Some(k) = kind {
             conditions.push("kind = ?".to_string());
@@ -1183,4 +1202,138 @@ impl SearchDb {
 /// - `NEAR(parse async, 5)` — terms within 5 tokens of each other
 fn fts5_quote(s: &str) -> String {
     s.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup_test_db_with_refs(refs: &[ReferenceEntry]) -> SearchDb {
+        let db = SearchDb::new_no_fts().unwrap();
+        db.load("test", &[], &[], &[], refs).unwrap();
+        db
+    }
+
+    #[test]
+    fn test_get_callers_base_name_match() {
+        // Insert a reference with a "self." prefixed name (as Python parser produces)
+        let refs = vec![ReferenceEntry {
+            project: String::new(),
+            file: "app.py".to_string(),
+            name: "self.handle_exception".to_string(),
+            kind: "call".to_string(),
+            line: [100, 100],
+            caller: Some("full_dispatch_request".to_string()),
+        }];
+        let db = setup_test_db_with_refs(&refs);
+
+        // Query with base name should find the reference
+        let results = db
+            .get_callers("handle_exception", None, Some("test"), 100, 0)
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "self.handle_exception");
+        assert_eq!(results[0].caller.as_deref(), Some("full_dispatch_request"));
+    }
+
+    #[test]
+    fn test_get_callers_exact_match_still_works() {
+        // Insert a reference with full name
+        let refs = vec![ReferenceEntry {
+            project: String::new(),
+            file: "app.py".to_string(),
+            name: "self.handle_exception".to_string(),
+            kind: "call".to_string(),
+            line: [100, 100],
+            caller: Some("dispatch".to_string()),
+        }];
+        let db = setup_test_db_with_refs(&refs);
+
+        // Query with exact name should still work
+        let results = db
+            .get_callers("self.handle_exception", None, Some("test"), 100, 0)
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "self.handle_exception");
+    }
+
+    #[test]
+    fn test_get_callers_no_false_positives() {
+        // Insert references
+        let refs = vec![
+            ReferenceEntry {
+                project: String::new(),
+                file: "app.py".to_string(),
+                name: "self.handle_exception".to_string(),
+                kind: "call".to_string(),
+                line: [100, 100],
+                caller: None,
+            },
+            ReferenceEntry {
+                project: String::new(),
+                file: "app.py".to_string(),
+                name: "handle_user_exception".to_string(),
+                kind: "call".to_string(),
+                line: [200, 200],
+                caller: None,
+            },
+        ];
+        let db = setup_test_db_with_refs(&refs);
+
+        // Query for "handle_exception" should NOT match "handle_user_exception"
+        // because it doesn't end with ".handle_exception"
+        let results = db
+            .get_callers("handle_exception", None, Some("test"), 100, 0)
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "self.handle_exception");
+    }
+
+    #[test]
+    fn test_get_callees_base_name_match() {
+        // Insert a reference with a qualified caller name
+        let refs = vec![ReferenceEntry {
+            project: String::new(),
+            file: "app.py".to_string(),
+            name: "os.path.join".to_string(),
+            kind: "call".to_string(),
+            line: [100, 100],
+            caller: Some("MyClass.process_data".to_string()),
+        }];
+        let db = setup_test_db_with_refs(&refs);
+
+        // Query with base caller name should find the reference
+        let results = db
+            .get_callees("process_data", None, Some("test"), 100, 0)
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "os.path.join");
+        assert_eq!(results[0].caller.as_deref(), Some("MyClass.process_data"));
+    }
+
+    #[test]
+    fn test_get_callees_exact_match_still_works() {
+        // Insert a reference
+        let refs = vec![ReferenceEntry {
+            project: String::new(),
+            file: "app.py".to_string(),
+            name: "helper".to_string(),
+            kind: "call".to_string(),
+            line: [100, 100],
+            caller: Some("MyClass.method".to_string()),
+        }];
+        let db = setup_test_db_with_refs(&refs);
+
+        // Query with exact caller name should work
+        let results = db
+            .get_callees("MyClass.method", None, Some("test"), 100, 0)
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "helper");
+    }
 }
