@@ -662,7 +662,7 @@ impl CodeIndexServer {
 
     /// Get all references TO a symbol (who calls/uses this symbol).
     #[tool(
-        description = "Find all places that call or reference a symbol. Returns references sorted by file and line. Useful for understanding symbol usage and finding callers of a function."
+        description = "Find all places that call or reference a symbol. Returns references sorted by file and line. Useful for finding callers of a function/method. Note: For struct/class fields and methods, use `get_children` instead."
     )]
     pub async fn get_callers(
         &self,
