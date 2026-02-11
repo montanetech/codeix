@@ -82,6 +82,13 @@ fn walk_node(
             extract_string(node, source, file_path, parent_ctx, texts);
             return;
         }
+        "macro_invocation" => {
+            // Try to parse macro body as Rust code (works for cfg_*, feature gates, etc.)
+            try_parse_macro_body(
+                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+            );
+            return;
+        }
         _ => {}
     }
 
@@ -673,6 +680,101 @@ fn filter_rust_tokens(tokens: &str) -> String {
         .join(" ")
 }
 
+/// Try to parse macro body as valid Rust code.
+/// Works for cfg_*, feature gates, and other macros that wrap valid Rust items.
+/// DSL macros (html!, query!, etc.) will fail to parse cleanly and are skipped.
+#[allow(clippy::too_many_arguments)]
+fn try_parse_macro_body(
+    node: Node,
+    source: &[u8],
+    file_path: &str,
+    parent_ctx: Option<&str>,
+    symbols: &mut Vec<SymbolEntry>,
+    texts: &mut Vec<TextEntry>,
+    references: &mut Vec<ReferenceEntry>,
+    depth: usize,
+) {
+    // Find the token_tree (macro body)
+    let token_tree = match node
+        .children(&mut node.walk())
+        .find(|c| c.kind() == "token_tree")
+    {
+        Some(tt) => tt,
+        None => return,
+    };
+
+    // Extract text between braces
+    let body_text = node_text(token_tree, source);
+    let body_trimmed = body_text.trim();
+
+    // Strip outer braces/parens if present
+    let inner = if (body_trimmed.starts_with('{') && body_trimmed.ends_with('}'))
+        || (body_trimmed.starts_with('(') && body_trimmed.ends_with(')'))
+        || (body_trimmed.starts_with('[') && body_trimmed.ends_with(']'))
+    {
+        &body_trimmed[1..body_trimmed.len() - 1]
+    } else {
+        body_trimmed
+    };
+
+    // Try to parse as Rust code
+    let mut parser = tree_sitter::Parser::new();
+    if parser
+        .set_language(&tree_sitter_rust::LANGUAGE.into())
+        .is_err()
+    {
+        return;
+    }
+
+    let tree = match parser.parse(inner.as_bytes(), None) {
+        Some(t) => t,
+        None => return,
+    };
+
+    // Only proceed if the parse was clean (no errors = valid Rust code)
+    if tree.root_node().has_error() {
+        return;
+    }
+
+    // Extract symbols from the parsed macro body
+    // Adjust line numbers to be relative to the original file
+    let macro_start_line = token_tree.start_position().row as u32;
+
+    let mut macro_symbols = Vec::new();
+    let mut macro_texts = Vec::new();
+    let mut macro_refs = Vec::new();
+
+    walk_node(
+        tree.root_node(),
+        inner.as_bytes(),
+        file_path,
+        parent_ctx,
+        &mut macro_symbols,
+        &mut macro_texts,
+        &mut macro_refs,
+        depth + 1,
+    );
+
+    // Adjust line numbers and add to output
+    for mut sym in macro_symbols {
+        sym.line[0] += macro_start_line;
+        sym.line[1] += macro_start_line;
+        symbols.push(sym);
+    }
+
+    for mut text in macro_texts {
+        text.line[0] += macro_start_line;
+        text.line[1] += macro_start_line;
+        texts.push(text);
+    }
+
+    for mut r in macro_refs {
+        r.line[0] += macro_start_line;
+        r.line[1] += macro_start_line;
+        references.push(r);
+    }
+}
+
 /// Rust-specific comment extraction (handles ///, //!, /**, etc.)
 fn extract_rust_comment(
     node: Node,
@@ -933,6 +1035,51 @@ fn process(input: CustomType) -> ResultType {
         assert!(
             type_refs.iter().any(|r| r.name == "ResultType"),
             "should find ResultType reference"
+        );
+    }
+
+    #[test]
+    fn test_rust_macro_body_parsing() {
+        // Test that we can extract symbols from inside macro invocations
+        let source = b"cfg_rt! {
+    pub fn spawn<F>(future: F) -> JoinHandle<F::Output> {
+        todo!()
+    }
+
+    pub struct Runtime {
+        inner: Inner,
+    }
+}
+
+// DSL macros should be skipped (won't parse as valid Rust)
+html! {
+    <div class=\"foo\">Hello</div>
+}
+
+// Regular function outside macro
+fn regular_fn() {}";
+        let (symbols, _texts, _refs) = parse_file(source, "rust", "test.rs").unwrap();
+
+        // Should find spawn function inside cfg_rt! macro
+        let spawn = symbols.iter().find(|s| s.name == "spawn");
+        assert!(spawn.is_some(), "should find spawn function inside macro");
+        let spawn = spawn.unwrap();
+        assert_eq!(spawn.kind, "function");
+        assert_eq!(spawn.visibility.as_deref(), Some("public"));
+
+        // Should find Runtime struct inside cfg_rt! macro
+        let runtime = symbols.iter().find(|s| s.name == "Runtime");
+        assert!(runtime.is_some(), "should find Runtime struct inside macro");
+        assert_eq!(runtime.unwrap().kind, "struct");
+
+        // Should still find regular function
+        let regular = find_sym(&symbols, "regular_fn");
+        assert_eq!(regular.kind, "function");
+
+        // Should NOT find anything from html! macro (DSL, invalid Rust)
+        assert!(
+            !symbols.iter().any(|s| s.name.contains("div")),
+            "should not parse DSL macro content"
         );
     }
 }
