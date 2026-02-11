@@ -8,145 +8,145 @@ on:
         required: true
 
 jobs:
-  publish-npm:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
+  # publish-npm:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22"
 
-      - name: Setup npm for trusted publishing
-        run: npm install -g npm@latest
+  #     - name: Setup npm for trusted publishing
+  #       run: npm install -g npm@latest
 
-      - name: Prepare package
-        run: |
-          cp README.md npm/README.md
-          cd npm
-          node -e "
-            const pkg = require('./package.json');
-            pkg.version = '${{ inputs.version }}';
-            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
+  #     - name: Prepare package
+  #       run: |
+  #         cp README.md npm/README.md
+  #         cd npm
+  #         node -e "
+  #           const pkg = require('./package.json');
+  #           pkg.version = '${{ inputs.version }}';
+  #           require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+  #         "
 
-      - name: Publish
-        run: npm publish --access public
-        working-directory: npm
+  #     - name: Publish
+  #       run: npm publish --access public
+  #       working-directory: npm
 
-  publish-pypi:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
+  # publish-pypi:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.12"
 
-      - name: Prepare package
-        run: |
-          cp README.md python/README.md
-          cd python
-          sed -i "s/^version = .*/version = \"${{ inputs.version }}\"/" pyproject.toml
-          sed -i "s/^__version__ = .*/__version__ = \"${{ inputs.version }}\"/" codeix/__init__.py
+  #     - name: Prepare package
+  #       run: |
+  #         cp README.md python/README.md
+  #         cd python
+  #         sed -i "s/^version = .*/version = \"${{ inputs.version }}\"/" pyproject.toml
+  #         sed -i "s/^__version__ = .*/__version__ = \"${{ inputs.version }}\"/" codeix/__init__.py
 
-      - name: Build
-        run: |
-          cd python
-          pip install build
-          python -m build
+  #     - name: Build
+  #       run: |
+  #         cd python
+  #         pip install build
+  #         python -m build
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: python/dist/
+  #     - name: Publish to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+  #       with:
+  #         packages-dir: python/dist/
 
-  update-homebrew:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for release assets
-        run: sleep 30
+  # update-homebrew:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Wait for release assets
+  #       run: sleep 30
 
-      - name: Download checksums
-        run: |
-          curl -sL "https://github.com/montanetech/codeix/releases/download/v${{ inputs.version }}/checksums.txt" -o checksums.txt
-          cat checksums.txt
+  #     - name: Download checksums
+  #       run: |
+  #         curl -sL "https://github.com/montanetech/codeix/releases/download/v${{ inputs.version }}/checksums.txt" -o checksums.txt
+  #         cat checksums.txt
 
-      - name: Update Homebrew formula
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const version = '${{ inputs.version }}';
+  #     - name: Update Homebrew formula
+  #       uses: actions/github-script@v7
+  #       with:
+  #         github-token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+  #         script: |
+  #           const fs = require('fs');
+  #           const version = '${{ inputs.version }}';
 
-            // Parse checksums
-            const checksums = {};
-            const lines = fs.readFileSync('checksums.txt', 'utf8').trim().split('\n');
-            for (const line of lines) {
-              const [sha, file] = line.trim().split(/\s+/);
-              checksums[file] = sha;
-            }
+  #           // Parse checksums
+  #           const checksums = {};
+  #           const lines = fs.readFileSync('checksums.txt', 'utf8').trim().split('\n');
+  #           for (const line of lines) {
+  #             const [sha, file] = line.trim().split(/\s+/);
+  #             checksums[file] = sha;
+  #           }
 
-            const darwinArm = checksums[`codeix-aarch64-apple-darwin.tar.gz`];
-            const linuxX86 = checksums[`codeix-x86_64-unknown-linux-gnu.tar.gz`];
+  #           const darwinArm = checksums[`codeix-aarch64-apple-darwin.tar.gz`];
+  #           const linuxX86 = checksums[`codeix-x86_64-unknown-linux-gnu.tar.gz`];
 
-            const formula = `class Codeix < Formula
-              desc "Portable, composable code index — build with tree-sitter, query via MCP"
-              homepage "https://codeix.dev"
-              version "${version}"
-              license "MIT OR Apache-2.0"
+  #           const formula = `class Codeix < Formula
+  #             desc "Portable, composable code index — build with tree-sitter, query via MCP"
+  #             homepage "https://codeix.dev"
+  #             version "${version}"
+  #             license "MIT OR Apache-2.0"
 
-              on_macos do
-                url "https://github.com/montanetech/codeix/releases/download/v${version}/codeix-aarch64-apple-darwin.tar.gz"
-                sha256 "${darwinArm}"
-              end
+  #             on_macos do
+  #               url "https://github.com/montanetech/codeix/releases/download/v${version}/codeix-aarch64-apple-darwin.tar.gz"
+  #               sha256 "${darwinArm}"
+  #             end
 
-              on_linux do
-                url "https://github.com/montanetech/codeix/releases/download/v${version}/codeix-x86_64-unknown-linux-gnu.tar.gz"
-                sha256 "${linuxX86}"
-              end
+  #             on_linux do
+  #               url "https://github.com/montanetech/codeix/releases/download/v${version}/codeix-x86_64-unknown-linux-gnu.tar.gz"
+  #               sha256 "${linuxX86}"
+  #             end
 
-              def install
-                bin.install "codeix"
-              end
+  #             def install
+  #               bin.install "codeix"
+  #             end
 
-              test do
-                assert_match "codeix", shell_output("#{bin}/codeix --version")
-              end
-            end
-            `;
+  #             test do
+  #               assert_match "codeix", shell_output("#{bin}/codeix --version")
+  #             end
+  #           end
+  #           `;
 
-            // Get current file (if exists) to get its SHA
-            let sha;
-            try {
-              const { data } = await github.rest.repos.getContent({
-                owner: 'montanetech',
-                repo: 'homebrew-tap',
-                path: 'Formula/codeix.rb',
-              });
-              sha = data.sha;
-            } catch (e) {
-              // File doesn't exist yet
-            }
+  #           // Get current file (if exists) to get its SHA
+  #           let sha;
+  #           try {
+  #             const { data } = await github.rest.repos.getContent({
+  #               owner: 'montanetech',
+  #               repo: 'homebrew-tap',
+  #               path: 'Formula/codeix.rb',
+  #             });
+  #             sha = data.sha;
+  #           } catch (e) {
+  #             // File doesn't exist yet
+  #           }
 
-            await github.rest.repos.createOrUpdateFileContents({
-              owner: 'montanetech',
-              repo: 'homebrew-tap',
-              path: 'Formula/codeix.rb',
-              message: `codeix ${version}`,
-              content: Buffer.from(formula).toString('base64'),
-              ...(sha && { sha }),
-            });
+  #           await github.rest.repos.createOrUpdateFileContents({
+  #             owner: 'montanetech',
+  #             repo: 'homebrew-tap',
+  #             path: 'Formula/codeix.rb',
+  #             message: `codeix ${version}`,
+  #             content: Buffer.from(formula).toString('base64'),
+  #             ...(sha && { sha }),
+  #           });
 
   publish-mcp-registry:
-    needs: publish-npm
+    # needs: publish-npm
     runs-on: ubuntu-latest
     permissions:
       id-token: write
