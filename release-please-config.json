@@ -12,6 +12,11 @@
           "jsonpath": "$.version"
         },
         {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.version"
+        },
+        {
           "type": "generic",
           "path": "python/pyproject.toml"
         },
