@@ -219,7 +219,7 @@ mod tests {
             QueryCommand::try_parse_from(["", "search", "foo", "--kind", "function"]).unwrap();
         if let QueryCommand::Search(params) = cmd {
             assert_eq!(params.query, "foo");
-            assert_eq!(params.kind, Some("function".to_string()));
+            assert_eq!(params.kind, Some(vec!["function".to_string()]));
         } else {
             panic!("Expected Search");
         }

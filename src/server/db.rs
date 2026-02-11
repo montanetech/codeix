@@ -313,7 +313,7 @@ impl SearchDb {
         &self,
         query: &str,
         scope: &[String],
-        kind: Option<&str>,
+        kind: &[String],
         path: Option<&str>,
         project: Option<&str>,
         visibility: Option<&str>,
@@ -340,12 +340,18 @@ impl SearchDb {
             }
         }
 
-        let next_param = params.len() + 1;
-
         // Kind filter
-        if let Some(k) = kind {
-            conditions.push(format!("kind = ?{}", next_param));
-            params.push(Box::new(k.to_string()));
+        if !kind.is_empty() {
+            let start_param = params.len() + 1;
+            let placeholders: Vec<String> = kind
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", start_param + i))
+                .collect();
+            conditions.push(format!("kind IN ({})", placeholders.join(", ")));
+            for k in kind {
+                params.push(Box::new(k.clone()));
+            }
         }
 
         let next_param = params.len() + 1;

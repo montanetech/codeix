@@ -937,7 +937,7 @@ mod tests {
             .search(
                 "main",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 None,
                 Some("private"),
@@ -963,7 +963,7 @@ mod tests {
             .search(
                 "greet",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 None,
                 Some("private"),
@@ -1018,7 +1018,7 @@ mod tests {
             .search(
                 "app_main",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 None,
                 Some("private"),
@@ -1041,7 +1041,7 @@ mod tests {
             .search(
                 "utility",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 Some("libs/utils"),
                 Some("private"),
@@ -1095,7 +1095,7 @@ mod tests {
             .search(
                 "root_fn",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 None,
                 Some("private"),
@@ -1117,7 +1117,7 @@ mod tests {
             .search(
                 "core_fn",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 Some("libs/core"),
                 Some("private"),
@@ -1138,7 +1138,7 @@ mod tests {
             .search(
                 "nested_fn",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 Some("libs/core/nested"),
                 Some("private"),
@@ -1184,7 +1184,7 @@ mod tests {
             .search(
                 "fn",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 None,
                 Some("private"),
@@ -1275,7 +1275,7 @@ mod tests {
             .search(
                 "helper",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 None,
                 Some("private"),
@@ -1303,7 +1303,7 @@ mod tests {
             .search(
                 "helper",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 Some("sub"),
                 Some("private"),
@@ -1351,7 +1351,7 @@ mod tests {
             .search(
                 "deep_fn",
                 &["symbol".to_string()],
-                None,
+                &[],
                 None,
                 None,
                 Some("private"),
@@ -1401,7 +1401,7 @@ mod tests {
                 .search(
                     "fn",
                     &["symbol".to_string()],
-                    None,
+                    &[],
                     None,
                     None,
                     Some("private"),
@@ -1450,7 +1450,7 @@ mod tests {
                 .search(
                     "fn",
                     &["symbol".to_string()],
-                    None,
+                    &[],
                     None,
                     None,
                     Some("private"),

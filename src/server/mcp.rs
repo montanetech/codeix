@@ -36,9 +36,9 @@ pub struct SearchParams {
     /// Scope: types to search. Comma-separated: "symbol", "file", "text". Default: all.
     #[arg(short, long, value_delimiter = ',')]
     pub scope: Option<Vec<String>>,
-    /// Filter by kind (symbol kind, text kind, or file language)
-    #[arg(short, long)]
-    pub kind: Option<String>,
+    /// Filter by kind (symbol kind, text kind, or file language). Comma-separated for multiple.
+    #[arg(short, long, value_delimiter = ',')]
+    pub kind: Option<Vec<String>>,
     /// Filter by file path. Supports glob patterns with * (e.g. "src/*.py")
     #[arg(short = 'f', long)]
     pub path: Option<String>,
@@ -303,10 +303,14 @@ impl CodeIndexServer {
         description = "Search symbols, files, and texts. FTS5 with BM25 ranking.\n\n\
 **Query:** FTS5 syntax — `foo`, `foo bar` (implicit AND), `foo OR bar`, `foo*` (prefix), `\"exact phrase\"`, `foo -exclude`\n\n\
 **Symbol kinds:** `function`, `method`, `class`, `struct`, `interface`, `enum`, `constant`, `variable`, `property`, `module`, `import`, `impl`, `section`\n\
+- `method` = inside class/struct, `function` = standalone\n\
 - Go/Rust/C: use `struct` not `class`\n\
-- Rust: use `interface` for traits\n\n\
+- Rust: use `interface` for traits\n\
+- Multiple kinds: `kind=[\"function\",\"method\"]` to search both\n\
+- Omit `kind` filter when uncertain to avoid missing results\n\n\
 **Text kinds:** `docstring`, `comment`, `string`, `sample`\n\n\
-**Params:** query (required), scope ([\"symbol\"]/[\"file\"]/[\"text\"]), kind, path (glob), project, limit (default 10), offset, context_lines (default 10)"
+**Params:** query (required), scope ([\"symbol\"]/[\"file\"]/[\"text\"]), kind, path (glob), project, limit (default 10), offset, context_lines (default 10)\n\n\
+**Tip:** Omit `scope` to search all types at once (default behavior)"
     )]
     pub async fn search(
         &self,
@@ -321,11 +325,12 @@ impl CodeIndexServer {
         let limit = params.limit.unwrap_or(10);
         let offset = params.offset.unwrap_or(0);
 
+        let kind = params.kind.unwrap_or_default();
         let results = db
             .search(
                 &params.query,
                 &scope,
-                params.kind.as_deref(),
+                &kind,
                 params.path.as_deref(),
                 params.project.as_deref(),
                 params.visibility.as_deref(),
