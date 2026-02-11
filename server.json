@@ -1,0 +1,71 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.montanetech/codeix",
+  "title": "Codeix",
+  "description": "Fast semantic code search for AI agents — find symbols, references, and callers across any codebase",
+  "version": "0.4.0",
+  "repository": {
+    "url": "https://github.com/montanetech/codeix",
+    "source": "github"
+  },
+  "websiteUrl": "https://codeix.dev",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "codeix",
+      "version": "0.4.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "pypi",
+      "identifier": "codeix",
+      "version": "0.4.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "publisher": "Montane.tech",
+      "documentation": "https://codeix.dev/",
+      "license": "MIT OR Apache-2.0",
+      "keywords": [
+        "code-index",
+        "tree-sitter",
+        "mcp",
+        "code-search",
+        "symbols",
+        "semantic-search"
+      ],
+      "examples": [
+        {
+          "name": "NPM (recommended)",
+          "description": "Run via npx - no installation required",
+          "command": "npx codeix"
+        },
+        {
+          "name": "Python (uvx)",
+          "description": "Run via uvx - no installation required",
+          "command": "uvx codeix"
+        },
+        {
+          "name": "Claude Desktop config",
+          "description": "Add to claude_desktop_config.json",
+          "config": {
+            "mcpServers": {
+              "codeix": {
+                "command": "npx",
+                "args": ["codeix"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
