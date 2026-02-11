@@ -16,7 +16,7 @@ use serde::Deserialize;
 
 use super::db::{SearchDb, SearchResult};
 use super::snippet::SnippetExtractor;
-use crate::index::format::SymbolEntry;
+use crate::index::format::{SymbolEntry, SymbolOutput};
 use crate::mount::MountTable;
 use crate::mount::handler::flush_dirty_mounts;
 use crate::utils::format::{
@@ -24,6 +24,15 @@ use crate::utils::format::{
     format_explore, format_references, format_search_results, format_symbols,
 };
 use crate::utils::manifest;
+
+/// Normalize context_lines: 0 → 1 (minimum for type info), -1 = full, default 10
+fn normalize_context_lines(value: Option<i32>) -> i32 {
+    match value {
+        Some(0) => 1, // Force minimum 1 line for type/signature info
+        Some(n) => n, // -1 = full definition, positive = N lines
+        None => 10,   // Default
+    }
+}
 
 // Parameter structs for each tool - shared between MCP and REPL
 // NOTE: When adding/removing/renaming tools, also update src/cli/query.rs (QueryCommand enum)
@@ -255,10 +264,7 @@ impl CodeIndexServer {
                     symbol.line[1],
                     context_lines,
                 );
-                Some(SymbolWithSnippet {
-                    symbol,
-                    context: snippet,
-                })
+                Some(SymbolOutput::from_entry(&symbol, snippet))
             })
             .collect()
     }
@@ -342,7 +348,7 @@ impl CodeIndexServer {
         drop(db); // Release lock before file I/O
 
         // Enrich symbol results with snippets
-        let context_lines = params.context_lines.unwrap_or(10);
+        let context_lines = normalize_context_lines(params.context_lines);
         let enriched: Vec<EnrichedSearchResult> = results
             .into_iter()
             .filter_map(|result| match result {
@@ -361,10 +367,9 @@ impl CodeIndexServer {
                         symbol.line[1],
                         context_lines,
                     );
-                    Some(EnrichedSearchResult::Symbol {
-                        symbol,
-                        context: snippet,
-                    })
+                    Some(EnrichedSearchResult::Symbol(SymbolOutput::from_entry(
+                        &symbol, snippet,
+                    )))
                 }
                 SearchResult::File(file) => Some(EnrichedSearchResult::File(file)),
                 SearchResult::Text(text) => Some(EnrichedSearchResult::Text(text)),
@@ -398,7 +403,7 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let context_lines = params.context_lines.unwrap_or(10);
+        let context_lines = normalize_context_lines(params.context_lines);
         let enriched = self.enrich_with_snippets(results, context_lines);
 
         let output = format_symbols(&enriched, params.format)
@@ -434,7 +439,7 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let context_lines = params.context_lines.unwrap_or(10);
+        let context_lines = normalize_context_lines(params.context_lines);
         let enriched = self.enrich_with_snippets(results, context_lines);
 
         let output = format_symbols(&enriched, params.format)
@@ -688,7 +693,7 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let context_lines = params.context_lines.unwrap_or(10);
+        let context_lines = normalize_context_lines(params.context_lines);
         let enriched = self.enrich_refs_with_snippets(results, context_lines);
 
         let output = format_references(&enriched, params.format)
@@ -725,7 +730,7 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let context_lines = params.context_lines.unwrap_or(10);
+        let context_lines = normalize_context_lines(params.context_lines);
         let enriched = self.enrich_refs_with_snippets(results, context_lines);
 
         let output = format_references(&enriched, params.format)

@@ -35,7 +35,7 @@ pub struct SymbolEntry {
     pub line: [u32; 2],
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
-    #[serde(skip_serializing)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tokens: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<String>,
@@ -43,6 +43,33 @@ pub struct SymbolEntry {
     pub visibility: Option<String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub project: String,
+}
+
+/// Symbol output for MCP responses — excludes fields visible in context snippet.
+#[derive(Debug, Clone, Serialize)]
+pub struct SymbolOutput {
+    pub file: String,
+    pub name: String,
+    pub line: [u32; 2],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub project: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+}
+
+impl SymbolOutput {
+    pub fn from_entry(entry: &SymbolEntry, context: Option<String>) -> Self {
+        Self {
+            file: entry.file.clone(),
+            name: entry.name.clone(),
+            line: entry.line,
+            parent: entry.parent.clone(),
+            project: entry.project.clone(),
+            context,
+        }
+    }
 }
 
 /// One line in `texts.jsonl` — a text block (docstring, comment, etc.).

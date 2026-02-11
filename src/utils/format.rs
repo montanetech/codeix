@@ -9,7 +9,7 @@ use std::fmt::Write;
 use rmcp::schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 
-use crate::index::format::{FileEntry, ReferenceEntry, SymbolEntry, TextEntry};
+use crate::index::format::{FileEntry, ReferenceEntry, SymbolOutput, TextEntry};
 use crate::utils::manifest::ProjectMetadata;
 
 /// Output format for tool results.
@@ -50,12 +50,7 @@ pub fn format_search_results(
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum EnrichedSearchResult {
-    Symbol {
-        #[serde(flatten)]
-        symbol: SymbolEntry,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        context: Option<String>,
-    },
+    Symbol(SymbolOutput),
     File(FileEntry),
     Text(TextEntry),
 }
@@ -64,11 +59,11 @@ fn format_search_results_text(results: &[EnrichedSearchResult]) -> String {
     let mut out = String::new();
     for result in results {
         match result {
-            EnrichedSearchResult::Symbol { symbol, context } => {
-                // file[line-range] symbol kind name
+            EnrichedSearchResult::Symbol(symbol) => {
+                // file[line-range] symbol name
                 let location = format_location(&symbol.file, symbol.line);
-                let _ = writeln!(out, "{} symbol {} {}", location, symbol.kind, symbol.name);
-                if let Some(snip) = context {
+                let _ = writeln!(out, "{} symbol {}", location, symbol.name);
+                if let Some(snip) = &symbol.context {
                     write_snippet(&mut out, snip);
                 }
             }
@@ -140,14 +135,8 @@ fn dedent(text: &str) -> String {
         .join("\n")
 }
 
-/// Response wrapper for SymbolEntry with optional context.
-#[derive(Debug, Serialize)]
-pub struct SymbolWithSnippet {
-    #[serde(flatten)]
-    pub symbol: SymbolEntry,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub context: Option<String>,
-}
+/// Response wrapper for symbol output with context (for get_file_symbols, get_children).
+pub type SymbolWithSnippet = SymbolOutput;
 
 /// Format a list of symbols (for get_file_symbols, get_children).
 pub fn format_symbols(
@@ -168,19 +157,9 @@ fn format_symbols_text(symbols: &[SymbolWithSnippet]) -> String {
     let mut out = String::new();
 
     for sym in symbols {
-        // file[line-range] symbol kind name [tokens]
-        let location = format_location(&sym.symbol.file, sym.symbol.line);
-        let tokens = sym
-            .symbol
-            .tokens
-            .as_ref()
-            .map(|s| format!(" {}", s))
-            .unwrap_or_default();
-        let _ = writeln!(
-            out,
-            "{} {} {}{}",
-            location, sym.symbol.kind, sym.symbol.name, tokens
-        );
+        // file[line-range] symbol name
+        let location = format_location(&sym.file, sym.line);
+        let _ = writeln!(out, "{} symbol {}", location, sym.name);
 
         // Snippet if present
         if let Some(snip) = &sym.context {
