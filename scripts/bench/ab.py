@@ -1,11 +1,9 @@
 """A/B benchmark framework using claude CLI."""
 
 import asyncio
-import atexit
 import json
 import os
 import re
-import shutil
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,7 +14,7 @@ from .common import (
     NC,
     RunContext,
     _is_runtime_error,
-    create_run_context,
+    run_context,
     delete_cached_response,
     get_cache_key_from_cmd,
     get_cached_response,
@@ -985,119 +983,113 @@ async def run_async(
             log_error(f"Question '{question_id}' not found")
             sys.exit(1)
 
-    # Create temporary run directory with standard structure
-    ctx = create_run_context()
+    with run_context() as ctx:
+        log(f"Running {config.name} with {len(questions)} question(s) in parallel")
+        log(f"Run dir: {ctx.run_dir}")
+        print()
 
-    def cleanup():
-        shutil.rmtree(ctx.run_dir, ignore_errors=True)
-    atexit.register(cleanup)
+        # Setup binaries (once, before running questions)
+        # Binaries are named with version embedded (e.g., codeix-abc123)
+        bin_a, bin_b = config.setup_run(ctx)
+        log(f"A: {config.label_a} ({bin_a})")
+        log(f"B: {config.label_b} ({bin_b})")
+        print()
 
-    log(f"Running {config.name} with {len(questions)} question(s) in parallel")
-    log(f"Run dir: {ctx.run_dir}")
-    print()
+        # Create progress display
+        progress = ProgressDisplay(questions)
 
-    # Setup binaries (once, before running questions)
-    # Binaries are named with version embedded (e.g., codeix-abc123)
-    bin_a, bin_b = config.setup_run(ctx)
-    log(f"A: {config.label_a} ({bin_a})")
-    log(f"B: {config.label_b} ({bin_b})")
-    print()
+        # Create semaphore to limit parallelism
+        sem = asyncio.Semaphore(MAX_PARALLEL_QUESTIONS)
 
-    # Create progress display
-    progress = ProgressDisplay(questions)
+        async def run_with_sem(q: dict) -> dict | None:
+            async with sem:
+                return await run_question(q, config, ctx, progress)
 
-    # Create semaphore to limit parallelism
-    sem = asyncio.Semaphore(MAX_PARALLEL_QUESTIONS)
+        # Run all questions with limited parallelism
+        tasks = [asyncio.create_task(run_with_sem(q)) for q in questions]
 
-    async def run_with_sem(q: dict) -> dict | None:
-        async with sem:
-            return await run_question(q, config, ctx, progress)
+        try:
+            results = await asyncio.gather(*tasks)
+            results = [r for r in results if r is not None]
+        except asyncio.CancelledError:
+            # Cancel all pending tasks
+            for task in tasks:
+                task.cancel()
+            print("\n\nInterrupted, stopping...")
+            print("Aborted.")
+            sys.exit(130)
 
-    # Run all questions with limited parallelism
-    tasks = [asyncio.create_task(run_with_sem(q)) for q in questions]
+        # Finalize progress display
+        progress.finish()
 
-    try:
-        results = await asyncio.gather(*tasks)
-        results = [r for r in results if r is not None]
-    except asyncio.CancelledError:
-        # Cancel all pending tasks
-        for task in tasks:
-            task.cancel()
-        print("\n\nInterrupted, stopping...")
-        print("Aborted.")
-        sys.exit(130)
+        # Summary
+        print()
+        print(f"{CYAN}═══════════════════════════════════════════════════════════════{NC}")
+        print(f"{CYAN}{config.title:^63}{NC}")
+        print(f"{CYAN}═══════════════════════════════════════════════════════════════{NC}")
+        print()
+        # Show what A and B represent
+        print(f"A: {config.label_a}")
+        print(f"B: {config.label_b}")
+        print()
+        print(f"{'Question':<30} {'Winner':^8}  {'A cost':>8}  {'B cost':>8}")
+        print("─" * 60)
 
-    # Finalize progress display
-    progress.finish()
+        wins = {"A": 0, "B": 0, "tie": 0}
+        total_cost_a = 0.0
+        total_cost_b = 0.0
+        errors = 0
+        for r in results:
+            winner = parse_judge_winner(r.get("judge", {}))
+            wins[winner] = wins.get(winner, 0) + 1
 
-    # Summary
-    print()
-    print(f"{CYAN}═══════════════════════════════════════════════════════════════{NC}")
-    print(f"{CYAN}{config.title:^63}{NC}")
-    print(f"{CYAN}═══════════════════════════════════════════════════════════════{NC}")
-    print()
-    # Show what A and B represent
-    print(f"A: {config.label_a}")
-    print(f"B: {config.label_b}")
-    print()
-    print(f"{'Question':<30} {'Winner':^8}  {'A cost':>8}  {'B cost':>8}")
-    print("─" * 60)
+            if r['cost_a']:
+                total_cost_a += r['cost_a']
+            if r['cost_b']:
+                total_cost_b += r['cost_b']
 
-    wins = {"A": 0, "B": 0, "tie": 0}
-    total_cost_a = 0.0
-    total_cost_b = 0.0
-    errors = 0
-    for r in results:
-        winner = parse_judge_winner(r.get("judge", {}))
-        wins[winner] = wins.get(winner, 0) + 1
+            cost_a = f"${r['cost_a']:.2f}" if r['cost_a'] else "-"
+            cost_b = f"${r['cost_b']:.2f}" if r['cost_b'] else "-"
 
-        if r['cost_a']:
-            total_cost_a += r['cost_a']
-        if r['cost_b']:
-            total_cost_b += r['cost_b']
+            # Show errors in output
+            error_info = ""
+            if r.get('error_a') or r.get('error_b'):
+                errors += 1
+                error_parts = []
+                if r.get('error_a'):
+                    error_parts.append(f"A:{r['error_a']}")
+                if r.get('error_b'):
+                    error_parts.append(f"B:{r['error_b']}")
+                error_info = f"  [{', '.join(error_parts)}]"
 
-        cost_a = f"${r['cost_a']:.2f}" if r['cost_a'] else "-"
-        cost_b = f"${r['cost_b']:.2f}" if r['cost_b'] else "-"
+            print(f"{r['question']['id']:<30} {winner:^8}  {cost_a:>8}  {cost_b:>8}{error_info}")
 
-        # Show errors in output
-        error_info = ""
-        if r.get('error_a') or r.get('error_b'):
-            errors += 1
-            error_parts = []
-            if r.get('error_a'):
-                error_parts.append(f"A:{r['error_a']}")
-            if r.get('error_b'):
-                error_parts.append(f"B:{r['error_b']}")
-            error_info = f"  [{', '.join(error_parts)}]"
+        # Summary row
+        print("─" * 60)
+        a_wins = wins.get('A', 0)
+        b_wins = wins.get('B', 0)
+        wins_summary = f"A:{a_wins} B:{b_wins}"
+        cost_a_str = f"${total_cost_a:.2f}"
+        cost_b_str = f"${total_cost_b:.2f}"
+        print(f"{'TOTAL':<30} {wins_summary:^8}  {cost_a_str:>8}  {cost_b_str:>8}")
 
-        print(f"{r['question']['id']:<30} {winner:^8}  {cost_a:>8}  {cost_b:>8}{error_info}")
+        print()
+        if a_wins > b_wins:
+            overall = f"A ({config.label_a})"
+        elif b_wins > a_wins:
+            overall = f"B ({config.label_b})"
+        else:
+            overall = "tie"
+        print(f"Winner: {overall}")
 
-    # Summary row
-    print("─" * 60)
-    a_wins = wins.get('A', 0)
-    b_wins = wins.get('B', 0)
-    wins_summary = f"A:{a_wins} B:{b_wins}"
-    cost_a_str = f"${total_cost_a:.2f}"
-    cost_b_str = f"${total_cost_b:.2f}"
-    print(f"{'TOTAL':<30} {wins_summary:^8}  {cost_a_str:>8}  {cost_b_str:>8}")
+        # Cache stats
+        cache_hits_a = sum(1 for r in results if r.get("cached_a"))
+        cache_hits_b = sum(1 for r in results if r.get("cached_b"))
+        cache_hits_judge = sum(1 for r in results if r.get("cached_judge"))
+        if cache_hits_a or cache_hits_b or cache_hits_judge:
+            print(f"Cache: A={cache_hits_a}/{len(results)}, B={cache_hits_b}/{len(results)}, judge={cache_hits_judge}/{len(results)}")
 
-    print()
-    if a_wins > b_wins:
-        overall = f"A ({config.label_a})"
-    elif b_wins > a_wins:
-        overall = f"B ({config.label_b})"
-    else:
-        overall = "tie"
-    print(f"Winner: {overall}")
-
-    # Cache stats
-    cache_hits_a = sum(1 for r in results if r.get("cached_a"))
-    cache_hits_b = sum(1 for r in results if r.get("cached_b"))
-    cache_hits_judge = sum(1 for r in results if r.get("cached_judge"))
-    if cache_hits_a or cache_hits_b or cache_hits_judge:
-        print(f"Cache: A={cache_hits_a}/{len(results)}, B={cache_hits_b}/{len(results)}, judge={cache_hits_judge}/{len(results)}")
-
-    return results
+        return results
 
 
 def run(

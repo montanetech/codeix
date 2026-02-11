@@ -6,16 +6,19 @@ import os
 import shutil
 import subprocess
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Generator
 
 # Project root (codeix repo)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 # Configuration
-# Cache dir: persistent across runs (only for response cache)
+# Cache dir: persistent across runs
 CACHE_DIR = Path(os.environ.get("CODEIX_BENCH_CACHE", Path(tempfile.gettempdir()) / "codeix-bench-cache"))
 RESPONSE_CACHE_DIR = CACHE_DIR / "responses"
+REPO_CACHE_DIR = CACHE_DIR / "repos"
 
 
 @dataclass
@@ -29,23 +32,33 @@ class RunContext:
     results_dir: Path  # Results: run_dir/results/
 
 
-def create_run_context() -> RunContext:
-    """Create a fresh temporary run directory with standard structure."""
-    run_dir = Path(tempfile.mkdtemp(prefix="codeix-bench-"))
-    ctx = RunContext(
-        run_dir=run_dir,
-        bin_dir=run_dir / "bin",
-        repos=run_dir / "repos",
-        repos_a=run_dir / "repos" / "a",
-        repos_b=run_dir / "repos" / "b",
-        results_dir=run_dir / "results",
-    )
-    ctx.bin_dir.mkdir(parents=True)
-    ctx.repos.mkdir(parents=True)
-    ctx.repos_a.mkdir(parents=True)
-    ctx.repos_b.mkdir(parents=True)
-    ctx.results_dir.mkdir(parents=True)
-    return ctx
+@contextmanager
+def run_context() -> Generator[RunContext, None, None]:
+    """Create a fresh temporary run directory with standard structure.
+
+    Auto-cleans up the directory when the context exits.
+
+    Usage:
+        with run_context() as ctx:
+            # use ctx.run_dir, ctx.bin_dir, etc.
+        # directory is automatically cleaned up
+    """
+    with tempfile.TemporaryDirectory(prefix="codeix-bench-") as tmp:
+        run_dir = Path(tmp)
+        ctx = RunContext(
+            run_dir=run_dir,
+            bin_dir=run_dir / "bin",
+            repos=run_dir / "repos",
+            repos_a=run_dir / "repos" / "a",
+            repos_b=run_dir / "repos" / "b",
+            results_dir=run_dir / "results",
+        )
+        ctx.bin_dir.mkdir(parents=True)
+        ctx.repos.mkdir(parents=True)
+        ctx.repos_a.mkdir(parents=True)
+        ctx.repos_b.mkdir(parents=True)
+        ctx.results_dir.mkdir(parents=True)
+        yield ctx
 
 
 @dataclass
@@ -149,13 +162,8 @@ def build_index(codeix_bin: str, repo_path: Path) -> bool:
     return True
 
 
-def clone_repo_to(repo: Repo, dest: Path) -> bool:
-    """Clone a repo to a specific destination."""
-    if dest.exists():
-        return True
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-
+def _clone_from_remote(repo: Repo, dest: Path) -> bool:
+    """Clone a repo from remote URL."""
     for branch in ["main", "master", None]:
         cmd = ["git", "clone", "--depth=1", "--single-branch", "--quiet"]
         if branch:
@@ -178,6 +186,29 @@ def clone_repo_to(repo: Repo, dest: Path) -> bool:
             capture_output=True,
         )
 
+    return True
+
+
+def clone_repo_to(repo: Repo, dest: Path) -> bool:
+    """Clone a repo to a specific destination, using local cache.
+
+    First clones to REPO_CACHE_DIR (if not already cached), then copies to dest.
+    This avoids hitting GitHub on every benchmark run.
+    """
+    if dest.exists():
+        return True
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    # Check/populate cache
+    cached = REPO_CACHE_DIR / repo.name
+    if not cached.exists():
+        REPO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        if not _clone_from_remote(repo, cached):
+            return False
+
+    # Copy from cache to dest
+    shutil.copytree(cached, dest)
     return True
 
 

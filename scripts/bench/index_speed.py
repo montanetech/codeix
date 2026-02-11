@@ -1,6 +1,5 @@
 """Quantitative indexing speed benchmark."""
 
-import atexit
 import shutil
 import subprocess
 import sys
@@ -14,9 +13,8 @@ from .common import (
     clone_repo_to,
     count_files,
     count_lines,
-    create_run_context,
+    run_context,
     get_codeix_bin,
-    get_repo_by_name,
     log,
     log_error,
     log_success,
@@ -79,57 +77,52 @@ def run(verbose: bool = False) -> None:
         sys.exit(1)
     log(f"Using codeix: {codeix_bin}")
 
-    # Create fresh run context
-    ctx = create_run_context()
-    log(f"Run dir: {ctx.run_dir}")
+    with run_context() as ctx:
+        log(f"Run dir: {ctx.run_dir}")
 
-    def cleanup():
-        shutil.rmtree(ctx.run_dir, ignore_errors=True)
-    atexit.register(cleanup)
+        # Copy codeix binary to run dir for reproducibility
+        bin_path = ctx.bin_dir / "codeix"
+        shutil.copy2(codeix_bin, bin_path)
+        bin_path.chmod(0o755)
+        codeix_bin = str(bin_path)
 
-    # Copy codeix binary to run dir for reproducibility
-    bin_path = ctx.bin_dir / "codeix"
-    shutil.copy2(codeix_bin, bin_path)
-    bin_path.chmod(0o755)
-    codeix_bin = str(bin_path)
+        # Clone phase
+        print()
+        log("Phase 1: Cloning repositories...")
+        print()
 
-    # Clone phase
-    print()
-    log("Phase 1: Cloning repositories...")
-    print()
+        start = time.perf_counter()
+        for repo in REPOS:
+            clone_repo_to(repo, ctx.repos / repo.name)
+        clone_duration = time.perf_counter() - start
 
-    start = time.perf_counter()
-    for repo in REPOS:
-        clone_repo_to(repo, ctx.repos / repo.name)
-    clone_duration = time.perf_counter() - start
+        log_success(f"Cloning complete in {clone_duration:.1f}s")
 
-    log_success(f"Cloning complete in {clone_duration:.1f}s")
+        # Benchmark phase
+        print()
+        log("Phase 2: Benchmarking indexing...")
+        print()
 
-    # Benchmark phase
-    print()
-    log("Phase 2: Benchmarking indexing...")
-    print()
+        # Header
+        print(f"{'Repository':<18} │ {'Language':<10} │ {'Size':<7} │ {'Files':>6} │ {'Lines':>8} │ {'Time':>7} │ {'Speed':>8} │ Notes")
+        print("───────────────────┼────────────┼─────────┼────────┼──────────┼─────────┼──────────┼─────────────────────────")
 
-    # Header
-    print(f"{'Repository':<18} │ {'Language':<10} │ {'Size':<7} │ {'Files':>6} │ {'Lines':>8} │ {'Time':>7} │ {'Speed':>8} │ Notes")
-    print("───────────────────┼────────────┼─────────┼────────┼──────────┼─────────┼──────────┼─────────────────────────")
+        results = []
+        for repo in REPOS:
+            result = benchmark_repo(repo, ctx, codeix_bin=codeix_bin, verbose=verbose)
+            if result:
+                results.append(result)
+                print(
+                    f"{result['name']:<18} │ {result['lang']:<10} │ {result['size']:<7} │ "
+                    f"{result['files']:>6} │ {result['lines']:>8} │ {result['duration']:>6.2f}s │ "
+                    f"{result['files_per_sec']:>6}/s │ {result['notes']}"
+                )
+            else:
+                print(f"{repo.name:<18} │ {repo.lang:<10} │ {repo.size:<7} │ {'FAILED':>6} │ {'-':>8} │ {'-':>7} │ {'-':>8} │ {repo.notes}")
 
-    results = []
-    for repo in REPOS:
-        result = benchmark_repo(repo, ctx, codeix_bin=codeix_bin, verbose=verbose)
-        if result:
-            results.append(result)
-            print(
-                f"{result['name']:<18} │ {result['lang']:<10} │ {result['size']:<7} │ "
-                f"{result['files']:>6} │ {result['lines']:>8} │ {result['duration']:>6.2f}s │ "
-                f"{result['files_per_sec']:>6}/s │ {result['notes']}"
-            )
-        else:
-            print(f"{repo.name:<18} │ {repo.lang:<10} │ {repo.size:<7} │ {'FAILED':>6} │ {'-':>8} │ {'-':>7} │ {'-':>8} │ {repo.notes}")
-
-    print()
-    log_success("Benchmark complete!")
-    print()
-    print(f"{CYAN}Languages tested:{NC} TypeScript, Go, C++, Rust, Python, Java, C, Ruby, C#, JavaScript")
-    print(f"{CYAN}Structural tests:{NC} Small/Medium repos, with/without submodules")
-    print()
+        print()
+        log_success("Benchmark complete!")
+        print()
+        print(f"{CYAN}Languages tested:{NC} TypeScript, Go, C++, Rust, Python, Java, C, Ruby, C#, JavaScript")
+        print(f"{CYAN}Structural tests:{NC} Small/Medium repos, with/without submodules")
+        print()
