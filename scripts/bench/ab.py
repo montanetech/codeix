@@ -259,14 +259,12 @@ def build_claude_cmd(
 def build_mcp_config(bin_path: str) -> str:
     """Build MCP config JSON for codeix.
 
-    Uses "." as repo path since cwd is set to the project repo.
     This makes the command line consistent across runs (for caching).
     """
     return json.dumps({
         "mcpServers": {
             "codeindex": {
                 "command": bin_path,
-                "args": ["serve", "."],
             }
         }
     })
@@ -641,7 +639,8 @@ async def run_subprocess_streaming(
             except json.JSONDecodeError:
                 return {"result": stdout_str, "error": stderr_str}
     except asyncio.CancelledError:
-        proc.terminate()
+        if 'proc' in locals():
+            proc.terminate()
         raise
     except Exception as e:
         return {"result": "", "error": str(e)}
@@ -689,7 +688,8 @@ async def run_subprocess(cmd: list[str], cwd: Path | None = None, bin_dir: Path 
             except json.JSONDecodeError:
                 return {"result": stdout_str, "error": stderr_str}
     except asyncio.CancelledError:
-        proc.terminate()
+        if 'proc' in locals():
+            proc.terminate()
         raise
     except Exception as e:
         return {"result": "", "error": str(e)}
@@ -815,9 +815,9 @@ async def run_question(
 
         # Save to cache
         if not cached_a:
-            save_cached_response(cache_key_a, response_a, {"question_id": q["id"], "label": config.label_a})
+            save_cached_response(cache_key_a, response_a, {"question_id": q["id"], "label": config.label_a, "cmd": cmd_a})
         if not cached_b:
-            save_cached_response(cache_key_b, response_b, {"question_id": q["id"], "label": config.label_b})
+            save_cached_response(cache_key_b, response_b, {"question_id": q["id"], "label": config.label_b, "cmd": cmd_b})
 
     # Helper to check for errors
     def has_error(resp: dict) -> str | None:
@@ -931,7 +931,7 @@ Output JSON: {{"winner": "A"|"B"|"tie", "reason": "brief explanation"{config.ext
         # With --json-schema, output is in structured_output field
         structured = judge_response.get("structured_output", {})
         if structured and "winner" in structured:
-            save_cached_response(judge_cache_key, judge_response, {"question_id": q["id"], "type": "judge"})
+            save_cached_response(judge_cache_key, judge_response, {"question_id": q["id"], "type": "judge", "cmd": judge_cmd})
         cached_judge_flag = False
 
     result = {
