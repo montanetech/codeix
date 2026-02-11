@@ -504,7 +504,7 @@ fn extract_declaration(
                     }
                 }
             }
-            "identifier" | "pointer_declarator" => {
+            "identifier" => {
                 let name = extract_declarator_name(child, source);
                 if !name.is_empty() {
                     push_symbol(
@@ -512,6 +512,31 @@ fn extract_declaration(
                         file_path,
                         name,
                         "variable",
+                        line,
+                        parent_ctx,
+                        None,
+                        None,
+                        Some(visibility.to_string()),
+                    );
+                }
+            }
+            "pointer_declarator" => {
+                // Check if this is a function returning a pointer vs a pointer variable
+                let has_func_decl = child
+                    .children(&mut child.walk())
+                    .any(|c| c.kind() == "function_declarator");
+                let name = extract_declarator_name(child, source);
+                if !name.is_empty() {
+                    let kind = if has_func_decl {
+                        "function"
+                    } else {
+                        "variable"
+                    };
+                    push_symbol(
+                        symbols,
+                        file_path,
+                        name,
+                        kind,
                         line,
                         parent_ctx,
                         None,
@@ -953,6 +978,33 @@ extern void print(const char* msg);";
         assert_eq!(add.kind, "function");
         // Prototypes don't have bodies, so no tokens
         assert!(add.tokens.is_none());
+    }
+
+    #[test]
+    fn test_c_function_returning_pointer() {
+        // Functions returning pointers should be detected as functions, not variables
+        let source = b"const char *crypto_secretbox_primitive(void);
+char* get_buffer(int size);
+int* allocate_array(void);";
+        let (symbols, _texts, _refs) = parse_file(source, "c", "test.c").unwrap();
+
+        let crypto = find_sym(&symbols, "crypto_secretbox_primitive");
+        assert_eq!(
+            crypto.kind, "function",
+            "function returning const char* should be function"
+        );
+
+        let get_buffer = find_sym(&symbols, "get_buffer");
+        assert_eq!(
+            get_buffer.kind, "function",
+            "function returning char* should be function"
+        );
+
+        let alloc = find_sym(&symbols, "allocate_array");
+        assert_eq!(
+            alloc.kind, "function",
+            "function returning int* should be function"
+        );
     }
 
     #[test]
