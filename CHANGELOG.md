@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.4.0](https://github.com/montanetech/codeix/compare/v0.3.0...v0.4.0) (2026-02-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** remove redundant get_imports tool
+
+### Features
+
+* add MCP Registry publishing to release workflow ([#69](https://github.com/montanetech/codeix/issues/69)) ([e82f4de](https://github.com/montanetech/codeix/commit/e82f4de8d17bd0135cf9d10a403ab96cf6c8eb54))
+* **mcp:** add visibility filter to MCP tools ([#71](https://github.com/montanetech/codeix/issues/71)) ([bb3f9cb](https://github.com/montanetech/codeix/commit/bb3f9cbd2e07476df1a3df95d0a73912bfdeb46f))
+* **mcp:** add visibility filter to MCP tools ([#71](https://github.com/montanetech/codeix/issues/71)) ([f7f840b](https://github.com/montanetech/codeix/commit/f7f840b42d4521691897a8cdb995815900eecad5))
+* **mcp:** remove redundant get_imports tool ([c6ec622](https://github.com/montanetech/codeix/commit/c6ec62265dd61075df02ad28db6c05bf1f0d69fc))
+* **parser:** harden parsers to handle errors gracefully ([87666fb](https://github.com/montanetech/codeix/commit/87666fbca0db8f86468138d245252903faa24e55))
+* **parser:** use __all__ for Python visibility detection ([778b0fc](https://github.com/montanetech/codeix/commit/778b0fcf65035dc0eb9557e83bcbf4e766af9a9b))
+* **parser:** use __all__ for Python visibility detection ([#73](https://github.com/montanetech/codeix/issues/73)) ([f5a3a70](https://github.com/montanetech/codeix/commit/f5a3a708807cd244481fe96a293615f464b4426f))
+* **rust:** parse symbols inside macro invocations ([1ed4530](https://github.com/montanetech/codeix/commit/1ed45306f0b4bbc49154affbb39793052795cd09))
+* **search:** add BM25 weighted columns for better relevance ([756d207](https://github.com/montanetech/codeix/commit/756d207278ebb46d3aead96b758b8d0b9dc1d9ab))
+* **search:** add kind to FTS content for natural queries ([b0c06c5](https://github.com/montanetech/codeix/commit/b0c06c570d216c252be60327845d51b0965f583c))
+* **search:** add pipe syntax for OR queries ([82bfe2d](https://github.com/montanetech/codeix/commit/82bfe2dfdb2931a484ef7611d15ac072d05edeac))
+* **search:** allow multiple kinds + improve docs ([5c4ffdb](https://github.com/montanetech/codeix/commit/5c4ffdb164d9c89a22893e4cbf5626f1aca93912))
+* **search:** glob patterns for get_file_symbols ([e16fdd4](https://github.com/montanetech/codeix/commit/e16fdd45d9564018d3de17cc73890f9fadd42b27))
+
+
+### Bug Fixes
+
+* **c:** classify functions returning pointers correctly ([084840e](https://github.com/montanetech/codeix/commit/084840e01c4683dafe0685b36ccfca1a507aa1ee))
+* **db:** support base name matching in get_callers and get_callees ([f0974ec](https://github.com/montanetech/codeix/commit/f0974ecb8df6dd6d814ca49cf8c5affac3df49df))
+* **db:** support base name matching in get_callers and get_callees ([5f982a7](https://github.com/montanetech/codeix/commit/5f982a77174cdc2a9b86a762ad1a44f2ec49aa79))
+* enforce minimum context + hide redundant fields ([6fdac27](https://github.com/montanetech/codeix/commit/6fdac2755d9f151d62c042c5396294858f480793))
+* hide tokens field from serialized output ([aea11d3](https://github.com/montanetech/codeix/commit/aea11d3e72cb97342daa293dbe0a19feb1800fb2))
+* **test:** canonicalize paths in macOS CI tests ([2fb1ede](https://github.com/montanetech/codeix/commit/2fb1edeb21712cf87490978541e5a08449856f55))
+* **watcher:** emit ProjectRemoved event when subproject deleted ([657ced3](https://github.com/montanetech/codeix/commit/657ced380b9c36b72faf1ac753abaf41e43b6c46))
+* **watcher:** emit ProjectRemoved event when subproject deleted ([#61](https://github.com/montanetech/codeix/issues/61)) ([3f78fad](https://github.com/montanetech/codeix/commit/3f78fad459bb91ad013c69043c3ec395df12d4ef))
+
 ## [0.3.0](https://github.com/montanetech/codeix/compare/v0.2.0...v0.3.0) (2026-02-10)
 
 
