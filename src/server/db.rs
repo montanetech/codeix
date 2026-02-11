@@ -514,6 +514,7 @@ impl SearchDb {
 
     /// Get all symbols in a file, ordered by start line.
     ///
+    /// The file parameter supports glob patterns (*, ?, [...]).
     /// If visibility is specified, only symbols at that visibility level or higher are returned.
     /// Hierarchy: public > internal > private.
     pub fn get_file_symbols(
@@ -524,25 +525,37 @@ impl SearchDb {
         offset: u32,
     ) -> Result<Vec<SymbolEntry>> {
         let max_level = visibility_max_level(visibility, "public");
+        // Use GLOB for pattern matching if file contains wildcards
+        let file_op = if file.contains('*') || file.contains('?') || file.contains('[') {
+            "GLOB"
+        } else {
+            "="
+        };
 
         let sql = match max_level {
             Some(_) => {
-                "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
-                 FROM symbols
-                 WHERE file = ?1 AND visibility_level <= ?2
-                 ORDER BY line_start
-                 LIMIT ?3 OFFSET ?4"
+                format!(
+                    "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
+                     FROM symbols
+                     WHERE file {} ?1 AND visibility_level <= ?2
+                     ORDER BY file, line_start
+                     LIMIT ?3 OFFSET ?4",
+                    file_op
+                )
             }
             None => {
-                "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
-                 FROM symbols
-                 WHERE file = ?1
-                 ORDER BY line_start
-                 LIMIT ?2 OFFSET ?3"
+                format!(
+                    "SELECT project, file, name, kind, line_start, line_end, parent, tokens, alias, visibility
+                     FROM symbols
+                     WHERE file {} ?1
+                     ORDER BY file, line_start
+                     LIMIT ?2 OFFSET ?3",
+                    file_op
+                )
             }
         };
 
-        let mut stmt = self.conn.prepare(sql)?;
+        let mut stmt = self.conn.prepare(&sql)?;
 
         let rows: Vec<SymbolEntry> = match max_level {
             Some(level) => stmt
