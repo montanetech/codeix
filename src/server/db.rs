@@ -1539,26 +1539,122 @@ impl SearchDb {
     }
 }
 
-/// Pass through FTS5 query as-is.
+/// Transform query for FTS5:
+/// - `a|b` → `(a OR b)` (pipe as OR shorthand)
+/// - `a|b|c` → `(a OR b OR c)`
+/// - Pipes inside quotes are preserved literally
 ///
-/// The LLM is expected to emit valid FTS5 syntax directly.
 /// See: https://www.sqlite.org/fts5.html#full_text_query_syntax
 ///
 /// FTS5 syntax examples:
 /// - `parseAsync` — single term
-/// - `parseAsync OR safeParseAsync` — match either term
-/// - `parseAsync AND safeParseAsync` — match both terms (implicit for space-separated)
+/// - `parse|safe` or `parse OR safe` — match either term
+/// - `parse safe` — match both terms (implicit AND)
 /// - `parse*` — prefix search (matches parseAsync, parseString, etc.)
 /// - `"safe parse"` — phrase search (exact sequence)
-/// - `parse -test` — exclude results containing "test"
+/// - `parse NOT test` — exclude results containing "test"
 /// - `NEAR(parse async, 5)` — terms within 5 tokens of each other
 fn fts5_quote(s: &str) -> String {
-    s.to_string()
+    transform_pipe_to_or(s)
+}
+
+/// Transform `a|b|c` → `(a OR b OR c)` outside of quoted strings.
+///
+/// Only terms directly connected by `|` form an OR group.
+/// `prefix foo|bar suffix` → `prefix (foo OR bar) suffix`
+fn transform_pipe_to_or(s: &str) -> String {
+    if !s.contains('|') {
+        return s.to_string();
+    }
+
+    let mut result = String::with_capacity(s.len() * 2);
+    let mut in_quote = false;
+    let mut current_token = String::new();
+
+    for c in s.chars() {
+        if c == '"' {
+            in_quote = !in_quote;
+            current_token.push(c);
+        } else if c.is_whitespace() && !in_quote {
+            // End of token - flush it
+            if !current_token.is_empty() {
+                result.push_str(&expand_pipes(&current_token));
+                current_token.clear();
+            }
+            result.push(c);
+        } else {
+            current_token.push(c);
+        }
+    }
+
+    // Flush remaining token
+    if !current_token.is_empty() {
+        result.push_str(&expand_pipes(&current_token));
+    }
+
+    result
+}
+
+/// Expand pipes in a single token: `a|b|c` → `(a OR b OR c)`
+fn expand_pipes(token: &str) -> String {
+    // Don't expand if token is entirely quoted
+    if token.starts_with('"') && token.ends_with('"') {
+        return token.to_string();
+    }
+
+    if !token.contains('|') {
+        return token.to_string();
+    }
+
+    let parts: Vec<&str> = token.split('|').collect();
+    if parts.len() == 1 {
+        return token.to_string();
+    }
+
+    format!("({})", parts.join(" OR "))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_transform_pipe_to_or() {
+        // No pipe - pass through
+        assert_eq!(transform_pipe_to_or("foo bar"), "foo bar");
+        assert_eq!(transform_pipe_to_or("foo OR bar"), "foo OR bar");
+
+        // Simple pipe
+        assert_eq!(transform_pipe_to_or("foo|bar"), "(foo OR bar)");
+        assert_eq!(transform_pipe_to_or("a|b|c"), "(a OR b OR c)");
+
+        // Pipe with surrounding terms
+        assert_eq!(transform_pipe_to_or("foo|bar baz"), "(foo OR bar) baz");
+        assert_eq!(
+            transform_pipe_to_or("prefix foo|bar"),
+            "prefix (foo OR bar)"
+        );
+        assert_eq!(
+            transform_pipe_to_or("prefix foo|bar suffix"),
+            "prefix (foo OR bar) suffix"
+        );
+
+        // Pipe inside quotes preserved
+        assert_eq!(transform_pipe_to_or("\"foo|bar\""), "\"foo|bar\"");
+        assert_eq!(
+            transform_pipe_to_or("test \"foo|bar\" other"),
+            "test \"foo|bar\" other"
+        );
+
+        // Mixed: pipe outside quotes, literal inside
+        assert_eq!(transform_pipe_to_or("a|b \"c|d\""), "(a OR b) \"c|d\"");
+
+        // With prefix wildcard
+        assert_eq!(
+            transform_pipe_to_or("hand*|context*"),
+            "(hand* OR context*)"
+        );
+    }
 
     fn setup_test_db_with_refs(refs: &[ReferenceEntry]) -> SearchDb {
         let db = SearchDb::new_no_fts().unwrap();

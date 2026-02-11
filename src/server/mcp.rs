@@ -307,16 +307,15 @@ impl CodeIndexServer {
     /// Unified search across symbols, files, and texts.
     #[tool(
         description = "Search symbols, files, and texts. FTS5 with BM25 ranking.\n\n\
-**Query:** FTS5 syntax — `foo`, `foo bar` (implicit AND), `foo OR bar`, `foo*` (prefix), `\"exact phrase\"`, `foo -exclude`\n\n\
-**Symbol kinds:** `function`, `method`, `class`, `struct`, `interface`, `enum`, `constant`, `variable`, `property`, `module`, `import`, `impl`, `section`\n\
-- `method` = inside class/struct, `function` = standalone\n\
-- Go/Rust/C: use `struct` not `class`\n\
-- Rust: use `interface` for traits\n\
-- Multiple kinds: `kind=[\"function\",\"method\"]` to search both\n\
-- Omit `kind` filter when uncertain to avoid missing results\n\n\
-**Text kinds:** `docstring`, `comment`, `string`, `sample`\n\n\
-**Params:** query (required), scope ([\"symbol\"]/[\"file\"]/[\"text\"]), kind, path (glob), project, limit (default 10), offset, context_lines (default 10)\n\n\
-**Tip:** Omit `scope` to search all types at once (default behavior)"
+**Query syntax:**\n\
+- `foo bar` — match both (implicit AND)\n\
+- `foo|bar` or `foo OR bar` — match either\n\
+- `foo*` — prefix (matches fooBar, fooHandler)\n\
+- `\"exact phrase\"` — literal match\n\
+- `foo NOT test` — exclude term\n\n\
+**Tip:** Use `|` to search multiple terms efficiently: `handler|middleware|context`\n\n\
+**Params:** query (required), limit (default 10), snippet_lines (default 10)\n\n\
+**Optional filters:** scope, kind, path, project, visibility"
     )]
     pub async fn search(
         &self,
