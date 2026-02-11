@@ -932,9 +932,18 @@ mod tests {
         assert_eq!(projects.len(), 1);
         assert_eq!(projects[0], ""); // Root project has empty string
 
-        // Search for the main function
+        // Search for the main function (private, use visibility="private" to include all)
         let results = db_guard
-            .search("main", &["symbol".to_string()], None, None, None, 100, 0)
+            .search(
+                "main",
+                &["symbol".to_string()],
+                None,
+                None,
+                None,
+                Some("private"),
+                100,
+                0,
+            )
             .unwrap();
         let symbols: Vec<_> = results
             .iter()
@@ -949,9 +958,18 @@ mod tests {
                 .any(|s| s.name == "main" && s.kind == "function")
         );
 
-        // Search for greet function
+        // Search for greet function (public)
         let results = db_guard
-            .search("greet", &["symbol".to_string()], None, None, None, 100, 0)
+            .search(
+                "greet",
+                &["symbol".to_string()],
+                None,
+                None,
+                None,
+                Some("private"),
+                100,
+                0,
+            )
             .unwrap();
         let symbols: Vec<_> = results
             .iter()
@@ -995,7 +1013,7 @@ mod tests {
         assert!(projects.contains(&"".to_string())); // Root
         assert!(projects.contains(&"libs/utils".to_string())); // Subproject
 
-        // Root project should have app_main (search without filter, check project field)
+        // Root project should have app_main (private fn, use visibility="private" to include all)
         let results = db_guard
             .search(
                 "app_main",
@@ -1003,6 +1021,7 @@ mod tests {
                 None,
                 None,
                 None,
+                Some("private"),
                 100,
                 0,
             )
@@ -1017,7 +1036,7 @@ mod tests {
         assert_eq!(symbols.len(), 1);
         assert_eq!(symbols[0].project, "");
 
-        // Subproject should have utility
+        // Subproject should have utility (public fn, default visibility would work but use private for consistency)
         let results = db_guard
             .search(
                 "utility",
@@ -1025,6 +1044,7 @@ mod tests {
                 None,
                 None,
                 Some("libs/utils"),
+                Some("private"),
                 100,
                 0,
             )
@@ -1070,9 +1090,18 @@ mod tests {
         let projects = db_guard.list_projects().unwrap();
         assert_eq!(projects.len(), 3);
 
-        // Each function should be in its respective project (search without filter, verify project)
+        // Each function should be in its respective project (private fns, use visibility="private")
         let results = db_guard
-            .search("root_fn", &["symbol".to_string()], None, None, None, 100, 0)
+            .search(
+                "root_fn",
+                &["symbol".to_string()],
+                None,
+                None,
+                None,
+                Some("private"),
+                100,
+                0,
+            )
             .unwrap();
         let root_syms: Vec<_> = results
             .iter()
@@ -1091,6 +1120,7 @@ mod tests {
                 None,
                 None,
                 Some("libs/core"),
+                Some("private"),
                 100,
                 0,
             )
@@ -1111,6 +1141,7 @@ mod tests {
                 None,
                 None,
                 Some("libs/core/nested"),
+                Some("private"),
                 100,
                 0,
             )
@@ -1148,9 +1179,18 @@ mod tests {
         // Verify: sub.rs should NOT appear in root project
         let db_guard = db.lock().unwrap();
 
-        // Search without project filter - should find both
+        // Search without project filter - should find both (private fns, use visibility="private")
         let results = db_guard
-            .search("fn", &["symbol".to_string()], None, None, None, 100, 0)
+            .search(
+                "fn",
+                &["symbol".to_string()],
+                None,
+                None,
+                None,
+                Some("private"),
+                100,
+                0,
+            )
             .unwrap();
         let all_symbols: Vec<_> = results
             .iter()
@@ -1230,9 +1270,18 @@ mod tests {
 
         let db_guard = db.lock().unwrap();
 
-        // Without filter: should find 2 helpers
+        // Without filter: should find 2 helpers (private fns, use visibility="private")
         let results = db_guard
-            .search("helper", &["symbol".to_string()], None, None, None, 100, 0)
+            .search(
+                "helper",
+                &["symbol".to_string()],
+                None,
+                None,
+                None,
+                Some("private"),
+                100,
+                0,
+            )
             .unwrap();
         let all: Vec<_> = results
             .iter()
@@ -1249,7 +1298,7 @@ mod tests {
         assert_eq!(root_helpers.len(), 1);
         assert_eq!(sub_helpers.len(), 1);
 
-        // With sub filter: should find 1
+        // With sub filter: should find 1 (private fn, use visibility="private")
         let results = db_guard
             .search(
                 "helper",
@@ -1257,6 +1306,7 @@ mod tests {
                 None,
                 None,
                 Some("sub"),
+                Some("private"),
                 100,
                 0,
             )
@@ -1296,9 +1346,18 @@ mod tests {
 
         assert!(projects.contains(&"path/to/deep/project".to_string()));
 
-        // Symbol should have correct project
+        // Symbol should have correct project (private fn, use visibility="private")
         let results = db_guard
-            .search("deep_fn", &["symbol".to_string()], None, None, None, 100, 0)
+            .search(
+                "deep_fn",
+                &["symbol".to_string()],
+                None,
+                None,
+                None,
+                Some("private"),
+                100,
+                0,
+            )
             .unwrap();
         let symbols: Vec<_> = results
             .iter()
@@ -1337,9 +1396,18 @@ mod tests {
             assert!(projects.contains(&"".to_string())); // Root
             assert!(projects.contains(&"sub".to_string())); // Subproject
 
-            // Both functions should exist
+            // Both functions should exist (private fns, use visibility="private")
             let results = db_guard
-                .search("fn", &["symbol".to_string()], None, None, None, 100, 0)
+                .search(
+                    "fn",
+                    &["symbol".to_string()],
+                    None,
+                    None,
+                    None,
+                    Some("private"),
+                    100,
+                    0,
+                )
                 .unwrap();
             let symbols: Vec<_> = results
                 .iter()
@@ -1377,9 +1445,18 @@ mod tests {
             assert_eq!(projects.len(), 1);
             assert!(projects.contains(&"".to_string())); // Root
 
-            // Only root_fn should exist, sub_fn should be gone
+            // Only root_fn should exist, sub_fn should be gone (private fn, use visibility="private")
             let results = db_guard
-                .search("fn", &["symbol".to_string()], None, None, None, 100, 0)
+                .search(
+                    "fn",
+                    &["symbol".to_string()],
+                    None,
+                    None,
+                    None,
+                    Some("private"),
+                    100,
+                    0,
+                )
                 .unwrap();
             let symbols: Vec<_> = results
                 .iter()

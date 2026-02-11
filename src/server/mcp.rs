@@ -45,6 +45,11 @@ pub struct SearchParams {
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
+    /// Minimum visibility level: "public" (default), "internal", or "private".
+    /// Hierarchical filter: public > internal > private.
+    /// Example: visibility="internal" returns public AND internal symbols.
+    #[arg(short = 'v', long)]
+    pub visibility: Option<String>,
     /// Maximum number of results to return (default: 100)
     #[arg(short, long)]
     pub limit: Option<u32>,
@@ -64,6 +69,11 @@ pub struct SearchParams {
 pub struct GetFileSymbolsParams {
     /// File path to get symbols for
     pub file: String,
+    /// Minimum visibility level: "public" (default), "internal", or "private".
+    /// Hierarchical filter: public > internal > private.
+    /// Example: visibility="internal" returns public AND internal symbols.
+    #[arg(short = 'v', long)]
+    pub visibility: Option<String>,
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
@@ -85,6 +95,11 @@ pub struct GetChildrenParams {
     pub file: String,
     /// Name of the parent symbol
     pub parent: String,
+    /// Minimum visibility level: "public" (default), "internal", or "private".
+    /// Hierarchical filter: public > internal > private.
+    /// Example: visibility="internal" returns public AND internal symbols.
+    #[arg(short = 'v', long)]
+    pub visibility: Option<String>,
     /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
     #[arg(long)]
     pub snippet_lines: Option<i32>,
@@ -110,6 +125,11 @@ pub struct GetCallersParams {
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
+    /// Minimum visibility level of the target symbol: "public", "internal", or "private" (default).
+    /// Hierarchical filter: public > internal > private.
+    /// Example: visibility="public" returns only callers of public symbols.
+    #[arg(short = 'v', long)]
+    pub visibility: Option<String>,
     /// Maximum number of results to return (default: 100)
     #[arg(short, long)]
     pub limit: Option<u32>,
@@ -135,6 +155,11 @@ pub struct GetCalleesParams {
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
+    /// Minimum visibility level of referenced symbols: "public", "internal", or "private" (default).
+    /// Hierarchical filter: public > internal > private.
+    /// Example: visibility="public" returns only callees that are public symbols.
+    #[arg(short = 'v', long)]
+    pub visibility: Option<String>,
     /// Maximum number of results to return (default: 100)
     #[arg(short, long)]
     pub limit: Option<u32>,
@@ -157,6 +182,11 @@ pub struct ExploreParams {
     /// Filter by project (relative path from workspace root, defaults to root project)
     #[arg(short, long)]
     pub project: Option<String>,
+    /// Minimum visibility level: "public" (default), "internal", or "private".
+    /// Only shows files containing symbols at the specified visibility level.
+    /// Example: visibility="public" shows only files with public API.
+    #[arg(short = 'v', long)]
+    pub visibility: Option<String>,
     /// Max files to display (default: 200). If exceeded, files are capped per directory with "+N files" indicators.
     #[arg(short, long, default_value = "200")]
     pub max_entries: u32,
@@ -258,7 +288,7 @@ impl CodeIndexServer {
     /// Unified search across symbols, files, and texts.
     #[tool(
         description = "Search symbols, files, and texts. FTS5 with BM25 ranking.\n\n\
-**Query:** FTS5 syntax — `foo`, `foo OR bar`, `foo*` (prefix), `\"exact phrase\"`, `foo -exclude`\n\n\
+**Query:** FTS5 syntax — `foo`, `foo bar` (implicit AND), `foo OR bar`, `foo*` (prefix), `\"exact phrase\"`, `foo -exclude`\n\n\
 **Symbol kinds:** `function`, `method`, `class`, `struct`, `interface`, `enum`, `constant`, `variable`, `property`, `module`, `import`, `impl`, `section`\n\
 - Go/Rust/C: use `struct` not `class`\n\
 - Rust: use `interface` for traits\n\n\
@@ -285,6 +315,7 @@ impl CodeIndexServer {
                 params.kind.as_deref(),
                 params.path.as_deref(),
                 params.project.as_deref(),
+                params.visibility.as_deref(),
                 limit,
                 offset,
             )
@@ -341,7 +372,7 @@ impl CodeIndexServer {
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .get_file_symbols(&params.file, limit, offset)
+            .get_file_symbols(&params.file, params.visibility.as_deref(), limit, offset)
             .map_err(|e| McpError::internal_error(format!("get_file_symbols failed: {e}"), None))?;
 
         drop(db); // Release lock before file I/O
@@ -371,7 +402,13 @@ impl CodeIndexServer {
             .lock()
             .map_err(|e| McpError::internal_error(format!("db lock poisoned: {e}"), None))?;
         let results = db
-            .get_children(&params.file, &params.parent, limit, offset)
+            .get_children(
+                &params.file,
+                &params.parent,
+                params.visibility.as_deref(),
+                limit,
+                offset,
+            )
             .map_err(|e| McpError::internal_error(format!("get_children failed: {e}"), None))?;
 
         drop(db); // Release lock before file I/O
@@ -467,6 +504,7 @@ impl CodeIndexServer {
             .collect();
 
         // Get full overview first (no path filter) to show complete tree structure
+        // Returns (dir, lang, min_visibility_level, count) tuples
         let full_overview = db.explore_dir_overview(&project_path, None).map_err(|e| {
             McpError::internal_error(format!("explore_dir_overview failed: {e}"), None)
         })?;
@@ -481,32 +519,49 @@ impl CodeIndexServer {
             full_overview.clone()
         };
 
+        // Visibility filter: only count files with min_visibility_level <= max_level
+        let max_level = super::db::visibility_max_level(params.visibility.as_deref(), "public");
+
         // Count files with known language in filtered area (code + markdown), excluding lang=NULL
         let max_entries = params.max_entries as usize;
-        let mut total_known_files = 0usize;
-        let mut num_known_groups = 0usize;
-        // Store filtered overview by (dir, lang) -> count for remainder calculation
-        let mut overview_map: BTreeMap<(String, Option<String>), usize> = BTreeMap::new();
-        for (dir, lang, count) in &filtered_overview {
-            overview_map.insert((dir.clone(), lang.clone()), *count);
-            // Count files with known language (lang is set)
-            if lang.is_some() {
-                total_known_files += count;
-                num_known_groups += 1;
+        let mut total_visible_files = 0usize;
+        let mut num_visible_groups = 0usize;
+
+        // total_map: ALL files by (dir, lang) - used for remainder calculation ("+N files" indicators)
+        // Visible files are counted separately for cap calculation
+        let mut total_map: BTreeMap<(String, Option<String>), usize> = BTreeMap::new();
+
+        for (dir, lang, min_vis, count) in &filtered_overview {
+            // Always add to total_map (for remainder counting)
+            *total_map.entry((dir.clone(), lang.clone())).or_default() += *count;
+
+            // Count visible files (passes visibility filter) for cap calculation
+            let passes_filter = match max_level {
+                Some(max) => *min_vis <= max,
+                None => true,
+            };
+            if passes_filter && lang.is_some() {
+                total_visible_files += count;
+                num_visible_groups += 1;
             }
         }
 
-        // Compute cap: if total known files fit, no cap needed (use large number)
-        let cap = if total_known_files <= max_entries {
+        // Compute cap: if total visible files fit, no cap needed (use large number)
+        let cap = if total_visible_files <= max_entries {
             usize::MAX
         } else {
-            // Distribute budget evenly across known groups, minimum 1
-            (max_entries / num_known_groups.max(1)).max(1)
+            // Distribute budget evenly across visible groups, minimum 1
+            (max_entries / num_visible_groups.max(1)).max(1)
         };
 
         // Fetch files with known language, capped at cap per (dir, lang) - only from filtered path
         let files = db
-            .explore_files_capped(&project_path, path_filter.as_deref(), cap)
+            .explore_files_capped(
+                &project_path,
+                path_filter.as_deref(),
+                params.visibility.as_deref(),
+                cap,
+            )
             .map_err(|e| {
                 McpError::internal_error(format!("explore_files_capped failed: {e}"), None)
             })?;
@@ -526,8 +581,9 @@ impl CodeIndexServer {
         let mut result_dirs: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
         // Collect all directories from FULL overview (to show complete tree structure)
+        // Include all directories regardless of visibility (tree structure is always shown)
         let mut all_dirs: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-        for (dir, _lang, _count) in &full_overview {
+        for (dir, _lang, _min_vis, _count) in &full_overview {
             all_dirs.insert(dir.clone());
         }
 
@@ -535,8 +591,9 @@ impl CodeIndexServer {
             let mut entries = files_by_dir.remove(&dir).unwrap_or_default();
 
             // Check each (dir, lang) group for remainder (only for filtered dirs)
+            // Use total_map to count ALL files, including those hidden by visibility filter
             let mut remainders: BTreeMap<String, usize> = BTreeMap::new(); // lang -> remaining count
-            for ((d, lang), total) in &overview_map {
+            for ((d, lang), total) in &total_map {
                 if d != &dir {
                     continue;
                 }
@@ -602,6 +659,7 @@ impl CodeIndexServer {
                 &params.name,
                 params.kind.as_deref(),
                 params.project.as_deref(),
+                params.visibility.as_deref(),
                 limit,
                 offset,
             )
@@ -638,6 +696,7 @@ impl CodeIndexServer {
                 &params.caller,
                 params.kind.as_deref(),
                 params.project.as_deref(),
+                params.visibility.as_deref(),
                 limit,
                 offset,
             )
@@ -693,7 +752,8 @@ impl ServerHandler for CodeIndexServer {
 - `offset` (default 0): Skip N results for pagination
 - `snippet_lines` (default 10): Code context lines (0=none, -1=all, N=lines)
 - `kind`: Filter by symbol kind (function, method, class, struct, interface, enum, constant, variable, property, module, import, impl) or reference kind (call, import, type_annotation)
-- `project`: Filter by project path (relative from workspace root)"
+- `project`: Filter by project path (relative from workspace root)
+- `visibility`: Filter by max visibility (public < internal < private). Default: public"
                     .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
