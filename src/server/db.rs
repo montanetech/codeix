@@ -141,12 +141,14 @@ impl SearchDb {
         .context("failed to create database schema")?;
 
         // Unified FTS5 virtual table for full-text search (only when enabled)
-        // Replaces separate files_fts, symbols_fts, texts_fts tables
+        // Three searchable columns with BM25 weighting: name (3x), file (2x), content (1x)
         if fts_enabled {
             conn.execute_batch(
                 "
                 CREATE VIRTUAL TABLE search_fts USING fts5(
-                    content,            -- searchable text (type-specific, includes path)
+                    name,               -- symbol/file name (highest weight)
+                    file,               -- file path (medium weight)
+                    content,            -- tokens, docstrings, etc. (lower weight)
                     type UNINDEXED,     -- 'symbol', 'file', 'text'
                     rowid_ref UNINDEXED,-- rowid in source table
                     path UNINDEXED,     -- file path (for GLOB filtering)
@@ -246,13 +248,16 @@ impl SearchDb {
         }
 
         // Populate unified FTS5 index from content tables (only when FTS enabled)
+        // BM25 weights: name (3x), file (2x), content (1x)
         if self.fts_enabled {
             tx.execute_batch(
                 "
-                -- Insert files: content = path + title + description (visibility_level=0, always visible)
-                INSERT INTO search_fts(content, type, rowid_ref, path, kind, project, visibility_level)
+                -- Insert files: name=title, file=path, content=description
+                INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
                 SELECT
-                    COALESCE(path, '') || ' ' || COALESCE(title, '') || ' ' || COALESCE(description, ''),
+                    COALESCE(title, ''),
+                    COALESCE(path, ''),
+                    COALESCE(description, ''),
                     'file',
                     rowid,
                     path,
@@ -261,10 +266,12 @@ impl SearchDb {
                     0
                 FROM files;
 
-                -- Insert symbols: content = file + name + tokens
-                INSERT INTO search_fts(content, type, rowid_ref, path, kind, project, visibility_level)
+                -- Insert symbols: name=symbol name, file=path, content=tokens
+                INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
                 SELECT
-                    COALESCE(file, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(tokens, ''),
+                    COALESCE(name, ''),
+                    COALESCE(file, ''),
+                    COALESCE(tokens, ''),
                     'symbol',
                     rowid,
                     file,
@@ -273,10 +280,12 @@ impl SearchDb {
                     visibility_level
                 FROM symbols;
 
-                -- Insert texts: content = file + text (visibility_level=0, always visible)
-                INSERT INTO search_fts(content, type, rowid_ref, path, kind, project, visibility_level)
+                -- Insert texts: name=empty, file=path, content=text
+                INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
                 SELECT
-                    COALESCE(file, '') || ' ' || COALESCE(text, ''),
+                    '',
+                    COALESCE(file, ''),
+                    COALESCE(text, ''),
                     'text',
                     rowid,
                     file,
@@ -320,8 +329,8 @@ impl SearchDb {
         limit: u32,
         offset: u32,
     ) -> Result<Vec<SearchResult>> {
-        // Build FTS5 MATCH expression
-        let fts_query = format!("content : {}", fts5_quote(query));
+        // Build FTS5 MATCH expression (searches all columns: name, file, content)
+        let fts_query = fts5_quote(query);
 
         // Build WHERE clause for filters
         let mut conditions = vec!["search_fts MATCH ?1".to_string()];
@@ -383,15 +392,31 @@ impl SearchDb {
             params.push(Box::new(max_level));
         }
 
+        // Add exact match parameter for boosting
+        let exact_param = params.len() + 1;
+        // Extract first word from query for exact match comparison (lowercase)
+        let exact_term = query
+            .split_whitespace()
+            .next()
+            .unwrap_or(query)
+            .to_lowercase();
+        params.push(Box::new(exact_term));
+
         // Add limit and offset
         let limit_param = params.len() + 1;
         let offset_param = params.len() + 2;
         params.push(Box::new(limit));
         params.push(Box::new(offset));
 
+        // BM25 weights: name (3x), file (2x), content (1x)
+        // Boost exact name matches with CASE (bm25 returns negative, so -1000 ranks first)
+        // Secondary sort by name length to prefer shorter matches
         let sql = format!(
-            "SELECT type, rowid_ref FROM search_fts WHERE {} ORDER BY rank LIMIT ?{} OFFSET ?{}",
+            "SELECT type, rowid_ref FROM search_fts WHERE {} \
+             ORDER BY CASE WHEN lower(name) = ?{} THEN -1000 ELSE 0 END + bm25(search_fts, 3.0, 2.0, 1.0), length(name) \
+             LIMIT ?{} OFFSET ?{}",
             conditions.join(" AND "),
+            exact_param,
             limit_param,
             offset_param
         );
@@ -976,10 +1001,12 @@ impl SearchDb {
             "
             DELETE FROM search_fts;
 
-            -- Insert files: content = path + title + description (visibility_level=0, always visible)
-            INSERT INTO search_fts(content, type, rowid_ref, path, kind, project, visibility_level)
+            -- Insert files: name=title, file=path, content=description
+            INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
             SELECT
-                COALESCE(path, '') || ' ' || COALESCE(title, '') || ' ' || COALESCE(description, ''),
+                COALESCE(title, ''),
+                COALESCE(path, ''),
+                COALESCE(description, ''),
                 'file',
                 rowid,
                 path,
@@ -988,10 +1015,12 @@ impl SearchDb {
                 0
             FROM files;
 
-            -- Insert symbols: content = file + name + tokens
-            INSERT INTO search_fts(content, type, rowid_ref, path, kind, project, visibility_level)
+            -- Insert symbols: name=symbol name, file=path, content=tokens
+            INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
             SELECT
-                COALESCE(file, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(tokens, ''),
+                COALESCE(name, ''),
+                COALESCE(file, ''),
+                COALESCE(tokens, ''),
                 'symbol',
                 rowid,
                 file,
@@ -1000,10 +1029,12 @@ impl SearchDb {
                 visibility_level
             FROM symbols;
 
-            -- Insert texts: content = file + text (visibility_level=0, always visible)
-            INSERT INTO search_fts(content, type, rowid_ref, path, kind, project, visibility_level)
+            -- Insert texts: name=empty, file=path, content=text
+            INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
             SELECT
-                COALESCE(file, '') || ' ' || COALESCE(text, ''),
+                '',
+                COALESCE(file, ''),
+                COALESCE(text, ''),
                 'text',
                 rowid,
                 file,
