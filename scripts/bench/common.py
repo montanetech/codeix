@@ -78,7 +78,7 @@ REPOS = [
     # Medium repos
     Repo("tokio", "https://github.com/tokio-rs/tokio", "Rust", "medium", "Async runtime"),
     Repo("flask", "https://github.com/pallets/flask", "Python", "medium", "Web micro-framework"),
-    Repo("junit5", "https://github.com/junit-team/junit5", "Java", "medium", "Testing framework"),
+    Repo("guava", "https://github.com/google/guava", "Java", "medium", "Google core libraries"),
     Repo("libsodium", "https://github.com/jedisct1/libsodium", "C", "medium", "Crypto library"),
     Repo("faker", "https://github.com/faker-ruby/faker", "Ruby", "medium", "Data generation"),
     Repo("Newtonsoft.Json", "https://github.com/JamesNK/Newtonsoft.Json", "C#", "medium", "JSON library"),

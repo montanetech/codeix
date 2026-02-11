@@ -8,8 +8,8 @@
   {
     "id": "class-children",
     "category": "symbol",
-    "question": "In junit5, find the TestEngine interface and list all its methods.",
-    "project": "junit5"
+    "question": "In guava, find the Cache interface and list all its methods.",
+    "project": "guava"
   },
   {
     "id": "imports-trace",
@@ -44,8 +44,8 @@
   {
     "id": "class-hierarchy",
     "category": "symbol",
-    "question": "I need to add a new test extension in junit5. How does Extension interface work and what registry manages extensions?",
-    "project": "junit5"
+    "question": "I need to add a custom cache loader in guava. How does CacheLoader work and how does LoadingCache use it?",
+    "project": "guava"
   },
   {
     "id": "entry-point",
