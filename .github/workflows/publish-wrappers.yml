@@ -144,3 +144,40 @@ jobs:
               content: Buffer.from(formula).toString('base64'),
               ...(sha && { sha }),
             });
+
+  publish-mcp-registry:
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+
+      - name: Create server.json
+        run: |
+          jq -n \
+            --arg name "io.github.montanetech/codeix" \
+            --arg desc "$(jq -r .description npm/package.json)" \
+            --arg version "${{ inputs.version }}" \
+            '{
+              "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+              name: $name,
+              description: $desc,
+              version: $version,
+              packages: [{
+                registryType: "npm",
+                identifier: "codeix",
+                version: $version,
+                transport: { type: "stdio" }
+              }]
+            }' > server.json
+
+      - name: Publish to MCP Registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

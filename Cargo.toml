@@ -2,7 +2,7 @@
 name = "codeix"
 version = "0.3.0"
 edition = "2024"
-description = "Portable, composable code index — build with tree-sitter, query via MCP"
+description = "Fast semantic code search for AI agents — find symbols, references, and callers across any codebase"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/montanetech/codeix"
 homepage = "https://codeix.dev"
