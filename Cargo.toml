@@ -1,6 +1,6 @@
 [package]
 name = "codeix"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 description = "Fast semantic code search for AI agents — find symbols, references, and callers across any codebase"
 license = "MIT OR Apache-2.0"
