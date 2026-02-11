@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/montanetech/codeix/compare/v0.4.0...v0.4.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* add version to packages in server.json ([7843790](https://github.com/montanetech/codeix/commit/784379013ab740c81d0ddda82f543a65387118b3))
+* use io.github prefix for MCP registry name ([29f1fe5](https://github.com/montanetech/codeix/commit/29f1fe5c89fd58859a833c4791a9cd489cc60d6e))
+
 ## [0.4.0](https://github.com/montanetech/codeix/compare/v0.3.0...v0.4.0) (2026-02-11)
 
 
