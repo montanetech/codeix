@@ -3,6 +3,15 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "CHANGELOG.md"
+      - ".release-please-manifest.json"
+      - "release-please-config.json"
+      - "Cargo.toml"
+      - "npm/package.json"
+      - "python/pyproject.toml"
+      - "python/codeix/__init__.py"
+      - "server.json"
   pull_request:
     branches: [main]
 
