@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/montanetech/codeix/compare/v0.4.0...v0.4.1) (2026-02-11)
+
+
+### Features
+
+* add MCP registry manifest (server.json) ([bde48d2](https://github.com/montanetech/codeix/commit/bde48d2de60f06f229e9c48c6bb806d6f85ed3e2))
+
 ## [0.4.0](https://github.com/montanetech/codeix/compare/v0.3.0...v0.4.0) (2026-02-11)
 
 
