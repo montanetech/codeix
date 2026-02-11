@@ -2,7 +2,7 @@
 
 <!-- mcp-name: io.github.montanetech/codeix -->
 
-**[codeix.dev](https://codeix.dev)** · Portable, composable code index. Your AI agent finds the right function on the first try — no scanning, no guessing, no wasted tokens.
+**[codeix.dev](https://codeix.dev)** · Fast semantic code search for AI agents — find symbols, references, and callers across any codebase.
 
 ```
 codeix                 # start MCP server, watch for changes
