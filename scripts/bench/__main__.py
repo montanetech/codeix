@@ -12,7 +12,13 @@ from .ab import parse_judge_winner
 from .common import RESPONSE_CACHE_DIR, log, log_success
 
 
-def export_results(results: list[dict], config_name: str, output_path: str | None = None) -> None:
+def export_results(
+    results: list[dict],
+    config_name: str,
+    output_path: str | None = None,
+    label_a: str = "A",
+    label_b: str = "B",
+) -> None:
     """Export benchmark results in pytest-like JSON format.
 
     If output_path is None, writes to stdout (and normal output goes to stderr).
@@ -29,11 +35,13 @@ def export_results(results: list[dict], config_name: str, output_path: str | Non
         "unknown": 0,
         "total": len(results),
         "a": {
+            "label": label_a,
             "total_cost": 0.0,
             "total_tokens": {"input": 0, "output": 0},
             "total_tool_calls": 0,
         },
         "b": {
+            "label": label_b,
             "total_cost": 0.0,
             "total_tokens": {"input": 0, "output": 0},
             "total_tool_calls": 0,
@@ -190,11 +198,17 @@ Examples:
     elif args.command == "search-quality":
         results = search_quality.run(args.question)
         if args.export:
-            export_results(results, "search-quality", None if export_to_stdout else args.export)
+            export_results(
+                results, "search-quality", None if export_to_stdout else args.export,
+                label_a="codeix-dev", label_b="codeix-prod",
+            )
     elif args.command == "search-value":
         results = search_value.run(args.question)
         if args.export:
-            export_results(results, "search-value", None if export_to_stdout else args.export)
+            export_results(
+                results, "search-value", None if export_to_stdout else args.export,
+                label_a="codeix", label_b="claude-no-mcp",
+            )
     elif args.command == "clear-cache":
         if RESPONSE_CACHE_DIR.exists():
             shutil.rmtree(RESPONSE_CACHE_DIR)
