@@ -119,9 +119,10 @@ pub struct GetChildrenParams {
 pub struct GetCallersParams {
     /// Symbol name to find callers for (e.g. "my_function", "MyClass.method")
     pub name: String,
-    /// Filter by reference kind (e.g. "call", "import", "type_annotation")
-    #[arg(short, long)]
-    pub kind: Option<String>,
+    /// Filter by reference kind (e.g. "call", "import", "type_annotation").
+    /// Note: This filters the type of reference, not the symbol kind.
+    #[arg(short = 'k', long = "ref-kind")]
+    pub reference_kind: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
@@ -149,9 +150,10 @@ pub struct GetCallersParams {
 pub struct GetCalleesParams {
     /// Symbol name to find callees for (e.g. "my_function", "MyClass.method")
     pub caller: String,
-    /// Filter by reference kind (e.g. "call", "import", "type_annotation")
-    #[arg(short, long)]
-    pub kind: Option<String>,
+    /// Filter by reference kind (e.g. "call", "import", "type_annotation").
+    /// Note: This filters the type of reference, not the symbol kind.
+    #[arg(short = 'k', long = "ref-kind")]
+    pub reference_kind: Option<String>,
     /// Filter by project (relative path from workspace root, e.g. "libs/utils")
     #[arg(short, long)]
     pub project: Option<String>,
@@ -288,7 +290,7 @@ impl CodeIndexServer {
     /// Unified search across symbols, files, and texts.
     #[tool(
         description = "Search symbols, files, and texts. FTS5 with BM25 ranking.\n\n\
-**Query:** FTS5 syntax — `foo`, `foo OR bar`, `foo*` (prefix), `\"exact phrase\"`, `foo -exclude`\n\n\
+**Query:** FTS5 syntax — `foo`, `foo bar` (implicit AND), `foo OR bar`, `foo*` (prefix), `\"exact phrase\"`, `foo -exclude`\n\n\
 **Symbol kinds:** `function`, `method`, `class`, `struct`, `interface`, `enum`, `constant`, `variable`, `property`, `module`, `import`, `impl`, `section`\n\
 - Go/Rust/C: use `struct` not `class`\n\
 - Rust: use `interface` for traits\n\n\
@@ -657,7 +659,7 @@ impl CodeIndexServer {
         let results = db
             .get_callers(
                 &params.name,
-                params.kind.as_deref(),
+                params.reference_kind.as_deref(),
                 params.project.as_deref(),
                 params.visibility.as_deref(),
                 limit,
@@ -694,7 +696,7 @@ impl CodeIndexServer {
         let results = db
             .get_callees(
                 &params.caller,
-                params.kind.as_deref(),
+                params.reference_kind.as_deref(),
                 params.project.as_deref(),
                 params.visibility.as_deref(),
                 limit,
@@ -751,7 +753,7 @@ impl ServerHandler for CodeIndexServer {
 - `limit` (default 100): Maximum results to return
 - `offset` (default 0): Skip N results for pagination
 - `snippet_lines` (default 10): Code context lines (0=none, -1=all, N=lines)
-- `kind`: Filter by symbol kind (function, method, class, struct, interface, enum, constant, variable, property, module, import, impl) or reference kind (call, import, type_annotation)
+- `kind`: Filter by symbol kind (function, method, class, struct, interface, enum, constant, variable, property, module, import, impl)
 - `project`: Filter by project path (relative from workspace root)
 - `visibility`: Filter by max visibility (public < internal < private). Default: public"
                     .into(),
