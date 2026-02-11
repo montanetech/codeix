@@ -1,6 +1,7 @@
 """A/B benchmark framework using claude CLI."""
 
 import asyncio
+import hashlib
 import json
 import os
 import re
@@ -31,8 +32,8 @@ MAX_PARALLEL_QUESTIONS = int(os.environ.get("CODEIX_BENCH_PARALLEL", _default_pa
 
 # Max turns for test runs (some projects like zls need many turns)
 MAX_TURNS_TEST = 25
-# Max turns for judge (simple JSON output, needs only 1 turn)
-MAX_TURNS_JUDGE = 5
+# Max turns for judge (needs to read 2 response files + verify claims + output JSON)
+MAX_TURNS_JUDGE = 10
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -105,7 +106,8 @@ class QuestionProgress:
         j_label = f"{RED}J{NC}" if 'x' in self.turns_j else "J"
 
         # Only show result when done (not "...")
-        result_str = f" : {self.result}" if self.result != "..." else ""
+        display_result = "=" if self.result == "tie" else self.result
+        result_str = f" : {display_result}" if self.result != "..." else ""
         return f"[bench] {self.question_id:<28} {a_label} {a_str} {b_label} {b_str} {j_label} {j_str}{result_str}"
 
 
@@ -860,39 +862,47 @@ async def run_question(
         return result
 
     # Judge using subprocess (with caching)
-    # Truncate responses for judge prompt
-    response_a_text = json.dumps(response_a.get('result', response_a), indent=2)[:2000]
-    response_b_text = json.dumps(response_b.get('result', response_b), indent=2)[:2000]
+    # Write full responses to temp files (filename = hash of content for stable cache keys)
+    response_a_content = json.dumps(response_a.get('result', response_a), indent=2)
+    response_b_content = json.dumps(response_b.get('result', response_b), indent=2)
+    hash_a = hashlib.sha256(response_a_content.encode()).hexdigest()[:16]
+    hash_b = hashlib.sha256(response_b_content.encode()).hexdigest()[:16]
+
+    response_a_file = ctx.results_dir / f"response_{hash_a}.txt"
+    response_b_file = ctx.results_dir / f"response_{hash_b}.txt"
+    response_a_file.write_text(response_a_content)
+    response_b_file.write_text(response_b_content)
 
     # Get costs for judge evaluation
     cost_a = response_a.get("total_cost_usd")
     cost_b = response_b.get("total_cost_usd")
     cost_info = ""
     if cost_a is not None and cost_b is not None:
-        cost_info = f"\n\nCOST:\nA: ${cost_a:.4f}\nB: ${cost_b:.4f}"
+        cost_info = f"\nCost: A=${cost_a:.4f}, B=${cost_b:.4f}"
 
-    judge_prompt = f"""Compare these two responses to the question: "{q['question']}"
+    # Use relative paths from run_dir for stable cache keys
+    cwd_a_rel = cwd_a.relative_to(ctx.run_dir)
+    judge_prompt = f"""Compare two responses to: "{q['question']}"
 
-RESPONSE A ({config.label_a}):
-{response_a_text}
+The codebase is available at: {cwd_a_rel}
+Response A ({config.label_a}): results/response_{hash_a}.txt
+Response B ({config.label_b}): results/response_{hash_b}.txt{cost_info}
 
-RESPONSE B ({config.label_b}):
-{response_b_text}{cost_info}
+Use the Read tool to view the full responses.
+You may use Grep/Glob on {cwd_a_rel} to verify claims against the actual codebase if needed.
 
-Evaluate:
-1. Accuracy - Which response is more correct?
-2. Completeness - Which found more relevant information?
-3. Efficiency - Consider cost (lower is better for similar quality)
-
+Evaluate accuracy, completeness, and efficiency (lower cost is better for similar quality).
 Output JSON: {{"winner": "A"|"B"|"tie", "reason": "brief explanation"{config.extra_judge_fields}}}"""
 
     # Build judge command (for cache key)
+    # Note: judge needs Read/Grep/Glob tools to view responses and verify claims
+    # --dangerously-skip-permissions allows reading files in /tmp
     judge_schema = '{"type":"object","properties":{"winner":{"type":"string","enum":["A","B","tie"]},"reason":{"type":"string"}},"required":["winner","reason"]}'
     judge_cmd = [
         "claude", "--print", "--output-format", "json",
         "--no-session-persistence",
+        "--dangerously-skip-permissions",
         "--max-turns", str(MAX_TURNS_JUDGE),
-        "--disallowedTools", "mcp__*",
         "--json-schema", judge_schema,
         "-p", judge_prompt,
     ]
@@ -920,17 +930,16 @@ Output JSON: {{"winner": "A"|"B"|"tie", "reason": "brief explanation"{config.ext
             winner = parse_judge_winner(judge_response)
             await progress.set_result(qid, winner)
     else:
-        # Run judge via subprocess (no tools needed, no streaming needed)
-        judge_response = await run_subprocess(judge_cmd)
+        # Run judge via subprocess (cwd=run_dir so it can access both repos and results)
+        judge_response = await run_subprocess(judge_cmd, cwd=ctx.run_dir)
         if progress:
             await progress.add_turn(qid, 'j', 'o')  # Judge always produces output
             await progress.mark_done(qid, 'j')
             # Set result immediately
             winner = parse_judge_winner(judge_response)
             await progress.set_result(qid, winner)
-        # With --json-schema, output is in structured_output field
-        structured = judge_response.get("structured_output", {})
-        if structured and "winner" in structured:
+        # Cache unless it's a runtime error (functional errors should be cached)
+        if not _is_runtime_error(judge_response):
             save_cached_response(judge_cache_key, judge_response, {"question_id": q["id"], "type": "judge", "cmd": judge_cmd})
         cached_judge_flag = False
 
