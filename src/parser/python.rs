@@ -1,5 +1,7 @@
 //! Python symbol and text extraction.
 
+use std::collections::HashSet;
+
 use tree_sitter::{Node, Tree};
 
 use crate::index::format::{ReferenceEntry, SymbolEntry, TextEntry};
@@ -15,7 +17,69 @@ pub fn extract(
     references: &mut Vec<ReferenceEntry>,
 ) {
     let root = tree.root_node();
-    walk_node(root, source, file_path, None, symbols, texts, references, 0);
+    // First pass: extract __all__ if present
+    let dunder_all = extract_dunder_all(root, source);
+    walk_node(
+        root,
+        source,
+        file_path,
+        None,
+        dunder_all.as_ref(),
+        symbols,
+        texts,
+        references,
+        0,
+    );
+}
+
+/// Extract `__all__` list from module level if present.
+/// Returns None if not found, Some(set) with exported names otherwise.
+fn extract_dunder_all(root: Node, source: &[u8]) -> Option<HashSet<String>> {
+    let mut cursor = root.walk();
+    for child in root.children(&mut cursor) {
+        if child.kind() != "expression_statement" {
+            continue;
+        }
+        let Some(assignment) = child.child(0) else {
+            continue;
+        };
+        if assignment.kind() != "assignment" {
+            continue;
+        }
+        let Some(left) = find_child_by_field(assignment, "left") else {
+            continue;
+        };
+        if left.kind() != "identifier" || node_text(left, source) != "__all__" {
+            continue;
+        }
+        // Found __all__ assignment, extract the list values
+        let Some(right) = find_child_by_field(assignment, "right") else {
+            continue;
+        };
+        return extract_string_list(right, source);
+    }
+    None
+}
+
+/// Extract strings from a list or tuple literal.
+fn extract_string_list(node: Node, source: &[u8]) -> Option<HashSet<String>> {
+    match node.kind() {
+        "list" | "tuple" => {
+            let mut names = HashSet::new();
+            let mut cursor = node.walk();
+            for child in node.children(&mut cursor) {
+                if child.kind() == "string" {
+                    let raw = node_text(child, source);
+                    let name = strip_string_quotes(&raw);
+                    if !name.is_empty() {
+                        names.insert(name);
+                    }
+                }
+            }
+            Some(names)
+        }
+        _ => None, // Don't handle complex expressions like concatenation
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -24,6 +88,7 @@ fn walk_node(
     source: &[u8],
     file_path: &str,
     parent_ctx: Option<&str>,
+    dunder_all: Option<&HashSet<String>>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
     references: &mut Vec<ReferenceEntry>,
@@ -39,13 +104,13 @@ fn walk_node(
     match kind {
         "function_definition" => {
             extract_function(
-                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+                node, source, file_path, parent_ctx, dunder_all, symbols, texts, references, depth,
             );
             return; // handled recursively
         }
         "class_definition" => {
             extract_class(
-                node, source, file_path, parent_ctx, symbols, texts, references, depth,
+                node, source, file_path, parent_ctx, dunder_all, symbols, texts, references, depth,
             );
             return; // handled recursively
         }
@@ -64,6 +129,7 @@ fn walk_node(
                     source,
                     file_path,
                     parent_ctx,
+                    dunder_all,
                     symbols,
                     texts,
                     references,
@@ -77,7 +143,9 @@ fn walk_node(
             if let Some(child) = node.child(0) {
                 match child.kind() {
                     "assignment" => {
-                        extract_assignment(child, source, file_path, parent_ctx, symbols);
+                        extract_assignment(
+                            child, source, file_path, parent_ctx, dunder_all, symbols,
+                        );
                     }
                     "string" | "concatenated_string" => {
                         // Could be a module/class docstring
@@ -109,6 +177,7 @@ fn walk_node(
             source,
             file_path,
             parent_ctx,
+            dunder_all,
             symbols,
             texts,
             references,
@@ -123,6 +192,7 @@ fn extract_function(
     source: &[u8],
     file_path: &str,
     parent_ctx: Option<&str>,
+    dunder_all: Option<&HashSet<String>>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
     references: &mut Vec<ReferenceEntry>,
@@ -142,8 +212,13 @@ fn extract_function(
         "function"
     };
 
-    // Check for decorators to detect properties, staticmethods, etc.
-    let visibility = detect_python_visibility(&name);
+    // __all__ only applies to module-level symbols
+    let module_dunder_all = if parent_ctx.is_none() {
+        dunder_all
+    } else {
+        None
+    };
+    let visibility = detect_python_visibility(&name, module_dunder_all);
 
     // Extract tokens from function body for FTS
     let tokens = find_child_by_field(node, "body")
@@ -186,11 +261,13 @@ fn extract_function(
             }
             first = false;
             // Recurse into function body to find calls and nested definitions
+            // Nested definitions don't use module-level __all__
             walk_node(
                 child,
                 source,
                 file_path,
                 Some(&full_name),
+                None,
                 symbols,
                 texts,
                 references,
@@ -206,6 +283,7 @@ fn extract_class(
     source: &[u8],
     file_path: &str,
     parent_ctx: Option<&str>,
+    dunder_all: Option<&HashSet<String>>,
     symbols: &mut Vec<SymbolEntry>,
     texts: &mut Vec<TextEntry>,
     references: &mut Vec<ReferenceEntry>,
@@ -217,7 +295,14 @@ fn extract_class(
     };
 
     let line = node_line_range(node);
-    let visibility = detect_python_visibility(&name);
+
+    // __all__ only applies to module-level symbols
+    let module_dunder_all = if parent_ctx.is_none() {
+        dunder_all
+    } else {
+        None
+    };
+    let visibility = detect_python_visibility(&name, module_dunder_all);
 
     // Extract tokens from class body for FTS
     let tokens = find_child_by_field(node, "body")
@@ -258,11 +343,13 @@ fn extract_class(
                 continue;
             }
             first = false;
+            // Class members don't use module-level __all__
             walk_node(
                 child,
                 source,
                 file_path,
                 Some(&full_name),
+                None,
                 symbols,
                 texts,
                 references,
@@ -464,6 +551,7 @@ fn extract_assignment(
     source: &[u8],
     file_path: &str,
     parent_ctx: Option<&str>,
+    dunder_all: Option<&HashSet<String>>,
     symbols: &mut Vec<SymbolEntry>,
 ) {
     // Module/class-level assignments: `FOO = ...` or `foo: type = ...`
@@ -478,8 +566,21 @@ fn extract_assignment(
     }
 
     let name = node_text(left, source);
+
+    // Skip __all__ itself from being indexed as a variable
+    if name == "__all__" {
+        return;
+    }
+
     let line = node_line_range(node);
-    let visibility = detect_python_visibility(&name);
+
+    // __all__ only applies to module-level symbols
+    let module_dunder_all = if parent_ctx.is_none() {
+        dunder_all
+    } else {
+        None
+    };
+    let visibility = detect_python_visibility(&name, module_dunder_all);
 
     // UPPER_CASE → constant, otherwise variable
     let kind = if name.chars().all(|c| c.is_uppercase() || c == '_') && name.len() > 1 {
@@ -644,10 +745,32 @@ fn extract_python_comment(
     extract_comment(node, source, file_path, parent_ctx, texts);
 }
 
-fn detect_python_visibility(name: &str) -> String {
+/// Detect Python visibility based on naming conventions and `__all__`.
+///
+/// Rules:
+/// 1. `__name` (not dunder) → private (always, overrides `__all__`)
+/// 2. If `__all__` exists:
+///    - In `__all__` → public
+///    - Not in `__all__` → internal
+/// 3. If no `__all__`:
+///    - `_name` → internal
+///    - else → public
+fn detect_python_visibility(name: &str, dunder_all: Option<&HashSet<String>>) -> String {
+    // Private names (name mangling) always override __all__
     if name.starts_with("__") && !name.ends_with("__") {
-        "private".to_string()
-    } else if name.starts_with('_') {
+        return "private".to_string();
+    }
+
+    // If __all__ exists, use it to determine public vs internal
+    if let Some(all_names) = dunder_all {
+        if all_names.contains(name) {
+            return "public".to_string();
+        }
+        return "internal".to_string();
+    }
+
+    // No __all__, use naming convention
+    if name.starts_with('_') {
         "internal".to_string()
     } else {
         "public".to_string()
@@ -863,5 +986,148 @@ def some_function():
                 .iter()
                 .any(|r| r.name == "nested.deep.call" && r.caller.as_deref() == Some("caller"))
         );
+    }
+
+    #[test]
+    fn test_python_dunder_all_visibility() {
+        let source = b"__all__ = ['foo', 'PublicClass', 'CONSTANT']
+
+def foo():
+    '''In __all__ -> public'''
+    pass
+
+def bar():
+    '''Not in __all__ -> internal'''
+    pass
+
+def _helper():
+    '''Underscore prefix, not in __all__ -> internal'''
+    pass
+
+def __impl():
+    '''Double underscore -> private (overrides __all__)'''
+    pass
+
+class PublicClass:
+    '''In __all__ -> public'''
+    pass
+
+class InternalClass:
+    '''Not in __all__ -> internal'''
+    pass
+
+CONSTANT = 42
+internal_var = 'test'
+";
+        let (symbols, _texts, _refs) = parse_file(source, "python", "test.py").unwrap();
+
+        // In __all__ -> public
+        let foo = find_sym(&symbols, "foo");
+        assert_eq!(
+            foo.visibility.as_deref(),
+            Some("public"),
+            "foo should be public (in __all__)"
+        );
+
+        let public_class = find_sym(&symbols, "PublicClass");
+        assert_eq!(
+            public_class.visibility.as_deref(),
+            Some("public"),
+            "PublicClass should be public (in __all__)"
+        );
+
+        let constant = find_sym(&symbols, "CONSTANT");
+        assert_eq!(
+            constant.visibility.as_deref(),
+            Some("public"),
+            "CONSTANT should be public (in __all__)"
+        );
+
+        // Not in __all__ -> internal
+        let bar = find_sym(&symbols, "bar");
+        assert_eq!(
+            bar.visibility.as_deref(),
+            Some("internal"),
+            "bar should be internal (not in __all__)"
+        );
+
+        let helper = find_sym(&symbols, "_helper");
+        assert_eq!(
+            helper.visibility.as_deref(),
+            Some("internal"),
+            "_helper should be internal (not in __all__)"
+        );
+
+        let internal_class = find_sym(&symbols, "InternalClass");
+        assert_eq!(
+            internal_class.visibility.as_deref(),
+            Some("internal"),
+            "InternalClass should be internal (not in __all__)"
+        );
+
+        let internal_var = find_sym(&symbols, "internal_var");
+        assert_eq!(
+            internal_var.visibility.as_deref(),
+            Some("internal"),
+            "internal_var should be internal (not in __all__)"
+        );
+
+        // Private (double underscore) overrides __all__
+        let impl_fn = find_sym(&symbols, "__impl");
+        assert_eq!(
+            impl_fn.visibility.as_deref(),
+            Some("private"),
+            "__impl should be private (name mangling overrides __all__)"
+        );
+
+        // __all__ itself should not be indexed
+        assert!(
+            symbols.iter().all(|s| s.name != "__all__"),
+            "__all__ should not be indexed as a variable"
+        );
+    }
+
+    #[test]
+    fn test_python_no_dunder_all_visibility() {
+        // Without __all__, use naming convention (same as original behavior)
+        let source = b"def public_fn():
+    pass
+
+def _internal():
+    pass
+
+def __private():
+    pass
+";
+        let (symbols, _texts, _refs) = parse_file(source, "python", "test.py").unwrap();
+
+        let public = find_sym(&symbols, "public_fn");
+        assert_eq!(public.visibility.as_deref(), Some("public"));
+
+        let internal = find_sym(&symbols, "_internal");
+        assert_eq!(internal.visibility.as_deref(), Some("internal"));
+
+        let private = find_sym(&symbols, "__private");
+        assert_eq!(private.visibility.as_deref(), Some("private"));
+    }
+
+    #[test]
+    fn test_python_dunder_all_tuple() {
+        // __all__ can also be a tuple
+        let source = b"__all__ = ('exported',)
+
+def exported():
+    pass
+
+def not_exported():
+    pass
+";
+        let (symbols, _texts, _refs) = parse_file(source, "python", "test.py").unwrap();
+
+        let exported = find_sym(&symbols, "exported");
+        assert_eq!(exported.visibility.as_deref(), Some("public"));
+
+        let not_exported = find_sym(&symbols, "not_exported");
+        assert_eq!(not_exported.visibility.as_deref(), Some("internal"));
     }
 }
