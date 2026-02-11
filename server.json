@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "montanetech/codeix",
+  "name": "io.github.montanetech/codeix",
   "title": "Codeix",
   "description": "Fast semantic code search for AI agents — find symbols, references, and callers across any codebase",
   "version": "0.4.0",
