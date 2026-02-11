@@ -46,7 +46,7 @@ pub fn format_search_results(
     }
 }
 
-/// Enriched search result with type discriminator and optional snippet for symbols.
+/// Enriched search result with type discriminator and optional context for symbols.
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum EnrichedSearchResult {
@@ -54,7 +54,7 @@ pub enum EnrichedSearchResult {
         #[serde(flatten)]
         symbol: SymbolEntry,
         #[serde(skip_serializing_if = "Option::is_none")]
-        snippet: Option<String>,
+        context: Option<String>,
     },
     File(FileEntry),
     Text(TextEntry),
@@ -64,11 +64,11 @@ fn format_search_results_text(results: &[EnrichedSearchResult]) -> String {
     let mut out = String::new();
     for result in results {
         match result {
-            EnrichedSearchResult::Symbol { symbol, snippet } => {
+            EnrichedSearchResult::Symbol { symbol, context } => {
                 // file[line-range] symbol kind name
                 let location = format_location(&symbol.file, symbol.line);
                 let _ = writeln!(out, "{} symbol {} {}", location, symbol.kind, symbol.name);
-                if let Some(snip) = snippet {
+                if let Some(snip) = context {
                     write_snippet(&mut out, snip);
                 }
             }
@@ -140,13 +140,13 @@ fn dedent(text: &str) -> String {
         .join("\n")
 }
 
-/// Response wrapper for SymbolEntry with optional snippet.
+/// Response wrapper for SymbolEntry with optional context.
 #[derive(Debug, Serialize)]
 pub struct SymbolWithSnippet {
     #[serde(flatten)]
     pub symbol: SymbolEntry,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub snippet: Option<String>,
+    pub context: Option<String>,
 }
 
 /// Format a list of symbols (for get_file_symbols, get_children).
@@ -183,20 +183,20 @@ fn format_symbols_text(symbols: &[SymbolWithSnippet]) -> String {
         );
 
         // Snippet if present
-        if let Some(snip) = &sym.snippet {
+        if let Some(snip) = &sym.context {
             write_snippet(&mut out, snip);
         }
     }
     out
 }
 
-/// Response wrapper for ReferenceEntry with optional snippet.
+/// Response wrapper for ReferenceEntry with optional context.
 #[derive(Debug, Serialize)]
 pub struct ReferenceWithSnippet {
     #[serde(flatten)]
     pub reference: ReferenceEntry,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub snippet: Option<String>,
+    pub context: Option<String>,
 }
 
 /// Format references (for get_callers, get_callees).
@@ -223,7 +223,7 @@ fn format_references_text(refs: &[ReferenceWithSnippet]) -> String {
         );
 
         // Snippet if present
-        if let Some(snip) = &r.snippet {
+        if let Some(snip) = &r.context {
             write_snippet(&mut out, snip);
         }
     }

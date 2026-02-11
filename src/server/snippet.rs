@@ -32,12 +32,12 @@ impl SnippetExtractor {
     /// * `file` - File path relative to project root
     /// * `line_start` - Starting line number (1-indexed, inclusive)
     /// * `line_end` - Ending line number (1-indexed, inclusive)
-    /// * `snippet_lines` - Number of lines to include:
+    /// * `context_lines` - Number of lines to include:
     ///   - `0`: No snippet (returns None immediately)
     ///   - `-1`: All lines in range (blank lines skipped)
     ///   - `N > 0`: First N non-blank lines
     ///
-    /// Returns `None` if file cannot be read or snippet_lines is 0.
+    /// Returns `None` if file cannot be read or context_lines is 0.
     /// Adds "..." suffix when truncated.
     pub fn extract_snippet(
         &self,
@@ -45,10 +45,10 @@ impl SnippetExtractor {
         file: &str,
         line_start: u32,
         line_end: u32,
-        snippet_lines: i32,
+        context_lines: i32,
     ) -> Option<String> {
         // Early return if snippets disabled
-        if snippet_lines == 0 {
+        if context_lines == 0 {
             return None;
         }
 
@@ -77,11 +77,11 @@ impl SnippetExtractor {
             .collect();
 
         // Apply line limit
-        let (final_lines, truncated) = if snippet_lines < 0 {
+        let (final_lines, truncated) = if context_lines < 0 {
             // All non-blank lines
             (non_blank_lines, false)
         } else {
-            let limit = snippet_lines as usize;
+            let limit = context_lines as usize;
             let truncated = non_blank_lines.len() > limit;
             let lines: Vec<&str> = non_blank_lines.into_iter().take(limit).collect();
             (lines, truncated)

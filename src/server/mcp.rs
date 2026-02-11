@@ -56,9 +56,10 @@ pub struct SearchParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
-    /// Number of code snippet lines for symbols: 0=none, -1=all, N=N lines (default: 10)
+    /// Lines of code context per result (recommended: 10). Provides type info, docs, and surrounding code.
+    /// 0=metadata only, -1=full definition, N=N lines.
     #[arg(long)]
-    pub snippet_lines: Option<i32>,
+    pub context_lines: Option<i32>,
     /// Output format: "json" (default for MCP) or "text" (default for CLI)
     #[arg(long, default_value = "text")]
     #[serde(default)]
@@ -74,9 +75,10 @@ pub struct GetFileSymbolsParams {
     /// Example: visibility="internal" returns public AND internal symbols.
     #[arg(short = 'v', long)]
     pub visibility: Option<String>,
-    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    /// Lines of code context per result (recommended: 10). Provides type info, docs, and surrounding code.
+    /// 0=metadata only, -1=full definition, N=N lines.
     #[arg(long)]
-    pub snippet_lines: Option<i32>,
+    pub context_lines: Option<i32>,
     /// Maximum number of results to return (default: 100)
     #[arg(short, long)]
     pub limit: Option<u32>,
@@ -100,9 +102,10 @@ pub struct GetChildrenParams {
     /// Example: visibility="internal" returns public AND internal symbols.
     #[arg(short = 'v', long)]
     pub visibility: Option<String>,
-    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    /// Lines of code context per result (recommended: 10). Provides type info, docs, and surrounding code.
+    /// 0=metadata only, -1=full definition, N=N lines.
     #[arg(long)]
-    pub snippet_lines: Option<i32>,
+    pub context_lines: Option<i32>,
     /// Maximum number of results to return (default: 100)
     #[arg(short, long)]
     pub limit: Option<u32>,
@@ -137,9 +140,10 @@ pub struct GetCallersParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
-    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    /// Lines of code context per result (recommended: 10). Provides type info, docs, and surrounding code.
+    /// 0=metadata only, -1=full definition, N=N lines.
     #[arg(long)]
-    pub snippet_lines: Option<i32>,
+    pub context_lines: Option<i32>,
     /// Output format: "json" (default for MCP) or "text" (default for CLI)
     #[arg(long, default_value = "text")]
     #[serde(default)]
@@ -168,9 +172,10 @@ pub struct GetCalleesParams {
     /// Number of results to skip for pagination (default: 0)
     #[arg(short, long)]
     pub offset: Option<u32>,
-    /// Number of code snippet lines: 0=none, -1=all, N=N lines (default: 10)
+    /// Lines of code context per result (recommended: 10). Provides type info, docs, and surrounding code.
+    /// 0=metadata only, -1=full definition, N=N lines.
     #[arg(long)]
-    pub snippet_lines: Option<i32>,
+    pub context_lines: Option<i32>,
     /// Output format: "json" (default for MCP) or "text" (default for CLI)
     #[arg(long, default_value = "text")]
     #[serde(default)]
@@ -230,7 +235,7 @@ impl CodeIndexServer {
     fn enrich_with_snippets(
         &self,
         symbols: Vec<SymbolEntry>,
-        snippet_lines: i32,
+        context_lines: i32,
     ) -> Vec<SymbolWithSnippet> {
         symbols
             .into_iter()
@@ -248,9 +253,12 @@ impl CodeIndexServer {
                     &symbol.file,
                     symbol.line[0],
                     symbol.line[1],
-                    snippet_lines,
+                    context_lines,
                 );
-                Some(SymbolWithSnippet { symbol, snippet })
+                Some(SymbolWithSnippet {
+                    symbol,
+                    context: snippet,
+                })
             })
             .collect()
     }
@@ -259,7 +267,7 @@ impl CodeIndexServer {
     fn enrich_refs_with_snippets(
         &self,
         references: Vec<crate::index::format::ReferenceEntry>,
-        snippet_lines: i32,
+        context_lines: i32,
     ) -> Vec<ReferenceWithSnippet> {
         references
             .into_iter()
@@ -277,9 +285,12 @@ impl CodeIndexServer {
                     &reference.file,
                     reference.line[0],
                     reference.line[1],
-                    snippet_lines,
+                    context_lines,
                 );
-                Some(ReferenceWithSnippet { reference, snippet })
+                Some(ReferenceWithSnippet {
+                    reference,
+                    context: snippet,
+                })
             })
             .collect()
     }
@@ -295,7 +306,7 @@ impl CodeIndexServer {
 - Go/Rust/C: use `struct` not `class`\n\
 - Rust: use `interface` for traits\n\n\
 **Text kinds:** `docstring`, `comment`, `string`, `sample`\n\n\
-**Params:** query (required), scope ([\"symbol\"]/[\"file\"]/[\"text\"]), kind, path (glob), project, limit (default 10), offset, snippet_lines (default 10)"
+**Params:** query (required), scope ([\"symbol\"]/[\"file\"]/[\"text\"]), kind, path (glob), project, limit (default 10), offset, context_lines (default 10)"
     )]
     pub async fn search(
         &self,
@@ -326,7 +337,7 @@ impl CodeIndexServer {
         drop(db); // Release lock before file I/O
 
         // Enrich symbol results with snippets
-        let snippet_lines = params.snippet_lines.unwrap_or(10);
+        let context_lines = params.context_lines.unwrap_or(10);
         let enriched: Vec<EnrichedSearchResult> = results
             .into_iter()
             .filter_map(|result| match result {
@@ -343,9 +354,12 @@ impl CodeIndexServer {
                         &symbol.file,
                         symbol.line[0],
                         symbol.line[1],
-                        snippet_lines,
+                        context_lines,
                     );
-                    Some(EnrichedSearchResult::Symbol { symbol, snippet })
+                    Some(EnrichedSearchResult::Symbol {
+                        symbol,
+                        context: snippet,
+                    })
                 }
                 SearchResult::File(file) => Some(EnrichedSearchResult::File(file)),
                 SearchResult::Text(text) => Some(EnrichedSearchResult::Text(text)),
@@ -379,8 +393,8 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let snippet_lines = params.snippet_lines.unwrap_or(10);
-        let enriched = self.enrich_with_snippets(results, snippet_lines);
+        let context_lines = params.context_lines.unwrap_or(10);
+        let enriched = self.enrich_with_snippets(results, context_lines);
 
         let output = format_symbols(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
@@ -415,8 +429,8 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let snippet_lines = params.snippet_lines.unwrap_or(10);
-        let enriched = self.enrich_with_snippets(results, snippet_lines);
+        let context_lines = params.context_lines.unwrap_or(10);
+        let enriched = self.enrich_with_snippets(results, context_lines);
 
         let output = format_symbols(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
@@ -669,8 +683,8 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let snippet_lines = params.snippet_lines.unwrap_or(10);
-        let enriched = self.enrich_refs_with_snippets(results, snippet_lines);
+        let context_lines = params.context_lines.unwrap_or(10);
+        let enriched = self.enrich_refs_with_snippets(results, context_lines);
 
         let output = format_references(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
@@ -706,8 +720,8 @@ impl CodeIndexServer {
 
         drop(db); // Release lock before file I/O
 
-        let snippet_lines = params.snippet_lines.unwrap_or(10);
-        let enriched = self.enrich_refs_with_snippets(results, snippet_lines);
+        let context_lines = params.context_lines.unwrap_or(10);
+        let enriched = self.enrich_refs_with_snippets(results, context_lines);
 
         let output = format_references(&enriched, params.format)
             .map_err(|e| McpError::internal_error(format!("serialization failed: {e}"), None))?;
@@ -752,7 +766,7 @@ impl ServerHandler for CodeIndexServer {
 **Common parameters:**
 - `limit` (default 100): Maximum results to return
 - `offset` (default 0): Skip N results for pagination
-- `snippet_lines` (default 10): Code context lines (0=none, -1=all, N=lines)
+- `context_lines` (recommended: 10): Lines of code context for type info and docs (0=metadata only, -1=all)
 - `kind`: Filter by symbol kind (function, method, class, struct, interface, enum, constant, variable, property, module, import, impl)
 - `project`: Filter by project path (relative from workspace root)
 - `visibility`: Filter by max visibility (public < internal < private). Default: public"
