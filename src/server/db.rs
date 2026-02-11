@@ -266,12 +266,12 @@ impl SearchDb {
                     0
                 FROM files;
 
-                -- Insert symbols: name=symbol name, file=path, content=tokens
+                -- Insert symbols: name=symbol name, file=path, content=kind + tokens
                 INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
                 SELECT
                     COALESCE(name, ''),
                     COALESCE(file, ''),
-                    COALESCE(tokens, ''),
+                    COALESCE(kind, '') || ' ' || COALESCE(tokens, ''),
                     'symbol',
                     rowid,
                     file,
@@ -1015,12 +1015,12 @@ impl SearchDb {
                 0
             FROM files;
 
-            -- Insert symbols: name=symbol name, file=path, content=tokens
+            -- Insert symbols: name=symbol name, file=path, content=kind + tokens
             INSERT INTO search_fts(name, file, content, type, rowid_ref, path, kind, project, visibility_level)
             SELECT
                 COALESCE(name, ''),
                 COALESCE(file, ''),
-                COALESCE(tokens, ''),
+                COALESCE(kind, '') || ' ' || COALESCE(tokens, ''),
                 'symbol',
                 rowid,
                 file,
