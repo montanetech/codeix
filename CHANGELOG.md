@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/montanetech/codeix/compare/v0.5.0...v0.5.1) (2026-02-21)
+
+
+### Features
+
+* **bench:** record Claude version and model in results ([dba0309](https://github.com/montanetech/codeix/commit/dba030945c1d0c501ee824f6b693710aa39430a1))
+* **bench:** record Claude version and model in results ([#87](https://github.com/montanetech/codeix/issues/87)) ([632ef68](https://github.com/montanetech/codeix/commit/632ef684b283e89b60e2a200a7e23b4b1a0e606d))
+
 ## [0.5.0](https://github.com/montanetech/codeix/compare/v0.4.1...v0.5.0) (2026-02-21)
 
 
