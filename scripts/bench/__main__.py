@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import index_speed, search_quality, search_value
 from .ab import parse_judge_winner
-from .common import RESPONSE_CACHE_DIR, log, log_success
+from .common import RESPONSE_CACHE_DIR, get_claude_version, log, log_success
 
 
 def export_results(
@@ -106,9 +106,25 @@ def export_results(
             },
         })
 
+    # Extract model from first result that has it
+    claude_model = None
+    for r in results:
+        # Check response_a and response_b for model info
+        for key in ["response_a", "response_b"]:
+            resp = r.get(key, {})
+            if isinstance(resp, dict) and resp.get("model"):
+                claude_model = resp["model"]
+                break
+        if claude_model:
+            break
+
     report = {
         "created": datetime.now().isoformat(),
         "benchmark": config_name,
+        "metadata": {
+            "claude_code_version": get_claude_version(),
+            "claude_model": claude_model,
+        },
         "summary": summary,
         "tests": tests,
     }

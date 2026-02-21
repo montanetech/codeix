@@ -19,6 +19,7 @@ from .common import (
     delete_cached_response,
     get_cache_key_from_cmd,
     get_cached_response,
+    get_claude_version,
     log,
     log_error,
     log_success,
@@ -417,6 +418,9 @@ def parse_stream_json(stdout_str: str) -> dict:
         elif event_type == "result":
             # Final result event - contains aggregated data
             usage = event.get("usage", {})
+            # Extract model from modelUsage keys (e.g., {"claude-opus-4-6": {...}})
+            model_usage = event.get("modelUsage", {})
+            model = list(model_usage.keys())[0] if model_usage else None
             final_result = {
                 "result": event.get("result", ""),
                 "subtype": event.get("subtype", ""),
@@ -430,6 +434,7 @@ def parse_stream_json(stdout_str: str) -> dict:
                 },
                 "session_id": event.get("session_id"),
                 "num_turns": event.get("num_turns"),
+                "model": model,
             }
 
     # Combine everything
@@ -994,14 +999,19 @@ async def run_async(
 
     with run_context() as ctx:
         log(f"Running {config.name} with {len(questions)} question(s) in parallel")
-        log(f"Run dir: {ctx.run_dir}")
         print()
 
         # Setup binaries (once, before running questions)
         # Binaries are named with version embedded (e.g., codeix-abc123)
         bin_a, bin_b = config.setup_run(ctx)
-        log(f"A: {config.label_a} ({bin_a})")
-        log(f"B: {config.label_b} ({bin_b})")
+        # Show just the binary name, not full path
+        bin_a_name = Path(bin_a).name if "/" in bin_a else bin_a
+        bin_b_name = Path(bin_b).name if "/" in bin_b else bin_b
+        # Get Claude version (just the version number, e.g., "2.1.50")
+        claude_ver_full = get_claude_version()
+        claude_ver = claude_ver_full.split()[0] if claude_ver_full else "?"
+        log(f"A: {config.label_a} ({bin_a_name}, claude:{claude_ver})")
+        log(f"B: {config.label_b} ({bin_b_name}, claude:{claude_ver})")
         print()
 
         # Create progress display
@@ -1031,15 +1041,27 @@ async def run_async(
         # Finalize progress display
         progress.finish()
 
+        # Extract model from results
+        claude_model = None
+        for r in results:
+            for key in ["response_a", "response_b"]:
+                resp = r.get(key, {})
+                if isinstance(resp, dict) and resp.get("model"):
+                    claude_model = resp["model"]
+                    break
+            if claude_model:
+                break
+
         # Summary
         print()
         print(f"{CYAN}═══════════════════════════════════════════════════════════════{NC}")
         print(f"{CYAN}{config.title:^63}{NC}")
         print(f"{CYAN}═══════════════════════════════════════════════════════════════{NC}")
         print()
-        # Show what A and B represent
-        print(f"A: {config.label_a}")
-        print(f"B: {config.label_b}")
+        # Show what A and B represent (with version and model info)
+        model_info = f", model:{claude_model}" if claude_model else ""
+        print(f"A: {config.label_a} ({bin_a_name}, claude:{claude_ver}{model_info})")
+        print(f"B: {config.label_b} ({bin_b_name}, claude:{claude_ver}{model_info})")
         print()
         print(f"{'Question':<30} {'Winner':^8}  {'A cost':>8}  {'B cost':>8}")
         print("─" * 60)

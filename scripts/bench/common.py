@@ -313,6 +313,7 @@ RUNTIME_ERROR_PATTERNS = [
     "read timeout",
     "connect timeout",
     "request timeout",
+    "cannot be launched inside another Claude Code session",
 ]
 
 
