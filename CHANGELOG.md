@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/montanetech/codeix/compare/v0.4.1...v0.5.0) (2026-02-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** MCP server now exposes prompts capability
+
+### Features
+
+* **mcp:** add prompts for common codebase exploration tasks ([e1ea2ca](https://github.com/montanetech/codeix/commit/e1ea2ca2940be66bfa8afc221e06e9df11975d67))
+* **mcp:** add prompts for common codebase exploration tasks ([#84](https://github.com/montanetech/codeix/issues/84)) ([2cd8fb6](https://github.com/montanetech/codeix/commit/2cd8fb61333b598723c365d7989cc1c859ca57b1))
+
 ## [0.4.1](https://github.com/montanetech/codeix/compare/v0.4.0...v0.4.1) (2026-02-11)
 
 

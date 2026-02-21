@@ -3,7 +3,7 @@
   "name": "io.github.montanetech/codeix",
   "title": "Codeix",
   "description": "Fast semantic code search for AI agents — find symbols, references, and callers across any codebase",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "repository": {
     "url": "https://github.com/montanetech/codeix",
     "source": "github"
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "codeix",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
@@ -22,7 +22,7 @@
     {
       "registryType": "pypi",
       "identifier": "codeix",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

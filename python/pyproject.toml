@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codeix"
-version = "0.4.1" # x-release-please-version
+version = "0.5.0" # x-release-please-version
 description = "Fast semantic code search for AI agents — find symbols, references, and callers across any codebase"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
