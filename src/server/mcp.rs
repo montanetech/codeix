@@ -4,11 +4,16 @@ use std::sync::{Arc, Mutex};
 use anyhow::Result;
 use clap::Args;
 use rmcp::{
-    ErrorData as McpError, ServerHandler, ServiceExt,
-    handler::server::{tool::ToolRouter, wrapper::Parameters},
-    model::{CallToolResult, Content, ServerCapabilities, ServerInfo},
-    schemars,
+    ErrorData as McpError, RoleServer, ServerHandler, ServiceExt,
+    handler::server::{router::prompt::PromptRouter, tool::ToolRouter, wrapper::Parameters},
+    model::{
+        CallToolResult, Content, GetPromptRequestParams, GetPromptResult, ListPromptsResult,
+        PaginatedRequestParams, PromptMessage, PromptMessageContent, PromptMessageRole,
+        ServerCapabilities, ServerInfo,
+    },
+    prompt, prompt_handler, prompt_router, schemars,
     schemars::JsonSchema,
+    service::RequestContext,
     tool, tool_handler, tool_router,
     transport::stdio,
 };
@@ -212,7 +217,7 @@ pub struct ExploreParams {
     pub format: OutputFormat,
 }
 
-/// MCP server exposing code-index query tools.
+/// MCP server exposing code-index query tools and prompts.
 ///
 /// `SearchDb` wraps a `rusqlite::Connection` which is not `Sync`, so we protect
 /// it with a `Mutex` to satisfy rmcp's `Send + Sync` requirements.
@@ -222,6 +227,7 @@ pub struct CodeIndexServer {
     mount_table: Arc<Mutex<MountTable>>,
     snippet_extractor: SnippetExtractor,
     tool_router: ToolRouter<Self>,
+    prompt_router: PromptRouter<Self>,
 }
 
 impl CodeIndexServer {
@@ -237,6 +243,7 @@ impl CodeIndexServer {
             mount_table,
             snippet_extractor: SnippetExtractor::new(workspace_root),
             tool_router: Self::tool_router(),
+            prompt_router: Self::prompt_router(),
         }
     }
 
@@ -756,7 +763,67 @@ impl CodeIndexServer {
     }
 }
 
+#[prompt_router]
+impl CodeIndexServer {
+    /// Explore and understand a codebase's structure and architecture.
+    #[prompt(name = "explore-codebase")]
+    pub fn explore_codebase(&self) -> GetPromptResult {
+        GetPromptResult {
+            description: Some("Understand codebase structure and architecture".into()),
+            messages: vec![PromptMessage {
+                role: PromptMessageRole::User,
+                content: PromptMessageContent::text(
+                    "Help me understand this codebase. Use `explore` for structure, `search` for entry points (main, cli, handler), `get_file_symbols` for key files, and `get_callees` to trace flows. Summarize the architecture.",
+                ),
+            }],
+        }
+    }
+
+    /// Find a symbol and all its usages.
+    #[prompt(name = "find-symbol")]
+    pub fn find_symbol(&self) -> GetPromptResult {
+        GetPromptResult {
+            description: Some("Find symbol definition and all callers".into()),
+            messages: vec![PromptMessage {
+                role: PromptMessageRole::User,
+                content: PromptMessageContent::text(
+                    "Find where a symbol is defined and how it's used. Use `search` to locate it, `get_file_symbols` for context, and `get_callers` to find all references. Summarize its role in the codebase.",
+                ),
+            }],
+        }
+    }
+
+    /// Trace execution flow from an entry point.
+    #[prompt(name = "trace-call-chain")]
+    pub fn trace_call_chain(&self) -> GetPromptResult {
+        GetPromptResult {
+            description: Some("Trace call chain from entry point".into()),
+            messages: vec![PromptMessage {
+                role: PromptMessageRole::User,
+                content: PromptMessageContent::text(
+                    "Trace the execution flow from an entry point. Use `search` to find it, then `get_callees` recursively to follow the call chain. Map out the main execution path and key decision points.",
+                ),
+            }],
+        }
+    }
+
+    /// Quick onboarding overview for newcomers.
+    #[prompt(name = "onboard")]
+    pub fn onboard(&self) -> GetPromptResult {
+        GetPromptResult {
+            description: Some("Quick onboarding for newcomers".into()),
+            messages: vec![PromptMessage {
+                role: PromptMessageRole::User,
+                content: PromptMessageContent::text(
+                    "I'm new to this codebase. Use `explore` for overview, find main entry points, identify core types (class/struct/trait). Give me a summary: project purpose, key modules, and suggested files to read first.",
+                ),
+            }],
+        }
+    }
+}
+
 #[tool_handler]
+#[prompt_handler]
 impl ServerHandler for CodeIndexServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
@@ -781,7 +848,10 @@ impl ServerHandler for CodeIndexServer {
 - `visibility`: Filter by max visibility (public < internal < private). Default: public"
                     .into(),
             ),
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .enable_prompts()
+                .build(),
             ..Default::default()
         }
     }
