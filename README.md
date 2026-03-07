@@ -4,6 +4,10 @@
 
 **[codeix.dev](https://codeix.dev)** · Fast semantic code search for AI agents — find symbols, references, and callers across any codebase.
 
+<a href="https://glama.ai/mcp/servers/@montanetech/codeix">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@montanetech/codeix/badge" alt="codeix MCP server" />
+</a>
+
 ```
 codeix                 # start MCP server, watch for changes
 codeix build           # parse source files, write .codeindex
